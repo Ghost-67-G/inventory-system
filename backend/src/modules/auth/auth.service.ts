@@ -167,17 +167,10 @@ export async function refreshToken(token: string): Promise<{ accessToken: string
     throw new ApiError(401, 'Session expired. Please login again.');
   }
 
-  const tokenIndex = user.refreshTokens.findIndex((t) => t.tokenHash === tokenHash);
-
-  if (tokenIndex === -1) {
-    // Refresh token reuse detected — clear ALL tokens
-    user.refreshTokens = [];
-    await user.save();
+  const hasToken = user.refreshTokens.some((t) => t.tokenHash === tokenHash);
+  if (!hasToken) {
     throw new ApiError(401, 'Session expired. Please login again.');
   }
-
-  // Rotate: remove used token
-  user.refreshTokens.splice(tokenIndex, 1);
 
   const accessToken = generateAccessToken({
     userId: String(user._id),
@@ -189,17 +182,41 @@ export async function refreshToken(token: string): Promise<{ accessToken: string
     tenantId: String(user.tenantId)
   });
 
-  if (user.refreshTokens.length >= 5) {
-    user.refreshTokens.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    user.refreshTokens.splice(0, user.refreshTokens.length - 4);
-  }
-  user.refreshTokens.push({
+  const rotatedEntry = {
     tokenHash: hashToken(newRefreshToken),
     expiresAt: new Date(Date.now() + config.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000),
     createdAt: new Date(),
     userAgent: null
-  });
-  await user.save();
+  };
+
+  // Use an atomic update so concurrent refresh attempts do not throw version errors.
+  const updateResult = await UserModel.updateOne(
+    { _id: payload.userId, 'refreshTokens.tokenHash': tokenHash },
+    [
+      {
+        $set: {
+          refreshTokens: {
+            $filter: {
+              input: '$refreshTokens',
+              as: 'token',
+              cond: { $ne: ['$$token.tokenHash', tokenHash] }
+            }
+          }
+        }
+      },
+      {
+        $set: {
+          refreshTokens: {
+            $slice: [{ $concatArrays: ['$refreshTokens', [rotatedEntry]] }, -5]
+          }
+        }
+      }
+    ]
+  );
+
+  if (updateResult.modifiedCount === 0) {
+    throw new ApiError(401, 'Session expired. Please login again.');
+  }
 
   return { accessToken, newRefreshToken };
 }

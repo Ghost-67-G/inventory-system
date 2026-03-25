@@ -4,6 +4,8 @@ import { ApiError } from '../../utils/ApiError';
 import { catchAsync } from '../../utils/catchAsync';
 import * as authService from './auth.service';
 
+const REFRESH_COOKIE_NAME = 'refreshToken';
+
 const refreshCookieOptions = {
   httpOnly: true,
   secure: config.NODE_ENV === 'production',
@@ -11,6 +13,36 @@ const refreshCookieOptions = {
   maxAge: config.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000,
   path: '/api/auth'
 };
+
+function getRefreshTokenCandidates(req: Request): string[] {
+  const candidates: string[] = [];
+
+  const parsedCookieToken = req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined;
+  if (parsedCookieToken) {
+    candidates.push(parsedCookieToken);
+  }
+
+  const rawCookieHeader = req.headers.cookie;
+  if (!rawCookieHeader) {
+    return [...new Set(candidates)];
+  }
+
+  const rawParts = rawCookieHeader.split(';');
+  for (const part of rawParts) {
+    const trimmed = part.trim();
+    const prefix = `${REFRESH_COOKIE_NAME}=`;
+    if (!trimmed.startsWith(prefix)) {
+      continue;
+    }
+
+    const value = trimmed.slice(prefix.length);
+    if (value) {
+      candidates.push(decodeURIComponent(value));
+    }
+  }
+
+  return [...new Set(candidates)];
+}
 
 export const register = catchAsync(async (req: Request, res: Response) => {
   const { user } = await authService.register(req.body as Parameters<typeof authService.register>[0]);
@@ -26,32 +58,51 @@ export const login = catchAsync(async (req: Request, res: Response) => {
   const userAgent = req.headers['user-agent'];
   const { accessToken, refreshToken, user } = await authService.login(email, password, userAgent);
 
-  res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+  // Clear legacy cookie path to avoid duplicate refreshToken keys in browser requests.
+  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/' });
+  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
   res.status(200).json({ success: true, data: { accessToken, user } });
 });
 
 export const refreshTokenHandler = catchAsync(async (req: Request, res: Response) => {
-  const incoming = req.cookies?.refreshToken as string | undefined;
-  if (!incoming) throw new ApiError(401, 'Session expired. Please login again.');
+  const tokenCandidates = getRefreshTokenCandidates(req);
+  if (tokenCandidates.length === 0) {
+    throw new ApiError(401, 'Session expired. Please login again.');
+  }
 
-  const { accessToken, newRefreshToken } = await authService.refreshToken(incoming);
+  for (const candidate of tokenCandidates) {
+    try {
+      const { accessToken, newRefreshToken } = await authService.refreshToken(candidate);
+      // Keep both clearCookie calls to remove duplicate-name cookies from earlier implementations.
+      res.clearCookie(REFRESH_COOKIE_NAME, { path: '/' });
+      res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, refreshCookieOptions);
+      res.status(200).json({ success: true, data: { accessToken } });
+      return;
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 401) {
+        continue;
+      }
+      throw error;
+    }
+  }
 
-  res.cookie('refreshToken', newRefreshToken, refreshCookieOptions);
-  res.status(200).json({ success: true, data: { accessToken } });
+  throw new ApiError(401, 'Session expired. Please login again.');
 });
 
 export const logout = catchAsync(async (req: Request, res: Response) => {
-  const incoming = req.cookies?.refreshToken as string | undefined;
+  const incoming = req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined;
   if (incoming) {
     await authService.logout(req.user!.id, incoming);
   }
-  res.clearCookie('refreshToken', { path: '/api/auth' });
+  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth' });
+  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/' });
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 });
 
 export const logoutAll = catchAsync(async (req: Request, res: Response) => {
   await authService.logoutAll(req.user!.id);
-  res.clearCookie('refreshToken', { path: '/api/auth' });
+  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth' });
+  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/' });
   res.status(200).json({ success: true, message: 'Logged out from all devices' });
 });
 

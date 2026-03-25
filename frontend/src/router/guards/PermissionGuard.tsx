@@ -1,20 +1,29 @@
-import type { PropsWithChildren, ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { Permission } from '@/types';
 import { usePermission } from '@/hooks/usePermission';
 
-interface PermissionGuardProps extends PropsWithChildren {
+interface PermissionGuardProps {
   permission: Permission;
   fallback?: ReactNode;
+  children: ReactNode;
 }
 
-export const PermissionGuard = ({
-  permission,
-  fallback = <div className="rounded border bg-white p-3 text-sm">You do not have permission.</div>,
-  children
-}: PermissionGuardProps) => {
+export function PermissionGuard({ permission, fallback = null, children }: PermissionGuardProps) {
   const { canDo } = usePermission();
+
   if (!canDo(permission)) {
-    return fallback;
+    return <>{fallback}</>;
   }
+
   return <>{children}</>;
-};
+}
+
+export function withPermission<P extends object>(Component: ComponentType<P>, permission: Permission) {
+  return function PermissionWrappedComponent(props: P) {
+    return (
+      <PermissionGuard permission={permission}>
+        <Component {...props} />
+      </PermissionGuard>
+    );
+  };
+}

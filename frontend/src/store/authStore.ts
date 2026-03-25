@@ -7,11 +7,13 @@ interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasHydrated: boolean;
 
   setAuth: (user: SafeUser, accessToken: string) => void;
   setAccessToken: (token: string) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
+  setHasHydrated: (hydrated: boolean) => void;
   // Backward-compatible alias
   setSession: (user: SafeUser, accessToken: string) => void;
 }
@@ -23,6 +25,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       isAuthenticated: false,
       isLoading: true,
+      hasHydrated: false,
 
       setAuth: (user, accessToken) =>
         set({ user, accessToken, isAuthenticated: true, isLoading: false }),
@@ -35,13 +38,18 @@ export const useAuthStore = create<AuthState>()(
 
       setLoading: (loading) => set({ isLoading: loading }),
 
+      setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
+
       setSession: (user, accessToken) =>
         set({ user, accessToken, isAuthenticated: true, isLoading: false })
     }),
     {
       name: 'auth-storage',
       // Only persist user — accessToken is in-memory only (refreshed on mount)
-      partialize: (state) => ({ user: state.user })
+      partialize: (state) => ({ user: state.user }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      }
     }
   )
 );

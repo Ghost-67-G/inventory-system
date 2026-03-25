@@ -1,6 +1,9 @@
 declare module '@tanstack/react-query' {
-  export class QueryClient {}
+  export class QueryClient {
+    invalidateQueries: (options: { queryKey: unknown[] }) => Promise<void>;
+  }
   export const QueryClientProvider: (props: { client: QueryClient; children?: import('react').ReactNode }) => import('react').ReactNode;
+  export function useQueryClient(): QueryClient;
   export function useQuery<TData, TSelect = TData>(options: {
     queryKey: unknown[];
     queryFn: () => Promise<TData>;
@@ -8,6 +11,7 @@ declare module '@tanstack/react-query' {
     staleTime?: number;
     refetchOnWindowFocus?: boolean;
     select?: (data: TData) => TSelect;
+    onError?: (error: unknown) => void;
   }): { data: TSelect | undefined; isLoading: boolean; error: unknown };
   export function useMutation<TData = unknown, TError = unknown, TVariables = void>(options: {
     mutationFn: (variables: TVariables) => Promise<TData>;
