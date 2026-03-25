@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { Button } from '../ui/Button';
+import { Button } from '@/components/ui/button';
 
 interface ConfirmDialogProps extends PropsWithChildren {
   open: boolean;

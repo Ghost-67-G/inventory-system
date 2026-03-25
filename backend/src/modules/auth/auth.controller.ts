@@ -7,93 +7,85 @@ import * as authService from './auth.service';
 const refreshCookieOptions = {
   httpOnly: true,
   secure: config.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  maxAge: config.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
+  sameSite: 'strict' as const,
+  maxAge: config.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000,
+  path: '/api/auth'
 };
 
 export const register = catchAsync(async (req: Request, res: Response) => {
-  const tenantId = req.body.tenantId ?? req.tenantId;
-  if (!tenantId) {
-    throw new ApiError(400, 'tenantId is required');
-  }
-
-  const user = await authService.register(tenantId, req.body);
-  res.status(201).json({ success: true, data: user });
-});
-
-export const login = catchAsync(async (req: Request, res: Response) => {
-  const tenantId = req.body.tenantId ?? req.tenantId;
-  if (!tenantId) {
-    throw new ApiError(400, 'tenantId is required');
-  }
-
-  const result = await authService.login(tenantId, req.body);
-  res.cookie('refreshToken', result.refreshToken, refreshCookieOptions);
-
-  res.status(200).json({
+  const { user } = await authService.register(req.body as Parameters<typeof authService.register>[0]);
+  res.status(201).json({
     success: true,
-    data: {
-      accessToken: result.accessToken,
-      user: result.user
-    }
+    message: 'Registration successful. Please verify your email.',
+    data: { user }
   });
 });
 
-export const refreshToken = catchAsync(async (req: Request, res: Response) => {
-  const incomingRefresh = req.cookies?.refreshToken as string | undefined;
-  if (!incomingRefresh) {
-    throw new ApiError(401, 'Refresh token missing');
-  }
+export const login = catchAsync(async (req: Request, res: Response) => {
+  const { email, password } = req.body as { email: string; password: string };
+  const userAgent = req.headers['user-agent'];
+  const { accessToken, refreshToken, user } = await authService.login(email, password, userAgent);
 
-  const tokens = await authService.refreshTokens(incomingRefresh);
-  res.cookie('refreshToken', tokens.refreshToken, refreshCookieOptions);
-  res.status(200).json({ success: true, data: { accessToken: tokens.accessToken } });
+  res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+  res.status(200).json({ success: true, data: { accessToken, user } });
+});
+
+export const refreshTokenHandler = catchAsync(async (req: Request, res: Response) => {
+  const incoming = req.cookies?.refreshToken as string | undefined;
+  if (!incoming) throw new ApiError(401, 'Session expired. Please login again.');
+
+  const { accessToken, newRefreshToken } = await authService.refreshToken(incoming);
+
+  res.cookie('refreshToken', newRefreshToken, refreshCookieOptions);
+  res.status(200).json({ success: true, data: { accessToken } });
 });
 
 export const logout = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user || !req.tenantId) {
-    throw new ApiError(401, 'Unauthorized');
+  const incoming = req.cookies?.refreshToken as string | undefined;
+  if (incoming) {
+    await authService.logout(req.user!.id, incoming);
   }
-
-  const incomingRefresh = req.cookies?.refreshToken as string | undefined;
-  await authService.logout(req.tenantId, req.user.id, incomingRefresh);
-
-  res.clearCookie('refreshToken', refreshCookieOptions);
-  res.status(200).json({ success: true, data: { message: 'Logged out' } });
+  res.clearCookie('refreshToken', { path: '/api/auth' });
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
 });
 
-export const forgotPassword = catchAsync(async (req: Request, res: Response) => {
-  if (!req.tenantId) {
-    throw new ApiError(400, 'tenantId is required');
-  }
-
-  await authService.forgotPassword(req.tenantId, req.body.email);
-  res.status(200).json({ success: true, data: { message: 'If account exists, reset email sent' } });
-});
-
-export const resetPassword = catchAsync(async (req: Request, res: Response) => {
-  if (!req.tenantId) {
-    throw new ApiError(400, 'tenantId is required');
-  }
-
-  await authService.resetPassword(req.tenantId, req.body.token, req.body.newPassword);
-  res.status(200).json({ success: true, data: { message: 'Password reset successful' } });
+export const logoutAll = catchAsync(async (req: Request, res: Response) => {
+  await authService.logoutAll(req.user!.id);
+  res.clearCookie('refreshToken', { path: '/api/auth' });
+  res.status(200).json({ success: true, message: 'Logged out from all devices' });
 });
 
 export const verifyEmail = catchAsync(async (req: Request, res: Response) => {
-  if (!req.tenantId) {
-    throw new ApiError(400, 'tenantId is required');
-  }
-
-  await authService.verifyEmail(req.tenantId, req.body.token);
-  res.status(200).json({ success: true, data: { message: 'Email verified' } });
+  const { token } = req.body as { token: string };
+  await authService.verifyEmail(token);
+  res.status(200).json({ success: true, message: 'Email verified successfully' });
 });
 
-export const requestVerifyEmail = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user || !req.tenantId) {
-    throw new ApiError(401, 'Unauthorized');
-  }
-
-  const token = await authService.createEmailVerificationToken(req.tenantId, req.user.id);
-  res.status(200).json({ success: true, data: { message: 'Verification token generated', token } });
+export const forgotPassword = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body as { email: string };
+  await authService.forgotPassword(email);
+  res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent' });
 });
+
+export const resetPassword = catchAsync(async (req: Request, res: Response) => {
+  const { token, password } = req.body as { token: string; password: string };
+  await authService.resetPassword(token, password);
+  res.status(200).json({ success: true, message: 'Password reset successfully' });
+});
+
+export const changePassword = catchAsync(async (req: Request, res: Response) => {
+  const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
+  await authService.changePassword(req.user!.id, currentPassword, newPassword);
+  res.status(200).json({ success: true, message: 'Password changed successfully' });
+});
+
+export const resendVerification = catchAsync(async (req: Request, res: Response) => {
+  await authService.resendVerificationEmail(req.user!.id);
+  res.status(200).json({ success: true, message: 'Verification email sent' });
+});
+
+export const getMe = catchAsync(async (req: Request, res: Response) => {
+  const user = await authService.getMe(req.user!.id);
+  res.status(200).json({ success: true, data: { user } });
+});
+

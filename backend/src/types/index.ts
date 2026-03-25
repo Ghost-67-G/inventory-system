@@ -21,10 +21,3 @@ export const PERMISSIONS = {
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
-
-export interface JwtPayload {
-  sub: string;
-  tenantId: string;
-  role: Role;
-  email: string;
-}

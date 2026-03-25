@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { usePermission } from '../hooks/usePermission';
+import { usePermission } from '@/hooks/usePermission';
 
 const items = [
   { to: '/dashboard', label: 'Dashboard', permission: 'report.view' as const },

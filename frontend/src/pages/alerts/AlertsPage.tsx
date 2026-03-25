@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchAlerts } from '../../api/endpoints/alerts';
-import { AlertBadge } from '../../components/shared/AlertBadge';
-import { PageHeader } from '../../components/shared/PageHeader';
+import { fetchAlerts } from '@/api/endpoints/alerts';
+import { AlertBadge } from '@/components/shared/AlertBadge';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export function AlertsPage() {
   const { data } = useQuery({

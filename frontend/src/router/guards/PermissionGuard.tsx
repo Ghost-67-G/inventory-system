@@ -1,6 +1,6 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import type { Permission } from '../../types';
-import { usePermission } from '../../hooks/usePermission';
+import type { Permission } from '@/types';
+import { usePermission } from '@/hooks/usePermission';
 
 interface PermissionGuardProps extends PropsWithChildren {
   permission: Permission;

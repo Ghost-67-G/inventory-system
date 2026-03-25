@@ -1,6 +1,6 @@
-import { PERMISSIONS } from '../lib/constants';
-import type { Permission } from '../types';
-import { useAuthStore } from '../store/authStore';
+import { PERMISSIONS } from '@/lib/constants';
+import type { Permission } from '@/types';
+import { useAuthStore } from '@/store/authStore';
 
 export const usePermission = () => {
   const role = useAuthStore((s) => s.user?.role);

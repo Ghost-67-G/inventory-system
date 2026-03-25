@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import type { ColumnDef } from '@tanstack/react-table';
-import { fetchProducts } from '../../api/endpoints/products';
-import { DataTable } from '../../components/shared/DataTable';
-import { PageHeader } from '../../components/shared/PageHeader';
-import type { Product } from '../../types';
+import { fetchProducts } from '@/api/endpoints/products';
+import { DataTable } from '@/components/shared/DataTable';
+import { PageHeader } from '@/components/shared/PageHeader';
+import type { Product } from '@/types';
 
 const columnHelper = createColumnHelper<Product>();
 

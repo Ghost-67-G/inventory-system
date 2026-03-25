@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchStockMovements } from '../../api/endpoints/stock';
-import { PageHeader } from '../../components/shared/PageHeader';
+import { fetchStockMovements } from '@/api/endpoints/stock';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export function StockMovementsPage() {
   const { data } = useQuery({
