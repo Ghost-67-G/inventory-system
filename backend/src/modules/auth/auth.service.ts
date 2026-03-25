@@ -1,213 +1,317 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import { config } from '../../config';
+import { redis } from '../../config/redis';
+import type { ITenant } from '../../models/Tenant';
+import { TenantModel } from '../../models/Tenant';
+import type { IUser } from '../../models/User';
 import { UserModel } from '../../models/User';
-import type { Role } from '../../types';
 import { ApiError } from '../../utils/ApiError';
-import { logger } from '../../utils/logger';
+import { sendPasswordResetEmail, sendVerificationEmail, sendWelcomeEmail } from '../../utils/email';
+import { generateAccessToken, generateRefreshToken, hashToken, verifyRefreshToken } from '../../utils/jwt';
 
-const hashToken = (token: string): string => crypto.createHash('sha256').update(token).digest('hex');
+export type SafeUser = Pick<
+  IUser,
+  '_id' | 'tenantId' | 'name' | 'email' | 'role' | 'isActive' | 'isEmailVerified' | 'lastLoginAt' | 'createdAt' | 'updatedAt'
+>;
 
-const signAccessToken = (payload: { sub: string; tenantId: string; role: Role; email: string }): string => {
-  return jwt.sign(payload, config.JWT_ACCESS_SECRET, {
-    expiresIn: `${config.JWT_ACCESS_EXPIRATION_MINUTES}m`
-  });
-};
-
-const signRefreshToken = (payload: { sub: string; tenantId: string; role: Role; email: string }): string => {
-  return jwt.sign(payload, config.JWT_REFRESH_SECRET, {
-    expiresIn: `${config.JWT_REFRESH_EXPIRATION_DAYS}d`
-  });
-};
-
-export const register = async (
-  tenantId: string,
-  payload: { name: string; email: string; password: string; role?: Role }
-) => {
-  const exists = await UserModel.findOne({ tenantId, email: payload.email.toLowerCase() }).lean();
-  if (exists) {
-    throw new ApiError(409, 'Email already exists in tenant');
-  }
-
-  const user = await UserModel.create({
-    tenantId,
-    name: payload.name,
-    email: payload.email.toLowerCase(),
-    password: payload.password,
-    role: payload.role ?? 'staff'
-  });
-
+function toSafeUser(user: IUser): SafeUser {
   return {
-    id: String(user._id),
-    tenantId: String(user.tenantId),
+    _id: user._id,
+    tenantId: user.tenantId,
     name: user.name,
     email: user.email,
-    role: user.role
-  };
-};
-
-export const login = async (tenantId: string, payload: { email: string; password: string }) => {
-  const user = await UserModel.findOne({ tenantId, email: payload.email.toLowerCase(), isActive: true }).select('+password');
-  if (!user?.password) {
-    throw new ApiError(401, 'Invalid credentials');
-  }
-
-  const valid = await bcrypt.compare(payload.password, user.password);
-  if (!valid) {
-    throw new ApiError(401, 'Invalid credentials');
-  }
-
-  const jwtPayload = {
-    sub: String(user._id),
-    tenantId,
     role: user.role,
-    email: user.email
+    isActive: user.isActive,
+    isEmailVerified: user.isEmailVerified,
+    lastLoginAt: user.lastLoginAt,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
   };
+}
 
-  const accessToken = signAccessToken(jwtPayload);
-  const refreshToken = signRefreshToken(jwtPayload);
+function generateSlug(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') +
+    '-' +
+    crypto.randomBytes(3).toString('hex')
+  );
+}
 
-  user.refreshTokens.push({
-    token: hashToken(refreshToken),
-    expiresAt: new Date(Date.now() + config.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000)
+async function getSelfHostedTenant(): Promise<ITenant> {
+  const cached = await redis.get('self_hosted:tenantId');
+  if (cached) {
+    const tenant = await TenantModel.findById(cached);
+    if (tenant) return tenant;
+  }
+  const tenant = await TenantModel.findOne();
+  if (!tenant) throw new ApiError(404, 'Tenant not found');
+  await redis.set('self_hosted:tenantId', String(tenant._id), 'EX', 3600);
+  return tenant;
+}
+
+// ─── Register ────────────────────────────────────────────────────────────────
+
+interface RegisterDto {
+  name: string;
+  email: string;
+  password: string;
+  tenantName?: string;
+}
+
+export async function register(data: RegisterDto): Promise<{ user: SafeUser; tenant: ITenant }> {
+  let tenant: ITenant;
+
+  if (config.DEPLOYMENT_MODE === 'saas') {
+    if (!data.tenantName) throw new ApiError(400, 'tenantName is required');
+    tenant = await TenantModel.create({
+      name: data.tenantName,
+      slug: generateSlug(data.tenantName)
+    });
+  } else {
+    tenant = await getSelfHostedTenant();
+  }
+
+  const existing = await UserModel.findOne({ tenantId: tenant._id, email: data.email.toLowerCase() });
+  if (existing) throw new ApiError(409, 'Email already registered');
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const user = await UserModel.create({
+    tenantId: tenant._id,
+    name: data.name,
+    email: data.email.toLowerCase(),
+    password: data.password,
+    role: 'owner',
+    isEmailVerified: false,
+    emailVerificationToken: hashToken(rawToken),
+    emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000)
+  });
+
+  // Fire and forget
+  void sendVerificationEmail(user.email, user.name, rawToken).catch(() => undefined);
+
+  return { user: toSafeUser(user), tenant };
+}
+
+// ─── Login ───────────────────────────────────────────────────────────────────
+
+export async function login(
+  email: string,
+  password: string,
+  userAgent?: string
+): Promise<{ accessToken: string; refreshToken: string; user: SafeUser }> {
+  let user: IUser | null;
+
+  if (config.DEPLOYMENT_MODE === 'self_hosted') {
+    const tenant = await getSelfHostedTenant();
+    user = await UserModel.findOne({ tenantId: tenant._id, email: email.toLowerCase() }).select('+password');
+  } else {
+    // SAAS: find by email globally
+    user = await UserModel.findOne({ email: email.toLowerCase() }).select('+password');
+  }
+
+  // Constant-time comparison to prevent timing attacks even when user not found
+  const dummyHash = '$2a$12$invalidhashfortimingprotectiononly000000000000000000000';
+  const candidatePassword = user?.password ?? dummyHash;
+  const passwordMatch = await bcrypt.compare(password, candidatePassword);
+
+  if (!user || !passwordMatch) {
+    throw new ApiError(401, 'Invalid email or password');
+  }
+
+  if (!user.isActive) {
+    throw new ApiError(403, 'Account is disabled');
+  }
+
+  const accessToken = generateAccessToken({
+    userId: String(user._id),
+    tenantId: String(user.tenantId),
+    role: user.role
+  });
+  const refreshToken = generateRefreshToken({
+    userId: String(user._id),
+    tenantId: String(user.tenantId)
+  });
+
+  const tokens = user.refreshTokens;
+  if (tokens.length >= 5) {
+    tokens.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    tokens.splice(0, tokens.length - 4);
+  }
+  tokens.push({
+    tokenHash: hashToken(refreshToken),
+    expiresAt: new Date(Date.now() + config.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000),
+    createdAt: new Date(),
+    userAgent: userAgent ?? null
   });
   user.lastLoginAt = new Date();
   await user.save();
 
-  return {
-    accessToken,
-    refreshToken,
-    user: {
-      id: String(user._id),
-      tenantId,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isEmailVerified: user.isEmailVerified
-    }
-  };
-};
+  return { accessToken, refreshToken, user: toSafeUser(user) };
+}
 
-export const refreshTokens = async (refreshToken: string) => {
-  let payload: { sub: string; tenantId: string; role: Role; email: string };
-  try {
-    payload = jwt.verify(refreshToken, config.JWT_REFRESH_SECRET) as {
-      sub: string;
-      tenantId: string;
-      role: Role;
-      email: string;
-    };
-  } catch {
-    throw new ApiError(401, 'Invalid refresh token');
-  }
+// ─── Refresh Token ───────────────────────────────────────────────────────────
 
-  const user = await UserModel.findOne({
-    _id: payload.sub,
-    tenantId: payload.tenantId,
-    'refreshTokens.token': hashToken(refreshToken)
-  }).select('+refreshTokens');
+export async function refreshToken(token: string): Promise<{ accessToken: string; newRefreshToken: string }> {
+  const payload = verifyRefreshToken(token);
+  if (!payload) throw new ApiError(401, 'Session expired. Please login again.');
+
+  const tokenHash = hashToken(token);
+  const user = await UserModel.findById(payload.userId);
 
   if (!user) {
-    throw new ApiError(401, 'Refresh token not recognized');
+    throw new ApiError(401, 'Session expired. Please login again.');
   }
 
-  const nextAccessToken = signAccessToken(payload);
-  const nextRefreshToken = signRefreshToken(payload);
-  const incomingTokenHash = hashToken(refreshToken);
+  const tokenIndex = user.refreshTokens.findIndex((t) => t.tokenHash === tokenHash);
 
-  for (let i = user.refreshTokens.length - 1; i >= 0; i -= 1) {
-    if (user.refreshTokens[i]?.token === incomingTokenHash) {
-      user.refreshTokens.splice(i, 1);
-    }
+  if (tokenIndex === -1) {
+    // Refresh token reuse detected — clear ALL tokens
+    user.refreshTokens = [];
+    await user.save();
+    throw new ApiError(401, 'Session expired. Please login again.');
   }
-  user.refreshTokens.push({
-    token: hashToken(nextRefreshToken),
-    expiresAt: new Date(Date.now() + config.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000)
+
+  // Rotate: remove used token
+  user.refreshTokens.splice(tokenIndex, 1);
+
+  const accessToken = generateAccessToken({
+    userId: String(user._id),
+    tenantId: String(user.tenantId),
+    role: user.role
+  });
+  const newRefreshToken = generateRefreshToken({
+    userId: String(user._id),
+    tenantId: String(user.tenantId)
   });
 
+  if (user.refreshTokens.length >= 5) {
+    user.refreshTokens.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    user.refreshTokens.splice(0, user.refreshTokens.length - 4);
+  }
+  user.refreshTokens.push({
+    tokenHash: hashToken(newRefreshToken),
+    expiresAt: new Date(Date.now() + config.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000),
+    createdAt: new Date(),
+    userAgent: null
+  });
   await user.save();
 
-  return {
-    accessToken: nextAccessToken,
-    refreshToken: nextRefreshToken
-  };
-};
+  return { accessToken, newRefreshToken };
+}
 
-export const logout = async (tenantId: string, userId: string, refreshToken?: string): Promise<void> => {
-  if (!refreshToken) {
-    return;
+// ─── Logout ──────────────────────────────────────────────────────────────────
+
+export async function logout(userId: string, refreshTokenValue: string): Promise<void> {
+  const tokenHash = hashToken(refreshTokenValue);
+  await UserModel.updateOne({ _id: userId }, { $pull: { refreshTokens: { tokenHash } } });
+}
+
+export async function logoutAll(userId: string): Promise<void> {
+  await UserModel.updateOne({ _id: userId }, { $set: { refreshTokens: [] } });
+}
+
+// ─── Email Verification ───────────────────────────────────────────────────────
+
+export async function verifyEmail(token: string): Promise<void> {
+  const tokenHash = hashToken(token);
+  const user = await UserModel.findOne({
+    emailVerificationToken: tokenHash,
+    emailVerificationExpires: { $gt: new Date() }
+  }).select('+emailVerificationToken +emailVerificationExpires');
+
+  if (!user) throw new ApiError(400, 'Invalid or expired verification token');
+
+  user.isEmailVerified = true;
+  user.emailVerificationToken = null;
+  user.emailVerificationExpires = null;
+  await user.save();
+
+  const tenant = await TenantModel.findById(user.tenantId);
+  const tenantName = tenant?.name ?? 'Inventory System';
+  void sendWelcomeEmail(user.email, user.name, tenantName).catch(() => undefined);
+}
+
+// ─── Forgot / Reset Password ─────────────────────────────────────────────────
+
+export async function forgotPassword(email: string): Promise<void> {
+  let user: IUser | null;
+
+  if (config.DEPLOYMENT_MODE === 'self_hosted') {
+    const tenant = await getSelfHostedTenant();
+    user = await UserModel.findOne({ tenantId: tenant._id, email: email.toLowerCase() });
+  } else {
+    user = await UserModel.findOne({ email: email.toLowerCase() });
   }
 
-  await UserModel.updateOne(
-    { _id: userId, tenantId },
-    {
-      $pull: {
-        refreshTokens: { token: hashToken(refreshToken) }
-      }
-    }
-  );
-};
-
-export const forgotPassword = async (tenantId: string, email: string): Promise<void> => {
-  const user = await UserModel.findOne({ tenantId, email: email.toLowerCase() }).select('+resetPasswordToken +resetPasswordExpires');
-  if (!user) {
-    return;
-  }
+  if (!user) return; // Silent — never reveal if email exists
 
   const rawToken = crypto.randomBytes(32).toString('hex');
-  user.resetPasswordToken = hashToken(rawToken);
-  user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
+  user.passwordResetToken = hashToken(rawToken);
+  user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
   await user.save();
 
-  logger.info('password_reset_token_generated', { userId: String(user._id), tenantId, token: rawToken });
-};
+  void sendPasswordResetEmail(user.email, user.name, rawToken).catch(() => undefined);
+}
 
-export const resetPassword = async (tenantId: string, token: string, newPassword: string): Promise<void> => {
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const tokenHash = hashToken(token);
   const user = await UserModel.findOne({
-    tenantId,
-    resetPasswordToken: hashToken(token),
-    resetPasswordExpires: { $gt: new Date() }
-  }).select('+resetPasswordToken +resetPasswordExpires +password');
+    passwordResetToken: tokenHash,
+    passwordResetExpires: { $gt: new Date() }
+  }).select('+passwordResetToken +passwordResetExpires +password');
 
-  if (!user) {
-    throw new ApiError(400, 'Invalid or expired reset token');
-  }
+  if (!user) throw new ApiError(400, 'Invalid or expired reset token');
 
   user.password = newPassword;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpires = undefined;
-  user.refreshTokens.splice(0, user.refreshTokens.length);
+  user.passwordResetToken = null;
+  user.passwordResetExpires = null;
+  user.refreshTokens = [];
   await user.save();
-};
+}
 
-export const createEmailVerificationToken = async (tenantId: string, userId: string): Promise<string> => {
-  const user = await UserModel.findOne({ _id: userId, tenantId }).select('+emailVerificationToken +emailVerificationExpires');
-  if (!user) {
-    throw new ApiError(404, 'User not found');
-  }
+// ─── Change Password ─────────────────────────────────────────────────────────
+
+export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  const user = await UserModel.findById(userId).select('+password');
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const valid = await user.comparePassword(currentPassword);
+  if (!valid) throw new ApiError(401, 'Current password is incorrect');
+
+  user.password = newPassword;
+  user.refreshTokens = [];
+  await user.save();
+}
+
+// ─── Resend Verification ──────────────────────────────────────────────────────
+
+export async function resendVerificationEmail(userId: string): Promise<void> {
+  const user = await UserModel.findById(userId);
+  if (!user) throw new ApiError(404, 'User not found');
+  if (user.isEmailVerified) throw new ApiError(400, 'Email already verified');
+
+  const rateLimitKey = `resend_verify:${userId}`;
+  const existing = await redis.get(rateLimitKey);
+  if (existing) throw new ApiError(429, 'Please wait before requesting another email');
 
   const rawToken = crypto.randomBytes(32).toString('hex');
   user.emailVerificationToken = hashToken(rawToken);
   user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await user.save();
 
-  return rawToken;
-};
+  await redis.set(rateLimitKey, '1', 'EX', 60);
+  void sendVerificationEmail(user.email, user.name, rawToken).catch(() => undefined);
+}
 
-export const verifyEmail = async (tenantId: string, token: string): Promise<void> => {
-  const user = await UserModel.findOne({
-    tenantId,
-    emailVerificationToken: hashToken(token),
-    emailVerificationExpires: { $gt: new Date() }
-  }).select('+emailVerificationToken +emailVerificationExpires');
+// ─── Get Me ───────────────────────────────────────────────────────────────────
 
-  if (!user) {
-    throw new ApiError(400, 'Invalid or expired verification token');
-  }
-
-  user.isEmailVerified = true;
-  user.emailVerificationToken = undefined;
-  user.emailVerificationExpires = undefined;
-  await user.save();
-};
+export async function getMe(userId: string): Promise<SafeUser> {
+  const user = await UserModel.findById(userId);
+  if (!user) throw new ApiError(404, 'User not found');
+  return toSafeUser(user);
+}

@@ -1,4 +1,4 @@
-import type { Permission, Role } from '../types';
+import type { Permission, Role } from '@/types';
 
 export const PERMISSIONS: Record<Permission, Role[]> = {
   'product.view': ['owner', 'manager', 'staff', 'viewer'],

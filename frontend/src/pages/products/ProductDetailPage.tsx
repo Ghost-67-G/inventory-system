@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { PageHeader } from '../../components/shared/PageHeader';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export function ProductDetailPage() {
   const { id } = useParams();

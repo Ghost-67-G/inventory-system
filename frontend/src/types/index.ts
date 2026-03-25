@@ -18,13 +18,53 @@ export type Permission =
   | 'settings.view'
   | 'settings.manage';
 
-export interface AuthUser {
-  id: string;
+/** Safe user object returned from API — no secrets */
+export interface SafeUser {
+  _id: string;
   tenantId: string;
   name: string;
   email: string;
   role: Role;
+  isActive: boolean;
   isEmailVerified: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Keep backwards-compatible alias used elsewhere */
+export type AuthUser = SafeUser;
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  tenantName?: string;
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface LoginResponse {
+  success: true;
+  data: {
+    accessToken: string;
+    user: SafeUser;
+  };
+}
+
+export interface RefreshResponse {
+  success: true;
+  data: {
+    accessToken: string;
+  };
 }
 
 export interface Product {
@@ -35,3 +75,4 @@ export interface Product {
   totalStock: number;
   sellingPrice: number;
 }
+

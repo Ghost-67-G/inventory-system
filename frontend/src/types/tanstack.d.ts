@@ -1,7 +1,28 @@
 declare module '@tanstack/react-query' {
   export class QueryClient {}
   export const QueryClientProvider: (props: { client: QueryClient; children?: import('react').ReactNode }) => import('react').ReactNode;
-  export function useQuery<TData>(options: { queryKey: unknown[]; queryFn: () => Promise<TData> }): { data: TData | undefined };
+  export function useQuery<TData, TSelect = TData>(options: {
+    queryKey: unknown[];
+    queryFn: () => Promise<TData>;
+    enabled?: boolean;
+    staleTime?: number;
+    refetchOnWindowFocus?: boolean;
+    select?: (data: TData) => TSelect;
+  }): { data: TSelect | undefined; isLoading: boolean; error: unknown };
+  export function useMutation<TData = unknown, TError = unknown, TVariables = void>(options: {
+    mutationFn: (variables: TVariables) => Promise<TData>;
+    onSuccess?: (data: TData, variables: TVariables) => void | Promise<void>;
+    onError?: (error: TError, variables: TVariables) => void | Promise<void>;
+    onSettled?: (data: TData | undefined, error: TError | null, variables: TVariables) => void | Promise<void>;
+  }): {
+    mutate: (variables: TVariables) => void;
+    mutateAsync: (variables: TVariables) => Promise<TData>;
+    isPending: boolean;
+    isError: boolean;
+    error: TError | null;
+    data: TData | undefined;
+    reset: () => void;
+  };
 }
 
 declare module '@tanstack/react-table' {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { io } from 'socket.io-client';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '@/store/authStore';
 
 export const useSocket = () => {
   const token = useAuthStore((s) => s.accessToken);

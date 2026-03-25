@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchWarehouses } from '../../api/endpoints/warehouses';
-import { PageHeader } from '../../components/shared/PageHeader';
+import { fetchWarehouses } from '@/api/endpoints/warehouses';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export function WarehousesPage() {
   const { data } = useQuery({
