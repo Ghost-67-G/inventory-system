@@ -3,31 +3,44 @@ import { Outlet } from 'react-router-dom';
 import { authApi } from '@/api/endpoints/auth';
 import { useAuthStore } from '@/store/authStore';
 
+let hasBootstrappedAuth = false;
+
 export default function App() {
-  const { user, setAccessToken, logout, setLoading } = useAuthStore();
+  const { user, hasHydrated, setAccessToken, setAuth, logout, setLoading } = useAuthStore();
 
   useEffect(() => {
-    // On mount: if user is persisted in localStorage, try to refresh the access token
-    if (!user) {
-      setLoading(false);
+    if (!hasHydrated) {
       return;
     }
 
-    authApi
-      .refreshToken()
-      .then((res) => {
-        setAccessToken(res.data.data.accessToken);
-      })
-      .catch(() => {
-        // Refresh token expired or invalid — clear session
-        logout();
-      })
-      .finally(() => {
+    // React StrictMode mounts components twice in development.
+    // Gate bootstrap to one refresh attempt per full page load.
+    if (hasBootstrappedAuth) {
+      return;
+    }
+    hasBootstrappedAuth = true;
+
+    const bootstrapAuth = async (): Promise<void> => {
+      try {
+        const refreshRes = await authApi.refreshToken();
+        const nextAccessToken = refreshRes.data.data.accessToken;
+        setAccessToken(nextAccessToken);
+
+        // /auth/me requires Bearer token, so this call goes through authenticate middleware.
+        const meRes = await authApi.getMe();
+        setAuth(meRes.data.data.user, nextAccessToken);
+      } catch {
+        // Keep anonymous users on public routes without forcing logout noise.
+        if (user) {
+          logout();
+        }
+      } finally {
         setLoading(false);
-      });
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      }
+    };
+
+    void bootstrapAuth();
+  }, [hasHydrated, user, setAccessToken, setAuth, logout, setLoading]);
 
   return <Outlet />;
 }

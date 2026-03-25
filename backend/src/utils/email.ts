@@ -62,3 +62,25 @@ export async function sendWelcomeEmail(to: string, name: string, tenantName: str
   `;
   await sendEmail(to, `Welcome to ${tenantName}!`, html);
 }
+
+interface InviteEmailData {
+  inviteeName: string;
+  inviterName: string;
+  tenantName: string;
+  temporaryPassword: string;
+  acceptInviteUrl: string;
+}
+
+export async function sendInviteEmail(to: string, data: InviteEmailData): Promise<void> {
+  const html = `
+    <p>Hi ${data.inviteeName},</p>
+    <p><strong>${data.inviterName}</strong> invited you to join <strong>${data.tenantName}</strong>.</p>
+    <p>Your temporary password is:</p>
+    <p style="font-size: 16px;"><strong>${data.temporaryPassword}</strong></p>
+    <p>Accept your invitation and set your real password using this secure link:</p>
+    <p><a href="${data.acceptInviteUrl}">${data.acceptInviteUrl}</a></p>
+    <p>This invitation link expires in <strong>24 hours</strong>.</p>
+  `;
+
+  await sendEmail(to, `You've been invited to join ${data.tenantName}`, html);
+}
