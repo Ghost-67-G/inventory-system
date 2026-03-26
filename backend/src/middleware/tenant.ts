@@ -1,10 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
 import { config } from '../config';
-import { redis } from '../config/redis';
+import { CACHE_KEYS, redis } from '../config/redis';
 import { TenantModel } from '../models/Tenant';
 import { ApiError } from '../utils/ApiError';
 
-const SELF_HOSTED_CACHE_KEY = 'self_hosted:tenantId';
 const SELF_HOSTED_CACHE_TTL = 60 * 60; // 1 hour in seconds
 
 export const resolveTenant = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
@@ -20,7 +19,7 @@ export const resolveTenant = async (req: Request, _res: Response, next: NextFunc
 
 	// SELF_HOSTED: use Redis-cached single tenantId
 	try {
-		const cached = await redis.get(SELF_HOSTED_CACHE_KEY);
+		const cached = await redis.get(CACHE_KEYS.selfHostedTenantId);
 		if (cached) {
 			req.tenantId = cached;
 			next();
@@ -38,7 +37,7 @@ export const resolveTenant = async (req: Request, _res: Response, next: NextFunc
 		}
 
 		const tenantId = String(tenant._id);
-		await redis.set(SELF_HOSTED_CACHE_KEY, tenantId, 'EX', SELF_HOSTED_CACHE_TTL);
+		await redis.set(CACHE_KEYS.selfHostedTenantId, tenantId, 'EX', SELF_HOSTED_CACHE_TTL);
 		req.tenantId = tenantId;
 		next();
 	} catch (err) {

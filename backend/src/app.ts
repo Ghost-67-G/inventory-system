@@ -12,6 +12,7 @@ import { requestId } from './middleware/requestId';
 import alertsRoutes from './modules/alerts/alerts.routes';
 import authRoutes from './modules/auth/auth.routes';
 import productsRoutes from './modules/products/products.routes';
+import settingsRoutes from './modules/settings/settings.routes';
 import stockRoutes from './modules/stock/stock.routes';
 import usersRoutes from './modules/users/users.routes';
 import warehousesRoutes from './modules/warehouses/warehouses.routes';
@@ -43,6 +44,7 @@ app.use('/api/products', productsRoutes);
 app.use('/api/warehouses', warehousesRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/alerts', alertsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.use(errorHandler);
 

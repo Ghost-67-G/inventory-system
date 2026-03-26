@@ -52,7 +52,14 @@ export const router = createBrowserRouter([
               { path: '/warehouses', element: <WarehousesPage /> },
               { path: '/stock', element: <StockMovementsPage /> },
               { path: '/alerts', element: <AlertsPage /> },
-              { path: '/settings', element: <SettingsPage /> },
+              {
+                path: '/settings',
+                element: (
+                  <PermissionGuard permission="settings.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <SettingsPage />
+                  </PermissionGuard>
+                )
+              },
               { path: '/settings/password', element: <ChangePasswordPage /> },
               { path: '/settings/security', element: <ChangePasswordPage /> },
               {

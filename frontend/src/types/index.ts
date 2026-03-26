@@ -163,3 +163,84 @@ export interface UpdateUserDto {
   role?: 'manager' | 'staff' | 'viewer';
 }
 
+// ─── Tenant Settings ──────────────────────────────────────────────────────────
+
+export type CustomFieldType = 'text' | 'number' | 'boolean' | 'date';
+
+export interface ICustomField {
+  _id: string;
+  name: string;
+  key: string;
+  type: CustomFieldType;
+  required: boolean;
+  defaultValue?: string;
+  order: number;
+}
+
+export interface TenantSettings {
+  currency: string;
+  timezone: string;
+  lowStockThreshold: number;
+  dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
+  measurementUnit: 'metric' | 'imperial';
+}
+
+export interface Tenant {
+  _id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  settings: TenantSettings;
+  customFields: ICustomField[];
+  onboardingComplete: boolean;
+}
+
+export const SUPPORTED_CURRENCIES = [
+  { code: 'USD', label: 'US Dollar' },
+  { code: 'EUR', label: 'Euro' },
+  { code: 'GBP', label: 'British Pound' },
+  { code: 'PKR', label: 'Pakistani Rupee' },
+  { code: 'INR', label: 'Indian Rupee' },
+  { code: 'AED', label: 'UAE Dirham' },
+  { code: 'SAR', label: 'Saudi Riyal' },
+  { code: 'CAD', label: 'Canadian Dollar' },
+  { code: 'AUD', label: 'Australian Dollar' },
+  { code: 'JPY', label: 'Japanese Yen' },
+  { code: 'CNY', label: 'Chinese Yuan' },
+  { code: 'CHF', label: 'Swiss Franc' },
+  { code: 'SGD', label: 'Singapore Dollar' },
+  { code: 'MXN', label: 'Mexican Peso' },
+  { code: 'BRL', label: 'Brazilian Real' },
+  { code: 'ZAR', label: 'South African Rand' },
+  { code: 'EGP', label: 'Egyptian Pound' },
+  { code: 'NGN', label: 'Nigerian Naira' },
+  { code: 'KWD', label: 'Kuwaiti Dinar' },
+  { code: 'QAR', label: 'Qatari Riyal' },
+  { code: 'BDT', label: 'Bangladeshi Taka' },
+  { code: 'THB', label: 'Thai Baht' },
+  { code: 'MYR', label: 'Malaysian Ringgit' },
+] as const;
+
+export type SupportedCurrencyCode = (typeof SUPPORTED_CURRENCIES)[number]['code'];
+
+// ─── Settings DTOs ────────────────────────────────────────────────────────────
+
+export interface UpdateGeneralSettingsDto {
+  name?: string;
+  settings?: Partial<TenantSettings>;
+}
+
+export interface AddCustomFieldDto {
+  name: string;
+  type: CustomFieldType;
+  required: boolean;
+  defaultValue?: string;
+}
+
+export interface UpdateCustomFieldDto {
+  name?: string;
+  required?: boolean;
+  defaultValue?: string;
+  order?: number;
+}
+

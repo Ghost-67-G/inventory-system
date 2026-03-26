@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/authStore';
+import { useTenantStore } from '@/store/tenantStore';
 
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -47,6 +48,7 @@ client.interceptors.response.use(
     // Don't retry if this IS the refresh call, or already retried
     if (status === 401 && originalRequest?._retry) {
       useAuthStore.getState().logout();
+      useTenantStore.getState().clearTenant();
       window.location.href = '/login';
       return Promise.reject(error);
     }
@@ -55,6 +57,7 @@ client.interceptors.response.use(
       const url = originalRequest.url ?? '';
       if (url.includes('/auth/refresh-token')) {
         useAuthStore.getState().logout();
+        useTenantStore.getState().clearTenant();
         window.location.href = '/login';
         return Promise.reject(error);
       }
@@ -90,6 +93,7 @@ client.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         useAuthStore.getState().logout();
+        useTenantStore.getState().clearTenant();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {

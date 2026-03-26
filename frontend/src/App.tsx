@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { authApi } from '@/api/endpoints/auth';
+import { settingsApi } from '@/api/endpoints/settings';
 import { useAuthStore } from '@/store/authStore';
+import { useTenantStore } from '@/store/tenantStore';
 
 let hasBootstrappedAuth = false;
 
 export default function App() {
   const { user, hasHydrated, setAccessToken, setAuth, logout, setLoading } = useAuthStore();
+  const { setTenant, clearTenant } = useTenantStore();
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -29,10 +32,15 @@ export default function App() {
         // /auth/me requires Bearer token, so this call goes through authenticate middleware.
         const meRes = await authApi.getMe();
         setAuth(meRes.data.data.user, nextAccessToken);
+
+        // Hydrate tenant settings on app init; store persistence keeps them after refresh.
+        const settingsRes = await settingsApi.get();
+        setTenant(settingsRes.data.data.tenant);
       } catch {
         // Keep anonymous users on public routes without forcing logout noise.
         if (user) {
           logout();
+          clearTenant();
         }
       } finally {
         setLoading(false);
@@ -40,7 +48,7 @@ export default function App() {
     };
 
     void bootstrapAuth();
-  }, [hasHydrated, user, setAccessToken, setAuth, logout, setLoading]);
+  }, [hasHydrated, user, setAccessToken, setAuth, logout, setLoading, setTenant, clearTenant]);
 
   return <Outlet />;
 }
