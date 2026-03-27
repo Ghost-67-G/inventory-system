@@ -17,6 +17,7 @@ import { ProductDetailPage } from '@/pages/products/ProductDetailPage';
 import { WarehousesPage } from '@/pages/warehouses/WarehousesPage';
 import { StockMovementsPage } from '@/pages/stock/StockMovementsPage';
 import { AlertsPage } from '@/pages/alerts/AlertsPage';
+import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { UsersPage } from '@/pages/settings/UsersPage';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
@@ -47,8 +48,22 @@ export const router = createBrowserRouter([
             element: <AppLayout />,
             children: [
               { path: '/dashboard', element: <DashboardPage /> },
-              { path: '/products', element: <ProductsPage /> },
-              { path: '/products/:id', element: <ProductDetailPage /> },
+                {
+                  path: '/products',
+                  element: (
+                    <PermissionGuard permission="product.view" fallback={<Navigate to="/dashboard" replace />}>
+                      <ProductsPage />
+                    </PermissionGuard>
+                  )
+                },
+                {
+                  path: '/products/:id',
+                  element: (
+                    <PermissionGuard permission="product.view" fallback={<Navigate to="/dashboard" replace />}>
+                      <ProductDetailPage />
+                    </PermissionGuard>
+                  )
+                },
               { path: '/warehouses', element: <WarehousesPage /> },
               { path: '/stock', element: <StockMovementsPage /> },
               { path: '/alerts', element: <AlertsPage /> },
@@ -67,6 +82,14 @@ export const router = createBrowserRouter([
                 element: (
                   <PermissionGuard permission="user.view" fallback={<Navigate to="/dashboard" replace />}>
                     <UsersPage />
+                  </PermissionGuard>
+                )
+              },
+              {
+                path: '/settings/categories',
+                element: (
+                  <PermissionGuard permission="category.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <CategoriesPage />
                   </PermissionGuard>
                 )
               }

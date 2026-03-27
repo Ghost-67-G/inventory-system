@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Package,
   Settings,
+  Tag,
   Users,
   Warehouse,
   type LucideIcon
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { label: 'Alerts', href: '/alerts', icon: Bell, permission: 'alert.view' },
   { label: 'Reports', href: '/reports', icon: BarChart3, permission: 'report.view' },
   { label: 'Team', href: '/settings/users', icon: Users, permission: 'user.view' },
+  { label: 'Categories', href: '/settings/categories', icon: Tag, permission: 'category.manage' },
   { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings.view' }
 ];
 
@@ -47,7 +49,7 @@ export function Sidebar() {
               key={item.href}
               to={item.href}
               className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
-                location.pathname.startsWith(item.href)
+                location.pathname.endsWith(item.href)
                   ? 'bg-slate-900 text-white'
                   : 'text-slate-700 hover:bg-slate-100'
               }`}
