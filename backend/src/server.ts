@@ -7,6 +7,8 @@ import { createSocketServer } from './config/socket';
 import { initProductsIndex } from './utils/meilisearch';
 import { startSearchSyncWorker } from './queues/workers/search.worker';
 import { logger } from './utils/logger';
+import { TenantModel } from './models/Tenant';
+import { WarehouseModel } from './models/Warehouse';
 import './queues/workers/search.worker';
 import './queues/workers/stockAlert.worker';
 
@@ -18,6 +20,25 @@ const start = async (): Promise<void> => {
 
   // Start BullMQ search sync worker
   await startSearchSyncWorker();
+
+  // Self-hosted: ensure default warehouse exists
+  if (config.DEPLOYMENT_MODE === 'self_hosted') {
+    const tenant = await TenantModel.findOne();
+    if (tenant) {
+      const warehouseCount = await WarehouseModel.countDocuments({ tenantId: tenant._id });
+      if (warehouseCount === 0) {
+        await WarehouseModel.create({
+          tenantId: tenant._id,
+          name: 'Main Warehouse',
+          code: 'WH-001',
+          isDefault: true,
+          isActive: true,
+          createdBy: tenant._id
+        });
+        logger.info('default_warehouse_created');
+      }
+    }
+  }
 
   const server = http.createServer(app);
   const io = createSocketServer(server);

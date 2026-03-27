@@ -15,6 +15,7 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { ProductsPage } from '@/pages/products/ProductsPage';
 import { ProductDetailPage } from '@/pages/products/ProductDetailPage';
 import { WarehousesPage } from '@/pages/warehouses/WarehousesPage';
+import { WarehouseDetailPage } from '@/pages/warehouses/WarehouseDetailPage';
 import { StockMovementsPage } from '@/pages/stock/StockMovementsPage';
 import { AlertsPage } from '@/pages/alerts/AlertsPage';
 import { CategoriesPage } from '@/pages/settings/CategoriesPage';
@@ -48,23 +49,38 @@ export const router = createBrowserRouter([
             element: <AppLayout />,
             children: [
               { path: '/dashboard', element: <DashboardPage /> },
-                {
-                  path: '/products',
-                  element: (
-                    <PermissionGuard permission="product.view" fallback={<Navigate to="/dashboard" replace />}>
-                      <ProductsPage />
-                    </PermissionGuard>
-                  )
-                },
-                {
-                  path: '/products/:id',
-                  element: (
-                    <PermissionGuard permission="product.view" fallback={<Navigate to="/dashboard" replace />}>
-                      <ProductDetailPage />
-                    </PermissionGuard>
-                  )
-                },
-              { path: '/warehouses', element: <WarehousesPage /> },
+              {
+                path: '/products',
+                element: (
+                  <PermissionGuard permission="product.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <ProductsPage />
+                  </PermissionGuard>
+                )
+              },
+              {
+                path: '/products/:id',
+                element: (
+                  <PermissionGuard permission="product.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <ProductDetailPage />
+                  </PermissionGuard>
+                )
+              },
+              {
+                path: '/warehouses',
+                element: (
+                  <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <WarehousesPage />
+                  </PermissionGuard>
+                )
+              },
+              {
+                path: '/warehouses/:id',
+                element: (
+                  <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <WarehouseDetailPage />
+                  </PermissionGuard>
+                )
+              },
               { path: '/stock', element: <StockMovementsPage /> },
               { path: '/alerts', element: <AlertsPage /> },
               {
