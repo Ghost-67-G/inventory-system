@@ -4,12 +4,20 @@ import { app } from './app';
 import { config } from './config';
 import { connectDatabase } from './config/database';
 import { createSocketServer } from './config/socket';
+import { initProductsIndex } from './utils/meilisearch';
+import { startSearchSyncWorker } from './queues/workers/search.worker';
 import { logger } from './utils/logger';
 import './queues/workers/search.worker';
 import './queues/workers/stockAlert.worker';
 
 const start = async (): Promise<void> => {
   await connectDatabase();
+
+  // Initialize MeiliSearch products index
+  await initProductsIndex();
+
+  // Start BullMQ search sync worker
+  await startSearchSyncWorker();
 
   const server = http.createServer(app);
   const io = createSocketServer(server);

@@ -145,6 +145,72 @@ export interface Product {
   sellingPrice: number;
 }
 
+export interface IProduct {
+  _id: string;
+  tenantId: string;
+  sku: string;
+  name: string;
+  description: string;
+  categoryId: string | null;
+  category?: { _id: string; name: string; color: string } | null;
+  unit: string;
+  costPrice: number;
+  sellingPrice: number;
+  totalStock: number;
+  lowStockThreshold: number;
+  isActive: boolean;
+  images: string[];
+  tags: string[];
+  customFields: Record<string, unknown>;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductListResponse {
+  products: IProduct[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface CreateProductDto {
+  sku: string;
+  name: string;
+  description?: string;
+  categoryId?: string | null;
+  unit: string;
+  costPrice?: number;
+  sellingPrice?: number;
+  lowStockThreshold?: number;
+  images?: string[];
+  tags?: string[];
+  customFields?: Record<string, unknown>;
+}
+
+export interface UpdateProductDto extends Partial<CreateProductDto> {}
+
+export interface BulkUpdateDto {
+  productIds: string[];
+  updates: {
+    categoryId?: string | null;
+    isActive?: boolean;
+    lowStockThreshold?: number;
+  };
+}
+
+export interface ListProductsParams {
+  cursor?: string;
+  limit?: number;
+  search?: string;
+  categoryId?: string;
+  isActive?: 'true' | 'false' | 'all';
+  lowStock?: 'true';
+  sortBy?: 'name' | 'sku' | 'totalStock' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+  unit?: string;
+}
+
 export interface UserListResponse {
   users: SafeUser[];
   total: number;
@@ -242,5 +308,46 @@ export interface UpdateCustomFieldDto {
   required?: boolean;
   defaultValue?: string;
   order?: number;
+}
+
+// ─── Categories ───────────────────────────────────────────────────────────────
+
+export interface ICategory {
+  _id: string;
+  tenantId: string;
+  name: string;
+  description: string;
+  color: string;
+  productCount: number;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryDropdownItem {
+  _id: string;
+  name: string;
+  color: string;
+}
+
+export interface CategoryListResponse {
+  categories: ICategory[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export interface CreateCategoryDto {
+  name: string;
+  description?: string;
+  color?: string;
+}
+
+export interface UpdateCategoryDto {
+  name?: string;
+  description?: string;
+  color?: string;
+  isActive?: boolean;
 }
 

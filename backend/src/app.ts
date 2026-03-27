@@ -11,6 +11,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { requestId } from './middleware/requestId';
 import alertsRoutes from './modules/alerts/alerts.routes';
 import authRoutes from './modules/auth/auth.routes';
+import categoriesRoutes from './modules/categories/categories.routes';
 import productsRoutes from './modules/products/products.routes';
 import settingsRoutes from './modules/settings/settings.routes';
 import stockRoutes from './modules/stock/stock.routes';
@@ -40,6 +41,7 @@ app.get('/health', (_req: Request, res: Response) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/categories', categoriesRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/warehouses', warehousesRoutes);
 app.use('/api/stock', stockRoutes);

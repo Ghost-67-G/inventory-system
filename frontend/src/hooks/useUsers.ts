@@ -23,34 +23,35 @@ interface UseUsersParams {
 export function useUsers(params?: UseUsersParams) {
   const { canDo } = usePermission();
 
-  return useQuery({
+  return useQuery<UserListResponse, Error>({
     queryKey: ['users', params],
     queryFn: async () => {
-      const normalizedParams: Record<string, string | number | undefined> | undefined = params
-        ? {
-            page: params.page,
-            limit: params.limit,
-            role: params.role,
-            isActive: params.isActive,
-            search: params.search
-          }
-        : undefined;
+      try {
+        const normalizedParams: Record<string, string | number | undefined> | undefined = params
+          ? {
+              page: params.page,
+              limit: params.limit,
+              role: params.role,
+              isActive: params.isActive,
+              search: params.search
+            }
+          : undefined;
 
-      const res = await usersApi.list(normalizedParams);
-      const payload = res.data as ApiEnvelope<UserListResponse>;
-      return payload.data;
+        const res = await usersApi.list(normalizedParams);
+        const payload = res.data as ApiEnvelope<UserListResponse>;
+        return payload.data;
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          const message = (err.response?.data as { message?: string } | undefined)?.message;
+          toast.error(message ?? 'Failed to load team members');
+        } else {
+          toast.error('Failed to load team members');
+        }
+        throw err instanceof Error ? err : new Error('Failed to load team members');
+      }
     },
     enabled: canDo('user.view'),
-    staleTime: 30_000,
-    // Keep non-blocking feedback for list errors.
-    onError: (err) => {
-      if (axios.isAxiosError(err)) {
-        const message = (err.response?.data as { message?: string } | undefined)?.message;
-        toast.error(message ?? 'Failed to load team members');
-        return;
-      }
-      toast.error('Failed to load team members');
-    }
+    staleTime: 30_000
   });
 }
 
