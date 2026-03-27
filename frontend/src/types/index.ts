@@ -351,3 +351,80 @@ export interface UpdateCategoryDto {
   isActive?: boolean;
 }
 
+// ─── Warehouses ───────────────────────────────────────────────────────────────
+
+export interface IWarehouse {
+  _id: string;
+  tenantId: string;
+  name: string;
+  code: string;
+  description: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode: string;
+  };
+  isActive: boolean;
+  isDefault: boolean;
+  stockSummary: {
+    totalProducts: number;
+    totalUnits: number;
+  };
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WarehouseStockItem {
+  product: {
+    _id: string;
+    name: string;
+    sku: string;
+    unit: string;
+    lowStockThreshold: number;
+    categoryId: string | null;
+  };
+  quantity: number;
+  reservedQuantity: number;
+}
+
+export interface WarehouseStockResponse {
+  stock: WarehouseStockItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface WarehouseSummary {
+  total: number;
+  active: number;
+  totalProducts: number;
+  totalUnits: number;
+}
+
+export interface CreateWarehouseDto {
+  name: string;
+  code?: string;
+  description?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
+  isDefault?: boolean;
+}
+
+export interface UpdateWarehouseDto extends Partial<CreateWarehouseDto> {
+  isActive?: boolean;
+}
+
+export interface WarehouseStockParams {
+  search?: string;
+  lowStock?: 'true' | 'false';
+  cursor?: string;
+  limit?: number;
+}
+
