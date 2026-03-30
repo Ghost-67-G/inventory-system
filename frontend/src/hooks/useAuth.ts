@@ -20,7 +20,7 @@ export function useLogin() {
       const settingsRes = await settingsApi.get();
       setTenant(settingsRes.data.data.tenant);
 
-      void navigate('/dashboard');
+      void navigate('/');
     }
   });
 }

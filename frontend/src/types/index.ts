@@ -23,7 +23,8 @@ export const PERMISSIONS = [
   'user.deactivate',
   'settings.view',
   'settings.manage',
-  'audit.view'
+  'audit.view',
+  'dashboard.view'
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -51,7 +52,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'user.deactivate',
     'settings.view',
     'settings.manage',
-    'audit.view'
+    'audit.view',
+    'dashboard.view'
   ],
   manager: [
     'product.view',
@@ -68,7 +70,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'alert.acknowledge',
     'report.view',
     'report.export',
-    'settings.view'
+    'settings.view',
+    'dashboard.view'
   ],
   staff: [
     'product.view',
@@ -535,5 +538,44 @@ export interface RecordTransferDto {
   destinationWarehouseId: string;
   quantity: number;
   note?: string;
+}
+
+export interface DashboardOverview {
+  totalProducts: number;
+  totalUnits: number;
+  totalStockValue: number;
+  lowStockProducts: number;
+  pendingAlerts: number;
+  activeWarehouses: number;
+  totalWarehouses: number;
+}
+
+export interface MovementChartData {
+  date: string;
+  in: number;
+  out: number;
+}
+
+export interface CategoryChartData {
+  name: string;
+  color: string;
+  value: number;
+  units: number;
+}
+
+export interface WarehouseChartData {
+  name: string;
+  code: string;
+  totalUnits: number;
+}
+
+export interface DashboardStats {
+  overview: DashboardOverview;
+  charts: {
+    movements: MovementChartData[];
+    categories: CategoryChartData[];
+    warehouses: WarehouseChartData[];
+  };
+  computedAt: string;
 }
 

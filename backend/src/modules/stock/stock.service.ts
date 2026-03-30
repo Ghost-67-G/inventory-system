@@ -10,6 +10,7 @@ import { enqueueAlertCheck } from '../../queues/jobs/alertCheck.job';
 import { enqueueProductUpsert } from '../../queues/jobs/searchSync.job';
 import { ApiError } from '../../utils/ApiError';
 import { invalidateWarehouseCache } from '../warehouses/warehouses.service';
+import { invalidateDashboardActivityCache, triggerStatsRefresh } from '../dashboard/dashboard.service';
 
 interface BaseMovementInput {
   productId: string;
@@ -203,6 +204,8 @@ export async function recordIn(tenantId: string, userId: string, data: RecordInI
     await runPostCommitSideEffects([
       enqueueAlertCheck(tenantId, data.productId, data.warehouseId),
       invalidateWarehouseCache(tenantId),
+      triggerStatsRefresh(tenantId),
+      invalidateDashboardActivityCache(tenantId),
       enqueueProductUpsert(data.productId, tenantId),
       Promise.resolve(
         emitStockEvent(tenantId, 'stock:updated', {
@@ -292,6 +295,8 @@ export async function recordOut(tenantId: string, userId: string, data: RecordOu
     await runPostCommitSideEffects([
       enqueueAlertCheck(tenantId, data.productId, data.warehouseId),
       invalidateWarehouseCache(tenantId),
+      triggerStatsRefresh(tenantId),
+      invalidateDashboardActivityCache(tenantId),
       enqueueProductUpsert(data.productId, tenantId),
       Promise.resolve(
         emitStockEvent(tenantId, 'stock:updated', {
@@ -372,6 +377,8 @@ export async function recordAdjustment(
     await runPostCommitSideEffects([
       enqueueAlertCheck(tenantId, data.productId, data.warehouseId),
       invalidateWarehouseCache(tenantId),
+      triggerStatsRefresh(tenantId),
+      invalidateDashboardActivityCache(tenantId),
       enqueueProductUpsert(data.productId, tenantId),
       Promise.resolve(
         emitStockEvent(tenantId, 'stock:updated', {
@@ -457,6 +464,8 @@ export async function recordWaste(tenantId: string, userId: string, data: Record
     await runPostCommitSideEffects([
       enqueueAlertCheck(tenantId, data.productId, data.warehouseId),
       invalidateWarehouseCache(tenantId),
+      triggerStatsRefresh(tenantId),
+      invalidateDashboardActivityCache(tenantId),
       enqueueProductUpsert(data.productId, tenantId),
       Promise.resolve(
         emitStockEvent(tenantId, 'stock:updated', {
@@ -607,6 +616,8 @@ export async function recordTransfer(
     await runPostCommitSideEffects([
       enqueueAlertCheck(tenantId, data.productId, data.sourceWarehouseId),
       invalidateWarehouseCache(tenantId),
+      triggerStatsRefresh(tenantId),
+      invalidateDashboardActivityCache(tenantId),
       Promise.resolve(
         emitStockEvent(tenantId, 'stock:updated', {
           productId: data.productId,

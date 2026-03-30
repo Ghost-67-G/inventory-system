@@ -26,7 +26,7 @@ export function LoginPage() {
   });
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const errorMessage = (() => {

@@ -25,7 +25,8 @@ export const PERMISSIONS = [
   'user.deactivate',
   'settings.view',
   'settings.manage',
-  'audit.view'
+  'audit.view',
+  'dashboard.view'
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -53,7 +54,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'user.deactivate',
     'settings.view',
     'settings.manage',
-    'audit.view'
+    'audit.view',
+    'dashboard.view'
   ],
   manager: [
     'product.view',
@@ -70,7 +72,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'alert.acknowledge',
     'report.view',
     'report.export',
-    'settings.view'
+    'settings.view',
+    'dashboard.view'
   ],
   staff: [
     'product.view',
