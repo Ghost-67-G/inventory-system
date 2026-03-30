@@ -41,44 +41,68 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
   const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
 
   // Search mode
-  if (query.search) {
+  if (query.search?.trim()) {
+    const searchText = query.search.trim();
     const meiliHealthy = await isMeiliHealthy();
 
     if (meiliHealthy) {
-      const ids = await searchProducts(tenantId, query.search, {
+      const ids = await searchProducts(tenantId, searchText, {
         isActive: query.isActive === 'true' ? true : query.isActive === 'false' ? false : undefined,
         categoryId: query.categoryId,
         unit: query.unit
       });
 
-      if (ids.length === 0) {
-        return { products: [], nextCursor: null, hasMore: false };
+      if (ids.length > 0) {
+        // Fetch full products in MeiliSearch order
+        const products = await Product.find({ tenantId, _id: { $in: ids } })
+          .select(
+            'tenantId sku name description categoryId unit costPrice sellingPrice ' +
+            'totalStock lowStockThreshold isActive images tags customFields createdAt updatedAt createdBy updatedBy'
+          )
+          .populate('categoryId', '_id name color')
+          .lean();
+
+        // Preserve MeiliSearch order
+        const productsMap = new Map(products.map((p: unknown) => [(p as any)._id.toString(), p]));
+        const orderedProducts = ids
+          .map((id) => productsMap.get(id))
+          .filter((p) => p !== undefined)
+          .slice(0, limit);
+
+        return { products: orderedProducts, nextCursor: null, hasMore: false };
       }
+    }
 
-      // Fetch full products in MeiliSearch order
-      const products = await Product.find({ tenantId, _id: { $in: ids } })
-        .select(
-          'tenantId sku name description categoryId unit costPrice sellingPrice ' +
-          'totalStock lowStockThreshold isActive images tags customFields createdAt updatedAt createdBy updatedBy'
-        )
-        .populate('categoryId', '_id name color')
-        .lean();
+    // MongoDB fallback search (used when Meili is down or has no indexed hits)
+    const baseFilter: Record<string, unknown> = {
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+    };
 
-      // Preserve MeiliSearch order
-      const productsMap = new Map(products.map((p: unknown) => [(p as any)._id.toString(), p]));
-      const orderedProducts = ids
-        .map((id) => productsMap.get(id))
-        .filter((p) => p !== undefined);
+    if (query.isActive === 'true') {
+      baseFilter.isActive = true;
+    } else if (query.isActive === 'false') {
+      baseFilter.isActive = false;
+    }
 
-      return { products: orderedProducts, nextCursor: null, hasMore: false };
-    } else {
-      // MongoDB fallback search
-      const searchFilter = {
-        tenantId: new mongoose.Types.ObjectId(tenantId),
-        $text: { $search: query.search }
-      };
+    if (query.categoryId) {
+      baseFilter.categoryId = new mongoose.Types.ObjectId(query.categoryId);
+    }
 
-      const products = await Product.find(searchFilter)
+    if (query.unit) {
+      baseFilter.unit = query.unit;
+    }
+
+    if (query.lowStock === 'true') {
+      baseFilter.$expr = { $lte: ['$totalStock', '$lowStockThreshold'] };
+    }
+
+    let products: unknown[] = [];
+
+    try {
+      products = await Product.find({
+        ...baseFilter,
+        $text: { $search: searchText }
+      })
         .select(
           'tenantId sku name description categoryId unit costPrice sellingPrice ' +
           'totalStock lowStockThreshold isActive images tags customFields createdAt updatedAt createdBy updatedBy'
@@ -87,12 +111,27 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
         .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
         .limit(limit + 1)
         .lean();
-
-      const hasMore = products.length > limit;
-      if (hasMore) products.pop();
-
-      return { products, nextCursor: null, hasMore: false };
+    } catch {
+      // Fallback for environments where Mongo text index has not been created.
+      const regex = new RegExp(searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      products = await Product.find({
+        ...baseFilter,
+        $or: [{ name: regex }, { sku: regex }, { description: regex }, { tags: regex }]
+      })
+        .select(
+          'tenantId sku name description categoryId unit costPrice sellingPrice ' +
+          'totalStock lowStockThreshold isActive images tags customFields createdAt updatedAt createdBy updatedBy'
+        )
+        .populate('categoryId', '_id name color')
+        .sort({ createdAt: -1 })
+        .limit(limit + 1)
+        .lean();
     }
+
+    const hasMore = products.length > limit;
+    if (hasMore) products.pop();
+
+    return { products, nextCursor: null, hasMore };
   }
 
   // Browse mode with cursor pagination
