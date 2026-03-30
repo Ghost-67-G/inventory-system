@@ -24,7 +24,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
   { label: 'Products', href: '/products', icon: Package, permission: 'product.view' },
   { label: 'Stock', href: '/stock', icon: Boxes, permission: 'stock.view' },
   { label: 'Warehouses', href: '/warehouses', icon: Warehouse, permission: 'warehouse.view' },

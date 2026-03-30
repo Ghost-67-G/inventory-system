@@ -22,6 +22,21 @@ import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { UsersPage } from '@/pages/settings/UsersPage';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
+import { useAuthStore } from '@/store/authStore';
+
+function RoleRedirect() {
+  const user = useAuthStore((state) => state.user);
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'owner' || user.role === 'manager') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Navigate to="/products" replace />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -48,11 +63,22 @@ export const router = createBrowserRouter([
           {
             element: <AppLayout />,
             children: [
-              { path: '/dashboard', element: <DashboardPage /> },
+              {
+                path: '/',
+                element: <RoleRedirect />
+              },
+              {
+                path: '/dashboard',
+                element: (
+                  <PermissionGuard permission="dashboard.view" fallback={<Navigate to="/products" replace />}>
+                    <DashboardPage />
+                  </PermissionGuard>
+                )
+              },
               {
                 path: '/products',
                 element: (
-                  <PermissionGuard permission="product.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="product.view" fallback={<Navigate to="/" replace />}>
                     <ProductsPage />
                   </PermissionGuard>
                 )
@@ -60,7 +86,7 @@ export const router = createBrowserRouter([
               {
                 path: '/products/:id',
                 element: (
-                  <PermissionGuard permission="product.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="product.view" fallback={<Navigate to="/" replace />}>
                     <ProductDetailPage />
                   </PermissionGuard>
                 )
@@ -68,7 +94,7 @@ export const router = createBrowserRouter([
               {
                 path: '/warehouses',
                 element: (
-                  <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/" replace />}>
                     <WarehousesPage />
                   </PermissionGuard>
                 )
@@ -76,7 +102,7 @@ export const router = createBrowserRouter([
               {
                 path: '/warehouses/:id',
                 element: (
-                  <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/" replace />}>
                     <WarehouseDetailPage />
                   </PermissionGuard>
                 )
@@ -84,7 +110,7 @@ export const router = createBrowserRouter([
               {
                 path: '/stock',
                 element: (
-                  <PermissionGuard permission="stock.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="stock.view" fallback={<Navigate to="/" replace />}>
                     <StockMovementsPage />
                   </PermissionGuard>
                 )
@@ -92,7 +118,7 @@ export const router = createBrowserRouter([
               {
                 path: '/alerts',
                 element: (
-                  <PermissionGuard permission="alert.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="alert.view" fallback={<Navigate to="/" replace />}>
                     <AlertsPage />
                   </PermissionGuard>
                 )
@@ -100,7 +126,7 @@ export const router = createBrowserRouter([
               {
                 path: '/settings',
                 element: (
-                  <PermissionGuard permission="settings.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="settings.view" fallback={<Navigate to="/" replace />}>
                     <SettingsPage />
                   </PermissionGuard>
                 )
@@ -110,7 +136,7 @@ export const router = createBrowserRouter([
               {
                 path: '/settings/users',
                 element: (
-                  <PermissionGuard permission="user.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="user.view" fallback={<Navigate to="/" replace />}>
                     <UsersPage />
                   </PermissionGuard>
                 )
@@ -118,7 +144,7 @@ export const router = createBrowserRouter([
               {
                 path: '/settings/categories',
                 element: (
-                  <PermissionGuard permission="category.view" fallback={<Navigate to="/dashboard" replace />}>
+                  <PermissionGuard permission="category.view" fallback={<Navigate to="/" replace />}>
                     <CategoriesPage />
                   </PermissionGuard>
                 )
@@ -128,7 +154,6 @@ export const router = createBrowserRouter([
         ]
       },
       // Redirects
-      { path: '/', element: <Navigate to="/dashboard" replace /> },
       { path: '*', element: <Navigate to="/login" replace /> }
     ]
   }

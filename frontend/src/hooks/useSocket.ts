@@ -30,9 +30,14 @@ export const useSocket = () => {
 
       socket.on('stock:updated', (payload: { productId: string }) => {
         void queryClient.invalidateQueries({ queryKey: ['stock', 'movements'] });
+        void queryClient.invalidateQueries({ queryKey: ['dashboard', 'activity'] });
         if (payload?.productId) {
           void queryClient.invalidateQueries({ queryKey: ['products', payload.productId] });
         }
+      });
+
+      socket.on('dashboard:refreshed', () => {
+        void queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
       });
 
       socket.on(
@@ -52,6 +57,7 @@ export const useSocket = () => {
     return () => {
       socket.off('connect');
       socket.off('stock:updated');
+      socket.off('dashboard:refreshed');
       socket.off('alert:new');
       socket.disconnect();
     };

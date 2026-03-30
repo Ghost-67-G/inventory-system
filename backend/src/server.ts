@@ -1,5 +1,6 @@
 import http from 'http';
 import mongoose from 'mongoose';
+import { Queue, Worker } from 'bullmq';
 import { app } from './app';
 import { config } from './config';
 import { connectDatabase } from './config/database';
@@ -7,6 +8,8 @@ import { createSocketServer } from './config/socket';
 import { initProductsIndex } from './utils/meilisearch';
 import { startSearchSyncWorker } from './queues/workers/search.worker';
 import { startAlertCheckWorker } from './queues/workers/alertCheck.worker';
+import { enqueueScheduledDashboardRefresh } from './queues/jobs/dashboardStats.job';
+import { startDashboardStatsWorker } from './queues/workers/dashboardStats.worker';
 import { logger } from './utils/logger';
 import { TenantModel } from './models/Tenant';
 import { WarehouseModel } from './models/Warehouse';
@@ -22,6 +25,31 @@ const start = async (): Promise<void> => {
   // Start BullMQ search sync worker
   await startSearchSyncWorker();
   startAlertCheckWorker();
+  startDashboardStatsWorker();
+
+  const schedulerQueue = new Queue('dashboard-scheduler', { connection: { url: config.REDIS_URL } });
+  const schedulerWorker = new Worker(
+    'dashboard-scheduler',
+    async (job) => {
+      if (job.name === 'refresh-all-tenants') {
+        await enqueueScheduledDashboardRefresh();
+      }
+    },
+    { connection: { url: config.REDIS_URL } }
+  );
+
+  schedulerWorker.on('error', (error) => {
+    logger.error('dashboard_scheduler_worker_error', { error });
+  });
+
+  await schedulerQueue.add(
+    'refresh-all-tenants',
+    {},
+    {
+      repeat: { every: 5 * 60 * 1000 },
+      jobId: 'dashboard-scheduler-repeatable'
+    }
+  );
 
   // Self-hosted: ensure default warehouse exists
   if (config.DEPLOYMENT_MODE === 'self_hosted') {

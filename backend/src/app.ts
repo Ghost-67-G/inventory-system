@@ -17,6 +17,7 @@ import settingsRoutes from './modules/settings/settings.routes';
 import stockRoutes from './modules/stock/stock.routes';
 import usersRoutes from './modules/users/users.routes';
 import warehousesRoutes from './modules/warehouses/warehouses.routes';
+import dashboardRoutes from './modules/dashboard/dashboard.routes';
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/warehouses', warehousesRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use(errorHandler);
 
