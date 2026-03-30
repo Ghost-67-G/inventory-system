@@ -23,6 +23,13 @@ export default function App() {
     }
     hasBootstrappedAuth = true;
 
+    // No persisted user means anonymous session: skip refresh bootstrap.
+    if (!user) {
+      clearTenant();
+      setLoading(false);
+      return;
+    }
+
     const bootstrapAuth = async (): Promise<void> => {
       try {
         const refreshRes = await authApi.refreshToken();

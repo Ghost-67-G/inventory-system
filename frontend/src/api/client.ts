@@ -27,6 +27,12 @@ type QueueEntry = { resolve: (token: string) => void; reject: (err: unknown) => 
 let isRefreshing = false;
 let failedQueue: QueueEntry[] = [];
 
+function redirectToLoginIfNeeded(): void {
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
+
 function processQueue(error: unknown, token: string | null): void {
   for (const entry of failedQueue) {
     if (error) entry.reject(error);
@@ -49,16 +55,14 @@ client.interceptors.response.use(
     if (status === 401 && originalRequest?._retry) {
       useAuthStore.getState().logout();
       useTenantStore.getState().clearTenant();
-      window.location.href = '/login';
+      redirectToLoginIfNeeded();
       return Promise.reject(error);
     }
 
     if (status === 401 && originalRequest && !originalRequest._retry) {
       const url = originalRequest.url ?? '';
       if (url.includes('/auth/refresh-token')) {
-        useAuthStore.getState().logout();
-        useTenantStore.getState().clearTenant();
-        window.location.href = '/login';
+        // Refresh endpoint failures are handled by the caller to avoid redirect loops.
         return Promise.reject(error);
       }
 
@@ -94,7 +98,7 @@ client.interceptors.response.use(
         processQueue(refreshError, null);
         useAuthStore.getState().logout();
         useTenantStore.getState().clearTenant();
-        window.location.href = '/login';
+        redirectToLoginIfNeeded();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
