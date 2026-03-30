@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { usePermission } from '@/hooks/usePermission';
+import { usePendingAlertCount } from '@/hooks/useStock';
 import type { Permission } from '@/types';
 
 interface NavItem {
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const { canDo } = usePermission();
   const location = useLocation();
+  const { data: alertCount = 0 } = usePendingAlertCount();
 
   return (
     <aside className="w-full border-r border-slate-200 bg-white/90 p-4 md:w-64">
@@ -56,6 +58,11 @@ export function Sidebar() {
             >
               <item.icon size={16} />
               <span>{item.label}</span>
+              {item.label === 'Alerts' && alertCount > 0 ? (
+                <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {alertCount > 99 ? '99+' : alertCount}
+                </span>
+              ) : null}
             </Link>
           ))}
       </nav>

@@ -6,6 +6,7 @@ import { connectDatabase } from './config/database';
 import { createSocketServer } from './config/socket';
 import { initProductsIndex } from './utils/meilisearch';
 import { startSearchSyncWorker } from './queues/workers/search.worker';
+import { startAlertCheckWorker } from './queues/workers/alertCheck.worker';
 import { logger } from './utils/logger';
 import { TenantModel } from './models/Tenant';
 import { WarehouseModel } from './models/Warehouse';
@@ -20,6 +21,7 @@ const start = async (): Promise<void> => {
 
   // Start BullMQ search sync worker
   await startSearchSyncWorker();
+  startAlertCheckWorker();
 
   // Self-hosted: ensure default warehouse exists
   if (config.DEPLOYMENT_MODE === 'self_hosted') {
@@ -45,6 +47,13 @@ const start = async (): Promise<void> => {
 
   io.on('connection', (socket) => {
     logger.info('socket_connected', { socketId: socket.id });
+
+    socket.on('join:tenant', (tenantId: string) => {
+      if (!tenantId) {
+        return;
+      }
+      socket.join(`tenant:${tenantId}`);
+    });
   });
 
   server.listen(config.PORT, () => {

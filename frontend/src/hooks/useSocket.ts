@@ -1,9 +1,13 @@
 import { useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
+import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 
 export const useSocket = () => {
+  const queryClient = useQueryClient();
   const token = useAuthStore((s) => s.accessToken);
+  const tenantId = useAuthStore((s) => s.user?.tenantId);
 
   const socket = useMemo(() => {
     return io(import.meta.env.VITE_SOCKET_URL, {
@@ -17,11 +21,41 @@ export const useSocket = () => {
   useEffect(() => {
     if (token) {
       socket.connect();
+
+      socket.on('connect', () => {
+        if (tenantId) {
+          socket.emit('join:tenant', tenantId);
+        }
+      });
+
+      socket.on('stock:updated', (payload: { productId: string }) => {
+        void queryClient.invalidateQueries({ queryKey: ['stock', 'movements'] });
+        if (payload?.productId) {
+          void queryClient.invalidateQueries({ queryKey: ['products', payload.productId] });
+        }
+      });
+
+      socket.on(
+        'alert:new',
+        (payload: { productName?: string; currentStock?: number; threshold?: number; warehouseId?: string }) => {
+          void queryClient.invalidateQueries({ queryKey: ['stock', 'alerts'] });
+          queryClient.setQueryData<number>(['stock', 'alerts', 'count'], (previous) => (previous ?? 0) + 1);
+
+          toast.warning(
+            `Low stock alert: ${payload.productName ?? 'Product'} - ${payload.currentStock ?? 0} remaining (threshold ${payload.threshold ?? 0})`,
+            { duration: Infinity }
+          );
+        }
+      );
     }
+
     return () => {
+      socket.off('connect');
+      socket.off('stock:updated');
+      socket.off('alert:new');
       socket.disconnect();
     };
-  }, [socket, token]);
+  }, [queryClient, socket, tenantId, token]);
 
   return socket;
 };
