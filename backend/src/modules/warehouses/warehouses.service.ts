@@ -2,6 +2,7 @@ import { WarehouseModel, type IWarehouse } from '../../models/Warehouse';
 import { WarehouseStockModel, type IWarehouseStock } from '../../models/WarehouseStock';
 import { Product } from '../../models/Product';
 import { ApiError } from '../../utils/ApiError';
+import { redis } from '../../config/redis';
 import { deleteCache, getCache, setCache } from '../../config/redis';
 import mongoose from 'mongoose';
 
@@ -82,8 +83,18 @@ interface WarehouseSummary {
 // ─── Cache Helpers ────────────────────────────────────────────────────────
 
 export async function invalidateWarehouseCache(tenantId: string): Promise<void> {
-  await deleteCache(`warehouses:list:${tenantId}`);
+  const listPattern = `warehouses:list:${tenantId}:*`;
+  const listKeys = await redis.keys(listPattern);
+  if (listKeys.length > 0) {
+    await redis.del(...listKeys);
+  }
   await deleteCache(`warehouses:summary:${tenantId}`);
+}
+
+function getListCacheKey(tenantId: string, query: ListWarehousesQuery): string {
+  const isActive = query.isActive ?? 'true';
+  const search = (query.search ?? '').trim().toLowerCase();
+  return `warehouses:list:${tenantId}:active=${isActive}:search=${encodeURIComponent(search)}`;
 }
 
 // ─── Stock Summary Fetching ────────────────────────────────────────────────
@@ -152,7 +163,7 @@ export async function listWarehouses(
   tenantId: string,
   query: ListWarehousesQuery
 ): Promise<WarehouseWithSummary[]> {
-  const cacheKey = `warehouses:list:${tenantId}`;
+  const cacheKey = getListCacheKey(tenantId, query);
   const cached = await getCache<WarehouseWithSummary[]>(cacheKey);
   if (cached) {
     return cached;

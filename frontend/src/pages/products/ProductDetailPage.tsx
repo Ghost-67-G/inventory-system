@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Plus, Minus, SlidersHorizontal, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import StockBadge from '@/components/shared/StockBadge';
+import { WarehouseBadge } from '@/components/shared/WarehouseBadge';
 import ProductFormDrawer from '@/components/products/ProductFormDrawer';
 import ConfirmDeleteProductDialog from '@/components/products/ConfirmDeleteProductDialog';
 import { useProduct } from '@/hooks/useProducts';
+import { useProductStock } from '@/hooks/useStock';
 import { useTenantFormatting } from '@/hooks/useTenantFormatting';
 import { useTenantStore } from '@/store/tenantStore';
 import { usePermission } from '@/hooks/usePermission';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
+import { RecordMovementDrawer } from '@/components/stock/RecordMovementDrawer';
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,8 +24,11 @@ export function ProductDetailPage() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [movementOpen, setMovementOpen] = useState(false);
+  const [movementType, setMovementType] = useState<'in' | 'out' | 'adjustment' | 'transfer'>('in');
 
   const { data: product, isLoading } = useProduct(id ?? '');
+  const { data: stockByWarehouse = [], isLoading: isStockLoading } = useProductStock(id ?? null);
 
   if (isLoading) {
     return (
@@ -197,7 +203,103 @@ export function ProductDetailPage() {
               <div className="text-xs text-gray-500">
                 Alert at {product.lowStockThreshold} {product.unit}
               </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <PermissionGuard permission="stock.adjust">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setMovementType('in');
+                      setMovementOpen(true);
+                    }}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Add stock
+                  </Button>
+                </PermissionGuard>
+
+                <PermissionGuard permission="stock.adjust">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setMovementType('out');
+                      setMovementOpen(true);
+                    }}
+                  >
+                    <Minus className="mr-1 h-3.5 w-3.5" />
+                    Remove stock
+                  </Button>
+                </PermissionGuard>
+
+                <PermissionGuard permission="stock.adjust">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setMovementType('adjustment');
+                      setMovementOpen(true);
+                    }}
+                  >
+                    <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
+                    Adjust stock
+                  </Button>
+                </PermissionGuard>
+
+                <PermissionGuard permission="stock.transfer">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setMovementType('transfer');
+                      setMovementOpen(true);
+                    }}
+                  >
+                    <Repeat className="mr-1 h-3.5 w-3.5" />
+                    Transfer
+                  </Button>
+                </PermissionGuard>
+              </div>
             </div>
+          </div>
+
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Stock by warehouse</h3>
+
+            {isStockLoading ? (
+              <div className="space-y-2 text-sm text-gray-500">Loading warehouse stock...</div>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-2 text-xs font-semibold text-gray-500 uppercase">
+                  <span>Warehouse</span>
+                  <span>In stock</span>
+                  <span>Reserved</span>
+                  <span>Available</span>
+                </div>
+                {stockByWarehouse.map((entry) => (
+                  <div key={entry.warehouse._id} className="grid grid-cols-4 gap-2 border-t py-2 text-sm">
+                    <WarehouseBadge
+                      code={entry.warehouse.code}
+                      name={entry.warehouse.name}
+                      isDefault={entry.warehouse.isDefault}
+                      size="sm"
+                    />
+                    <span>{entry.quantity}</span>
+                    <span>{entry.reservedQuantity}</span>
+                    <span>{entry.quantity - entry.reservedQuantity}</span>
+                  </div>
+                ))}
+                <div className="grid grid-cols-4 gap-2 border-t pt-2 text-sm font-semibold">
+                  <span>Total</span>
+                  <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.quantity, 0)}</span>
+                  <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.reservedQuantity, 0)}</span>
+                  <span>
+                    {stockByWarehouse.reduce((sum, entry) => sum + (entry.quantity - entry.reservedQuantity), 0)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Meta card */}
@@ -233,6 +335,13 @@ export function ProductDetailPage() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onSuccess={() => navigate('/products')}
+      />
+
+      <RecordMovementDrawer
+        open={movementOpen}
+        onClose={() => setMovementOpen(false)}
+        type={movementType}
+        prefilledProductId={product._id}
       />
     </div>
   );

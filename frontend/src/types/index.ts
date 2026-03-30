@@ -428,3 +428,112 @@ export interface WarehouseStockParams {
   limit?: number;
 }
 
+// ─── Stock Movements & Alerts ───────────────────────────────────────────────
+
+export type MovementType = 'IN' | 'OUT' | 'ADJUSTMENT' | 'WASTE' | 'TRANSFER_OUT' | 'TRANSFER_IN';
+export type ReferenceType = 'MANUAL' | 'PURCHASE' | 'SALE' | 'TRANSFER' | 'WASTE' | 'ADJUSTMENT';
+export type AlertStatus = 'PENDING' | 'ACKNOWLEDGED';
+
+export interface IStockMovement {
+  _id: string;
+  tenantId: string;
+  productId: string;
+  product?: { _id: string; name: string; sku: string; unit: string };
+  warehouseId: string;
+  warehouse?: { _id: string; name: string; code: string };
+  type: MovementType;
+  quantity: number;
+  quantityBefore: number;
+  quantityAfter: number;
+  totalStockBefore: number;
+  totalStockAfter: number;
+  referenceType: ReferenceType;
+  referenceId: string | null;
+  note: string;
+  performedBy: string;
+  performedByUser?: { _id: string; name: string; email: string };
+  transferPairId: string | null;
+  createdAt: string;
+  pairedMovement?: IStockMovement | null;
+}
+
+export interface IStockAlert {
+  _id: string;
+  tenantId: string;
+  productId: string;
+  product?: { _id: string; name: string; sku: string; unit: string };
+  warehouseId: string;
+  warehouse?: { _id: string; name: string; code: string };
+  currentStock: number;
+  threshold: number;
+  status: AlertStatus;
+  acknowledgedBy: string | null;
+  acknowledgedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WarehouseStockPosition {
+  warehouse: { _id: string; name: string; code: string; isDefault: boolean; isActive: boolean };
+  quantity: number;
+  reservedQuantity: number;
+}
+
+export interface ListMovementsParams {
+  cursor?: string;
+  limit?: number;
+  productId?: string;
+  warehouseId?: string;
+  type?: MovementType;
+  performedBy?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface ListAlertsParams {
+  status?: AlertStatus;
+  productId?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface RecordInDto {
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  referenceType?: 'MANUAL' | 'PURCHASE';
+  referenceId?: string;
+  note?: string;
+}
+
+export interface RecordOutDto {
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  referenceType?: 'MANUAL' | 'SALE';
+  referenceId?: string;
+  note?: string;
+}
+
+export interface RecordAdjustmentDto {
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  note?: string;
+}
+
+export interface RecordWasteDto {
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  note?: string;
+}
+
+export interface RecordTransferDto {
+  productId: string;
+  sourceWarehouseId: string;
+  destinationWarehouseId: string;
+  quantity: number;
+  note?: string;
+}
+

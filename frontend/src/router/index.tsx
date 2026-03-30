@@ -17,7 +17,7 @@ import { ProductDetailPage } from '@/pages/products/ProductDetailPage';
 import { WarehousesPage } from '@/pages/warehouses/WarehousesPage';
 import { WarehouseDetailPage } from '@/pages/warehouses/WarehouseDetailPage';
 import { StockMovementsPage } from '@/pages/stock/StockMovementsPage';
-import { AlertsPage } from '@/pages/alerts/AlertsPage';
+import { AlertsPage } from '@/pages/stock/AlertsPage';
 import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { UsersPage } from '@/pages/settings/UsersPage';
@@ -81,8 +81,22 @@ export const router = createBrowserRouter([
                   </PermissionGuard>
                 )
               },
-              { path: '/stock', element: <StockMovementsPage /> },
-              { path: '/alerts', element: <AlertsPage /> },
+              {
+                path: '/stock',
+                element: (
+                  <PermissionGuard permission="stock.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <StockMovementsPage />
+                  </PermissionGuard>
+                )
+              },
+              {
+                path: '/alerts',
+                element: (
+                  <PermissionGuard permission="alert.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <AlertsPage />
+                  </PermissionGuard>
+                )
+              },
               {
                 path: '/settings',
                 element: (
