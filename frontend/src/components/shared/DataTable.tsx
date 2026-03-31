@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -70,10 +70,13 @@ export function DataTable<TData>({
     )
   };
 
+  // Guard against malformed API rows; TanStack accessors assume each row exists.
+  const safeData = useMemo(() => data.filter((row) => row != null) as TData[], [data]);
+
   const tableColumns = enableRowSelection ? [selectionColumn, ...columns] : columns;
 
   const table = useReactTable({
-    data,
+    data: safeData,
     columns: tableColumns,
     state: { sorting, rowSelection },
     onSortingChange: setSorting,
@@ -86,9 +89,9 @@ export function DataTable<TData>({
           .filter((key) => newState[key])
           .map((key) => {
             if (getRowId) {
-              return data.find((row) => getRowId(row) === key);
+              return safeData.find((row) => getRowId(row) === key);
             }
-            return data[Number(key)];
+            return safeData[Number(key)];
           })
           .filter(Boolean) as TData[];
         onSelectionChange(selectedRows);

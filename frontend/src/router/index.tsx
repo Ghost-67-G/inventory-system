@@ -21,6 +21,7 @@ import { AlertsPage } from '@/pages/stock/AlertsPage';
 import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { UsersPage } from '@/pages/settings/UsersPage';
+import { ReportsPage } from '@/pages/reports/ReportsPage';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
 import { useAuthStore } from '@/store/authStore';
 
@@ -120,6 +121,14 @@ export const router = createBrowserRouter([
                 element: (
                   <PermissionGuard permission="alert.view" fallback={<Navigate to="/" replace />}>
                     <AlertsPage />
+                  </PermissionGuard>
+                )
+              },
+              {
+                path: '/reports',
+                element: (
+                  <PermissionGuard permission="report.view" fallback={<Navigate to="/dashboard" replace />}>
+                    <ReportsPage />
                   </PermissionGuard>
                 )
               },
