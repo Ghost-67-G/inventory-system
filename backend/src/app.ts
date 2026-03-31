@@ -20,6 +20,7 @@ import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import usersRoutes from './modules/users/users.routes';
 import warehousesRoutes from './modules/warehouses/warehouses.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
+import importRoutes from './modules/import/import.routes';
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/import', importRoutes);
 
 app.use(errorHandler);
 

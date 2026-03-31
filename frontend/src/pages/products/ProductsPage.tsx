@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type ColumnDef } from '@tanstack/react-table';
-import { Plus, Search, RefreshCw, X } from 'lucide-react';
+import { Plus, Search, RefreshCw, Upload, X } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import CategoryBadge from '@/components/shared/CategoryBadge';
@@ -222,6 +222,12 @@ export function ProductsPage() {
         subtitle={productCount !== undefined ? `${productCount.toLocaleString()} products` : undefined}
       >
         <div className="flex items-center gap-2">
+          <PermissionGuard permission="product.create">
+            <Button variant="outline" onClick={() => navigate('/products/import')}>
+              <Upload className="mr-2 h-4 w-4" />
+              Import CSV
+            </Button>
+          </PermissionGuard>
           <PermissionGuard permission="product.create">
             <Button
               onClick={() => {

@@ -10,6 +10,7 @@ import { startSearchSyncWorker } from './queues/workers/search.worker';
 import { startAlertCheckWorker } from './queues/workers/alertCheck.worker';
 import { enqueueScheduledDashboardRefresh } from './queues/jobs/dashboardStats.job';
 import { startDashboardStatsWorker } from './queues/workers/dashboardStats.worker';
+import { startCsvImportWorker } from './queues/workers/csvImport.worker';
 import { logger } from './utils/logger';
 import { TenantModel } from './models/Tenant';
 import { WarehouseModel } from './models/Warehouse';
@@ -26,6 +27,7 @@ const start = async (): Promise<void> => {
   await startSearchSyncWorker();
   startAlertCheckWorker();
   startDashboardStatsWorker();
+  startCsvImportWorker();
 
   const schedulerQueue = new Queue('dashboard-scheduler', { connection: { url: config.REDIS_URL } });
   const schedulerWorker = new Worker(

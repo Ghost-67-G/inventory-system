@@ -13,11 +13,13 @@
     "validate-seed": "ts-node --project tsconfig.json scripts/validate-seed.ts"
   },
   "dependencies": {
+    "@types/multer": "^2.1.0",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.12.12",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csv-parse": "^6.2.1",
     "dotenv": "^16.4.5",
     "env-cmd": "^11.0.0",
     "express": "^4.19.2",
@@ -28,6 +30,7 @@
     "jsonwebtoken": "^9.0.2",
     "meilisearch": "^0.46.0",
     "mongoose": "^8.6.2",
+    "multer": "^2.1.1",
     "resend": "^6.9.4",
     "socket.io": "^4.8.0",
     "uuid": "^10.0.0",
