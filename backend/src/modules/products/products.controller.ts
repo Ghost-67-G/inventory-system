@@ -81,6 +81,11 @@ export const remove = catchAsync(async (req: Request, res: Response) => {
 export const bulkUpdate = catchAsync(async (req: Request, res: Response) => {
   if (!req.tenantId || !req.user?.id) throw new ApiError(400, 'tenantId or userId missing');
 
-  const result = await service.bulkUpdate(req.tenantId, req.user.id, req.body.productIds, req.body.updates);
+  const result = await service.bulkUpdate(req.tenantId, req.user.id, req.body.productIds, req.body.updates, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: result });
 });

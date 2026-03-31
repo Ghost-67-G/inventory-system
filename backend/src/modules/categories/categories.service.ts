@@ -2,6 +2,7 @@ import { getCache, setCache, deleteCache } from '../../config/redis';
 import { CategoryModel } from '../../models/Category';
 import { Product } from '../../models/Product';
 import { ApiError } from '../../utils/ApiError';
+import { createAuditLog, diffObjects, type AuditContext } from '../../utils/audit';
 
 interface ListCategoriesQuery {
   search?: string;
@@ -70,7 +71,8 @@ export async function getCategory(tenantId: string, categoryId: string): Promise
 export async function createCategory(
   tenantId: string,
   userId: string,
-  data: CreateCategoryDto
+  data: CreateCategoryDto,
+  auditCtx: AuditContext
 ): Promise<unknown> {
   const escapedName = escapeRegex(data.name.trim());
   const existing = await CategoryModel.findOne({
@@ -88,16 +90,38 @@ export async function createCategory(
   });
 
   await invalidateDropdownCache(tenantId);
+
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'category.created',
+    entityType: 'category',
+    entityId: category._id.toString(),
+    entityName: category.name,
+    metadata: {
+      description: category.description,
+      color: category.color
+    },
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   return category;
 }
 
 export async function updateCategory(
   tenantId: string,
   categoryId: string,
-  data: UpdateCategoryDto
+  data: UpdateCategoryDto,
+  userId: string,
+  auditCtx: AuditContext
 ): Promise<unknown> {
   const category = await CategoryModel.findOne({ _id: categoryId, tenantId });
   if (!category) throw new ApiError(404, 'Category not found');
+
+  const before = category.toObject();
 
   if (data.name !== undefined) {
     const escapedName = escapeRegex(data.name.trim());
@@ -116,10 +140,33 @@ export async function updateCategory(
 
   await category.save();
   await invalidateDropdownCache(tenantId);
+
+  const changes = diffObjects(before as Record<string, unknown>, category.toObject() as Record<string, unknown>);
+  if (changes.length > 0) {
+    createAuditLog({
+      tenantId,
+      performedBy: userId,
+      performedByName: auditCtx.performedByName,
+      performedByEmail: auditCtx.performedByEmail,
+      action: 'category.updated',
+      entityType: 'category',
+      entityId: category._id.toString(),
+      entityName: category.name,
+      changes,
+      ipAddress: auditCtx.ipAddress,
+      userAgent: auditCtx.userAgent
+    }).catch(() => {});
+  }
+
   return category;
 }
 
-export async function deleteCategory(tenantId: string, categoryId: string): Promise<void> {
+export async function deleteCategory(
+  tenantId: string,
+  categoryId: string,
+  userId: string,
+  auditCtx: AuditContext
+): Promise<void> {
   const category = await CategoryModel.findOne({ _id: categoryId, tenantId });
   if (!category) throw new ApiError(404, 'Category not found');
 
@@ -133,6 +180,24 @@ export async function deleteCategory(tenantId: string, categoryId: string): Prom
 
   await CategoryModel.deleteOne({ _id: categoryId });
   await invalidateDropdownCache(tenantId);
+
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'category.deleted',
+    entityType: 'category',
+    entityId: category._id.toString(),
+    entityName: category.name,
+    metadata: {
+      description: category.description,
+      color: category.color,
+      productCount: category.productCount
+    },
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
 }
 
 export async function getCategoriesForDropdown(tenantId: string): Promise<unknown[]> {
