@@ -11,21 +11,21 @@ import { useProduct } from '@/hooks/useProducts';
 import { useProductStock } from '@/hooks/useStock';
 import { useTenantFormatting } from '@/hooks/useTenantFormatting';
 import { useTenantStore } from '@/store/tenantStore';
-import { usePermission } from '@/hooks/usePermission';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
 import { RecordMovementDrawer } from '@/components/stock/RecordMovementDrawer';
+import { EntityHistoryDrawer } from '@/components/audit/EntityHistoryDrawer';
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { formatMoney, formatDate } = useTenantFormatting();
-  const { canDo } = usePermission();
   const tenant = useTenantStore((s) => s.tenant);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [movementOpen, setMovementOpen] = useState(false);
   const [movementType, setMovementType] = useState<'in' | 'out' | 'adjustment' | 'transfer'>('in');
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const { data: product, isLoading } = useProduct(id ?? '');
   const { data: stockByWarehouse = [], isLoading: isStockLoading } = useProductStock(id ?? null);
@@ -319,6 +319,12 @@ export function ProductDetailPage() {
                 <dd className="text-sm text-gray-900">{formatDate(product.updatedAt)}</dd>
               </div>
             </dl>
+
+            <PermissionGuard permission="audit.view">
+              <Button className="mt-4 w-full" variant="outline" onClick={() => setHistoryOpen(true)}>
+                Change history
+              </Button>
+            </PermissionGuard>
           </div>
         </div>
       </div>
@@ -342,6 +348,14 @@ export function ProductDetailPage() {
         onClose={() => setMovementOpen(false)}
         type={movementType}
         prefilledProductId={product._id}
+      />
+
+      <EntityHistoryDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        entityType="product"
+        entityId={product._id}
+        entityName={product.name}
       />
     </div>
   );

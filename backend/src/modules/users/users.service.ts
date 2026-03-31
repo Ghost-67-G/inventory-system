@@ -8,6 +8,7 @@ import { hasPermission, type Permission, type Role } from '../../types';
 import { ApiError } from '../../utils/ApiError';
 import { sendInviteEmail } from '../../utils/email';
 import { hashToken } from '../../utils/jwt';
+import { createAuditLog, type AuditContext } from '../../utils/audit';
 
 export type SafeUser = Pick<
   IUser,
@@ -122,7 +123,8 @@ export async function inviteUser(
   tenantId: string,
   invitedByUserId: string,
   invitedByRole: Role,
-  data: InviteUserDto
+  data: InviteUserDto,
+  auditCtx: AuditContext
 ): Promise<SafeUser> {
   assertServicePermission(invitedByRole, 'user.invite');
 
@@ -174,6 +176,21 @@ export async function inviteUser(
     acceptInviteUrl
   }).catch(() => undefined);
 
+  createAuditLog({
+    tenantId,
+    performedBy: invitedByUserId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'user.invited',
+    entityType: 'user',
+    entityId: user._id.toString(),
+    entityName: `${user.name} (${user.email})`,
+    changes: [],
+    metadata: { role: user.role },
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   return toSafeUser(user);
 }
 
@@ -182,7 +199,8 @@ export async function updateUser(
   requesterId: string,
   requesterRole: Role,
   targetUserId: string,
-  data: UpdateUserDto
+  data: UpdateUserDto,
+  auditCtx: AuditContext
 ): Promise<SafeUser> {
   assertServicePermission(requesterRole, 'user.update');
 
@@ -203,6 +221,8 @@ export async function updateUser(
     throw new ApiError(400, 'Cannot assign owner role');
   }
 
+  const oldRole = target.role;
+
   if (data.name !== undefined) {
     target.name = data.name;
   }
@@ -212,6 +232,23 @@ export async function updateUser(
   }
 
   await target.save();
+
+  if (data.role && data.role !== oldRole) {
+    createAuditLog({
+      tenantId,
+      performedBy: requesterId,
+      performedByName: auditCtx.performedByName,
+      performedByEmail: auditCtx.performedByEmail,
+      action: 'user.role_changed',
+      entityType: 'user',
+      entityId: target._id.toString(),
+      entityName: `${target.name} (${target.email})`,
+      changes: [{ field: 'role', oldValue: oldRole, newValue: data.role }],
+      ipAddress: auditCtx.ipAddress,
+      userAgent: auditCtx.userAgent
+    }).catch(() => {});
+  }
+
   return toSafeUser(target);
 }
 
@@ -219,7 +256,8 @@ export async function deactivateUser(
   tenantId: string,
   requesterId: string,
   requesterRole: Role,
-  targetUserId: string
+  targetUserId: string,
+  auditCtx: AuditContext
 ): Promise<void> {
   assertServicePermission(requesterRole, 'user.deactivate');
 
@@ -242,13 +280,28 @@ export async function deactivateUser(
   target.isActive = false;
   target.refreshTokens = [];
   await target.save();
+
+  createAuditLog({
+    tenantId,
+    performedBy: requesterId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'user.deactivated',
+    entityType: 'user',
+    entityId: target._id.toString(),
+    entityName: `${target.name} (${target.email})`,
+    changes: [{ field: 'isActive', oldValue: true, newValue: false }],
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
 }
 
 export async function reactivateUser(
   tenantId: string,
-  _requesterId: string,
+  requesterId: string,
   requesterRole: Role,
-  targetUserId: string
+  targetUserId: string,
+  auditCtx: AuditContext
 ): Promise<SafeUser> {
   assertServicePermission(requesterRole, 'user.deactivate');
 
@@ -263,6 +316,21 @@ export async function reactivateUser(
 
   target.isActive = true;
   await target.save();
+
+  createAuditLog({
+    tenantId,
+    performedBy: requesterId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'user.reactivated',
+    entityType: 'user',
+    entityId: target._id.toString(),
+    entityName: `${target.name} (${target.email})`,
+    changes: [{ field: 'isActive', oldValue: false, newValue: true }],
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   return toSafeUser(target);
 }
 

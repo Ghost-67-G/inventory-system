@@ -20,7 +20,9 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction): 
   req.user = {
     id: payload.userId,
     tenantId: payload.tenantId,
-    role: payload.role as import('../types').Role
+    role: payload.role as import('../types').Role,
+    name: payload.name ?? '',
+    email: payload.email ?? ''
   };
   next();
 };
@@ -42,7 +44,9 @@ export const optionalAuthenticate = (req: Request, _res: Response, next: NextFun
     req.user = {
       id: payload.userId,
       tenantId: payload.tenantId,
-      role: payload.role as import('../types').Role
+      role: payload.role as import('../types').Role,
+      name: payload.name ?? '',
+      email: payload.email ?? ''
     };
   }
   next();

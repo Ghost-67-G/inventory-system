@@ -8,6 +8,7 @@ import { getCache, setCache, deleteCache } from '../../config/redis';
 import { isMeiliHealthy, searchProducts } from '../../utils/meilisearch';
 import { enqueueProductUpsert, enqueueProductDelete } from '../../queues/jobs/searchSync.job';
 import { validateCustomFields } from './products.schema';
+import { createAuditLog, diffObjects, type AuditContext } from '../../utils/audit';
 
 interface ListProductsQuery {
   cursor?: string;
@@ -231,7 +232,8 @@ export async function getProduct(tenantId: string, productId: string): Promise<u
 export async function createProduct(
   tenantId: string,
   userId: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  auditCtx: AuditContext
 ): Promise<unknown> {
   const tenantObjId = new mongoose.Types.ObjectId(tenantId);
   const userObjId = new mongoose.Types.ObjectId(userId);
@@ -310,6 +312,24 @@ export async function createProduct(
   // Invalidate count cache
   await deleteCache(`products:count:${tenantId}:*`);
 
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'product.created',
+    entityType: 'product',
+    entityId: product._id.toString(),
+    entityName: `${product.name} (${product.sku})`,
+    changes: [],
+    metadata: {
+      categoryId: product.categoryId,
+      unit: product.unit
+    },
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   return product.toObject();
 }
 
@@ -320,7 +340,8 @@ export async function updateProduct(
   tenantId: string,
   userId: string,
   productId: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  auditCtx: AuditContext
 ): Promise<unknown> {
   const tenantObjId = new mongoose.Types.ObjectId(tenantId);
   const userObjId = new mongoose.Types.ObjectId(userId);
@@ -334,6 +355,8 @@ export async function updateProduct(
   if (!product) {
     throw new ApiError(404, 'Product not found');
   }
+
+  const beforeProduct = product.toObject() as Record<string, unknown>;
 
   // SKU uniqueness check if provided and different
   if (data.sku && (data.sku as string).trim().toUpperCase() !== product.sku) {
@@ -413,13 +436,35 @@ export async function updateProduct(
   // Invalidate count cache
   await deleteCache(`products:count:${tenantId}:*`);
 
+  const afterProduct = product.toObject() as Record<string, unknown>;
+  const changes = diffObjects(beforeProduct, afterProduct);
+
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'product.updated',
+    entityType: 'product',
+    entityId: product._id.toString(),
+    entityName: `${product.name} (${product.sku})`,
+    changes,
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   return product.toObject();
 }
 
 /**
  * Delete a product
  */
-export async function deleteProduct(tenantId: string, productId: string): Promise<void> {
+export async function deleteProduct(
+  tenantId: string,
+  userId: string,
+  productId: string,
+  auditCtx: AuditContext
+): Promise<void> {
   const tenantObjId = new mongoose.Types.ObjectId(tenantId);
   const productObjId = new mongoose.Types.ObjectId(productId);
 
@@ -453,6 +498,24 @@ export async function deleteProduct(tenantId: string, productId: string): Promis
 
   // Invalidate count cache
   await deleteCache(`products:count:${tenantId}:*`);
+
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'product.deleted',
+    entityType: 'product',
+    entityId: productObjId.toString(),
+    entityName: `${product.name} (${product.sku})`,
+    changes: [],
+    metadata: {
+      sku: product.sku,
+      totalStock: product.totalStock
+    },
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
 }
 
 /**

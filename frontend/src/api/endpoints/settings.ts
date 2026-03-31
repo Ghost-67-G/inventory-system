@@ -1,6 +1,7 @@
 import client from '@/api/client';
 import type {
   AddCustomFieldDto,
+  EmailNotificationPreferences,
   ICustomField,
   Tenant,
   UpdateCustomFieldDto,
@@ -25,6 +26,12 @@ export const settingsApi = {
 
   reorderCustomFields: (fields: Array<{ fieldId: string; order: number }>) =>
     client.put<{ data: { fields: ICustomField[] } }>('/settings/custom-fields/reorder', { fields }),
+
+  getNotificationPreferences: () =>
+    client.get<{ data: { preferences: EmailNotificationPreferences } }>('/settings/notifications'),
+
+  updateNotificationPreferences: (data: Partial<EmailNotificationPreferences>) =>
+    client.patch<{ data: { preferences: EmailNotificationPreferences } }>('/settings/notifications', data),
 
   completeOnboarding: () =>
     client.post('/settings/onboarding/complete'),

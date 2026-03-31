@@ -4,12 +4,20 @@ import {
   addCustomField,
   completeOnboarding,
   deleteCustomField,
+  getNotificationPreferences,
   getTenantSettings,
   reorderCustomFields,
+  updateNotificationPreferences,
   updateCustomField,
   updateGeneralSettings,
 } from './settings.service';
-import type { AddCustomFieldBody, ReorderCustomFieldsBody, UpdateCustomFieldBody, UpdateGeneralSettingsBody } from './settings.schema';
+import type {
+  AddCustomFieldBody,
+  ReorderCustomFieldsBody,
+  UpdateCustomFieldBody,
+  UpdateGeneralSettingsBody,
+  UpdateNotificationPreferencesBody
+} from './settings.schema';
 
 export const getSettings = catchAsync(async (req: Request, res: Response) => {
   const tenant = await getTenantSettings(req.tenantId!);
@@ -17,8 +25,34 @@ export const getSettings = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const updateSettings = catchAsync(async (req: Request, res: Response) => {
-  const tenant = await updateGeneralSettings(req.tenantId!, req.user?.id ?? '', req.body as UpdateGeneralSettingsBody);
+  const tenant = await updateGeneralSettings(req.tenantId!, req.user?.id ?? '', req.body as UpdateGeneralSettingsBody, {
+    performedByName: req.user?.name ?? '',
+    performedByEmail: req.user?.email ?? '',
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: { tenant } });
+});
+
+export const getNotificationPreferencesController = catchAsync(async (req: Request, res: Response) => {
+  const preferences = await getNotificationPreferences(req.tenantId!);
+  res.status(200).json({ success: true, data: { preferences } });
+});
+
+export const updateNotificationPreferencesController = catchAsync(async (req: Request, res: Response) => {
+  const preferences = await updateNotificationPreferences(
+    req.tenantId!,
+    req.user?.id ?? '',
+    req.body as UpdateNotificationPreferencesBody,
+    {
+      performedByName: req.user?.name ?? '',
+      performedByEmail: req.user?.email ?? '',
+      ipAddress: req.ip ?? null,
+      userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+    }
+  );
+
+  res.status(200).json({ success: true, data: { preferences } });
 });
 
 export const addCustomFieldController = catchAsync(async (req: Request, res: Response) => {

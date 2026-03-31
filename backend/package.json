@@ -13,6 +13,7 @@
     "validate-seed": "ts-node --project tsconfig.json scripts/validate-seed.ts"
   },
   "dependencies": {
+    "@types/luxon": "^3.7.1",
     "@types/multer": "^2.1.0",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.12.12",
@@ -28,6 +29,7 @@
     "helmet": "^8.0.0",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
+    "luxon": "^3.7.2",
     "meilisearch": "^0.46.0",
     "mongoose": "^8.6.2",
     "multer": "^2.1.1",

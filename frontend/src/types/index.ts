@@ -293,6 +293,67 @@ export interface TenantSettings {
   lowStockThreshold: number;
   dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
   measurementUnit: 'metric' | 'imperial';
+  emailNotifications?: EmailNotificationPreferences;
+}
+
+export interface EmailNotificationPreferences {
+  lowStockAlerts: boolean;
+  dailySummary: boolean;
+  importCompletion: boolean;
+}
+
+export type AuditAction =
+  | 'product.created'
+  | 'product.updated'
+  | 'product.deleted'
+  | 'category.created'
+  | 'category.updated'
+  | 'category.deleted'
+  | 'warehouse.created'
+  | 'warehouse.updated'
+  | 'warehouse.deactivated'
+  | 'warehouse.reactivated'
+  | 'user.invited'
+  | 'user.role_changed'
+  | 'user.deactivated'
+  | 'user.reactivated'
+  | 'stock.adjusted'
+  | 'settings.updated';
+
+export type AuditEntityType = 'product' | 'category' | 'warehouse' | 'user' | 'stock' | 'settings';
+
+export interface AuditChange {
+  field: string;
+  oldValue: unknown;
+  newValue: unknown;
+}
+
+export interface IAuditLog {
+  _id: string;
+  tenantId: string;
+  performedBy: string;
+  performedByName: string;
+  performedByEmail: string;
+  action: AuditAction;
+  entityType: AuditEntityType;
+  entityId: string | null;
+  entityName: string;
+  changes: AuditChange[];
+  metadata: Record<string, unknown>;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface ListAuditParams {
+  cursor?: string;
+  limit?: number;
+  entityType?: AuditEntityType;
+  entityId?: string;
+  performedBy?: string;
+  action?: AuditAction;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface Tenant {

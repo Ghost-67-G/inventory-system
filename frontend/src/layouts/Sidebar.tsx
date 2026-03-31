@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bell,
   Boxes,
+  ClipboardList,
   LayoutDashboard,
   Package,
   Settings,
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { label: 'Reports', href: '/reports', icon: BarChart3, permission: 'report.view' },
   { label: 'Team', href: '/settings/users', icon: Users, permission: 'user.view' },
   { label: 'Categories', href: '/settings/categories', icon: Tag, permission: 'category.manage' },
+  { label: 'Audit log', href: '/audit', icon: ClipboardList, permission: 'audit.view' },
   { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings.view' }
 ];
 

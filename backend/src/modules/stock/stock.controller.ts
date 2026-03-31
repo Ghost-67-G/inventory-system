@@ -26,7 +26,12 @@ export const recordAdjustment = catchAsync(async (req: Request, res: Response) =
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const movement = await service.recordAdjustment(req.tenantId, req.user.id, req.body);
+  const movement = await service.recordAdjustment(req.tenantId, req.user.id, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(201).json({ success: true, data: { movement } });
 });
 
