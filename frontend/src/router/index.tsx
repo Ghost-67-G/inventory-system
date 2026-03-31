@@ -24,12 +24,20 @@ import { UsersPage } from '@/pages/settings/UsersPage';
 import { ReportsPage } from '@/pages/reports/ReportsPage';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
 import { useAuthStore } from '@/store/authStore';
+import { useTenantStore } from '@/store/tenantStore';
+import { OnboardingPage } from '@/pages/onboarding/OnboardingPage';
+import { RedirectIfOnboardingIncomplete, RequireOnboarding } from '@/router/guards/OnboardingGuard';
 
 function RoleRedirect() {
   const user = useAuthStore((state) => state.user);
+  const onboardingComplete = useTenantStore((state) => state.onboardingComplete);
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'owner' && !onboardingComplete) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   if (user.role === 'owner' || user.role === 'manager') {
@@ -62,101 +70,110 @@ export const router = createBrowserRouter([
         element: <AuthGuard />,
         children: [
           {
-            element: <AppLayout />,
+            element: <RequireOnboarding />,
+            children: [{ path: '/onboarding', element: <OnboardingPage /> }]
+          },
+          {
+            element: <RedirectIfOnboardingIncomplete />,
             children: [
               {
-                path: '/',
-                element: <RoleRedirect />
-              },
-              {
-                path: '/dashboard',
-                element: (
-                  <PermissionGuard permission="dashboard.view" fallback={<Navigate to="/products" replace />}>
-                    <DashboardPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/products',
-                element: (
-                  <PermissionGuard permission="product.view" fallback={<Navigate to="/" replace />}>
-                    <ProductsPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/products/:id',
-                element: (
-                  <PermissionGuard permission="product.view" fallback={<Navigate to="/" replace />}>
-                    <ProductDetailPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/warehouses',
-                element: (
-                  <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/" replace />}>
-                    <WarehousesPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/warehouses/:id',
-                element: (
-                  <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/" replace />}>
-                    <WarehouseDetailPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/stock',
-                element: (
-                  <PermissionGuard permission="stock.view" fallback={<Navigate to="/" replace />}>
-                    <StockMovementsPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/alerts',
-                element: (
-                  <PermissionGuard permission="alert.view" fallback={<Navigate to="/" replace />}>
-                    <AlertsPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/reports',
-                element: (
-                  <PermissionGuard permission="report.view" fallback={<Navigate to="/dashboard" replace />}>
-                    <ReportsPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/settings',
-                element: (
-                  <PermissionGuard permission="settings.view" fallback={<Navigate to="/" replace />}>
-                    <SettingsPage />
-                  </PermissionGuard>
-                )
-              },
-              { path: '/settings/password', element: <ChangePasswordPage /> },
-              { path: '/settings/security', element: <ChangePasswordPage /> },
-              {
-                path: '/settings/users',
-                element: (
-                  <PermissionGuard permission="user.view" fallback={<Navigate to="/" replace />}>
-                    <UsersPage />
-                  </PermissionGuard>
-                )
-              },
-              {
-                path: '/settings/categories',
-                element: (
-                  <PermissionGuard permission="category.view" fallback={<Navigate to="/" replace />}>
-                    <CategoriesPage />
-                  </PermissionGuard>
-                )
+                element: <AppLayout />,
+                children: [
+                  {
+                    path: '/',
+                    element: <RoleRedirect />
+                  },
+                  {
+                    path: '/dashboard',
+                    element: (
+                      <PermissionGuard permission="dashboard.view" fallback={<Navigate to="/products" replace />}>
+                        <DashboardPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/products',
+                    element: (
+                      <PermissionGuard permission="product.view" fallback={<Navigate to="/" replace />}>
+                        <ProductsPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/products/:id',
+                    element: (
+                      <PermissionGuard permission="product.view" fallback={<Navigate to="/" replace />}>
+                        <ProductDetailPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/warehouses',
+                    element: (
+                      <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/" replace />}>
+                        <WarehousesPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/warehouses/:id',
+                    element: (
+                      <PermissionGuard permission="warehouse.view" fallback={<Navigate to="/" replace />}>
+                        <WarehouseDetailPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/stock',
+                    element: (
+                      <PermissionGuard permission="stock.view" fallback={<Navigate to="/" replace />}>
+                        <StockMovementsPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/alerts',
+                    element: (
+                      <PermissionGuard permission="alert.view" fallback={<Navigate to="/" replace />}>
+                        <AlertsPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/reports',
+                    element: (
+                      <PermissionGuard permission="report.view" fallback={<Navigate to="/dashboard" replace />}>
+                        <ReportsPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/settings',
+                    element: (
+                      <PermissionGuard permission="settings.view" fallback={<Navigate to="/" replace />}>
+                        <SettingsPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  { path: '/settings/password', element: <ChangePasswordPage /> },
+                  { path: '/settings/security', element: <ChangePasswordPage /> },
+                  {
+                    path: '/settings/users',
+                    element: (
+                      <PermissionGuard permission="user.view" fallback={<Navigate to="/" replace />}>
+                        <UsersPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/settings/categories',
+                    element: (
+                      <PermissionGuard permission="category.view" fallback={<Navigate to="/" replace />}>
+                        <CategoriesPage />
+                      </PermissionGuard>
+                    )
+                  }
+                ]
               }
             ]
           }

@@ -45,11 +45,11 @@ function getRefreshTokenCandidates(req: Request): string[] {
 }
 
 export const register = catchAsync(async (req: Request, res: Response) => {
-  const { user } = await authService.register(req.body as Parameters<typeof authService.register>[0]);
+  const { user, tenant, requiresOnboarding } = await authService.register(req.body as Parameters<typeof authService.register>[0]);
   res.status(201).json({
     success: true,
     message: 'Registration successful. Please verify your email.',
-    data: { user }
+    data: { user, tenant, requiresOnboarding }
   });
 });
 

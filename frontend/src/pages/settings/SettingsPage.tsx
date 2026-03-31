@@ -1,10 +1,23 @@
 import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { usePermission } from '@/hooks/usePermission';
+import { useResetOnboarding } from '@/hooks/useOnboarding';
 import { useSettings } from '@/hooks/useSettings';
 import { AccountTab } from '@/pages/settings/tabs/AccountTab';
 import { CustomFieldsTab } from '@/pages/settings/tabs/CustomFieldsTab';
 import { GeneralSettingsTab } from '@/pages/settings/tabs/GeneralSettingsTab';
+import { PermissionGuard } from '@/router/guards/PermissionGuard';
 
 const TABS = [
   { key: 'general', label: 'General' },
@@ -16,8 +29,10 @@ type TabKey = (typeof TABS)[number]['key'];
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('general');
+  const [restartDialogOpen, setRestartDialogOpen] = useState(false);
   const { role } = usePermission();
   const canManage = role === 'owner';
+  const resetOnboarding = useResetOnboarding();
 
   useSettings();
 
@@ -50,6 +65,35 @@ export function SettingsPage() {
       {activeTab === 'general' ? <GeneralSettingsTab canManage={canManage} /> : null}
       {activeTab === 'custom-fields' ? <CustomFieldsTab canManage={canManage} /> : null}
       {activeTab === 'account' ? <AccountTab /> : null}
+
+      <PermissionGuard permission="settings.manage">
+        <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+          <h3 className="text-base font-semibold text-slate-900">Setup wizard</h3>
+          <p className="mt-1 text-sm text-slate-600">
+            Run through the initial setup wizard again to review or update your business configuration.
+          </p>
+          <Button className="mt-4" variant="outline" onClick={() => setRestartDialogOpen(true)}>
+            Restart onboarding
+          </Button>
+        </section>
+      </PermissionGuard>
+
+      <AlertDialog open={restartDialogOpen} onOpenChange={setRestartDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restart onboarding?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will not delete any of your data. It will just show you the setup wizard again on next login.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void resetOnboarding.mutateAsync()} disabled={resetOnboarding.isPending}>
+              Restart
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

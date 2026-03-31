@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,8 @@ function passwordStrength(pw: string): { label: string; color: string } {
 }
 
 export function RegisterPage() {
-  const { mutate: register, isPending, error } = useRegister();
+  const { mutateAsync: register, isPending, error } = useRegister();
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
 
   const { register: reg, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
@@ -51,7 +53,17 @@ export function RegisterPage() {
     return 'Registration failed';
   })();
 
-  const onSubmit = handleSubmit(({ terms: _terms, ...values }) => register(values));
+  const onSubmit = handleSubmit(async ({ terms: _terms, ...values }) => {
+    const response = await register(values);
+    const requiresOnboarding = response.data.data.requiresOnboarding;
+
+    if (requiresOnboarding) {
+      void navigate('/onboarding');
+      return;
+    }
+
+    void navigate('/dashboard');
+  });
 
   return (
     <div>

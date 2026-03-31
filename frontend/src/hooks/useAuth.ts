@@ -26,13 +26,8 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  const navigate = useNavigate();
-
   return useMutation({
-    mutationFn: (data: RegisterDto) => authApi.register(data),
-    onSuccess: () => {
-      void navigate('/verify-email-sent');
-    }
+    mutationFn: (data: RegisterDto) => authApi.register(data)
   });
 }
 
