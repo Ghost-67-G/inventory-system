@@ -33,7 +33,12 @@ export const invite = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(400, 'tenantId missing');
   }
 
-  const user = await service.inviteUser(req.tenantId, req.user.id, req.user.role, req.body);
+  const user = await service.inviteUser(req.tenantId, req.user.id, req.user.role, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(201).json({ success: true, message: 'Invitation sent', data: { user } });
 });
 
@@ -42,7 +47,12 @@ export const update = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(400, 'tenantId missing');
   }
 
-  const user = await service.updateUser(req.tenantId, req.user.id, req.user.role, req.params.userId, req.body);
+  const user = await service.updateUser(req.tenantId, req.user.id, req.user.role, req.params.userId, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: { user } });
 });
 
@@ -51,7 +61,12 @@ export const deactivate = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(400, 'tenantId missing');
   }
 
-  await service.deactivateUser(req.tenantId, req.user.id, req.user.role, req.params.userId);
+  await service.deactivateUser(req.tenantId, req.user.id, req.user.role, req.params.userId, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, message: 'User deactivated' });
 });
 
@@ -60,7 +75,12 @@ export const reactivate = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(400, 'tenantId missing');
   }
 
-  const user = await service.reactivateUser(req.tenantId, req.user.id, req.user.role, req.params.userId);
+  const user = await service.reactivateUser(req.tenantId, req.user.id, req.user.role, req.params.userId, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: { user } });
 });
 

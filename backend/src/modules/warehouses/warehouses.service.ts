@@ -5,6 +5,7 @@ import { ApiError } from '../../utils/ApiError';
 import { redis } from '../../config/redis';
 import { deleteCache, getCache, setCache } from '../../config/redis';
 import mongoose from 'mongoose';
+import { createAuditLog, diffObjects, type AuditContext } from '../../utils/audit';
 
 function toObjectId(id: string): mongoose.Types.ObjectId {
   return new mongoose.Types.ObjectId(id);
@@ -221,7 +222,8 @@ export async function getWarehouse(
 export async function createWarehouse(
   tenantId: string,
   userId: string,
-  data: CreateWarehouseDto
+  data: CreateWarehouseDto,
+  auditCtx: AuditContext
 ): Promise<IWarehouse> {
   // Auto-generate code if not provided
   let code = data.code;
@@ -265,6 +267,25 @@ export async function createWarehouse(
   // Invalidate cache
   await invalidateWarehouseCache(tenantId);
 
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'warehouse.created',
+    entityType: 'warehouse',
+    entityId: warehouse._id.toString(),
+    entityName: `${warehouse.name} (${warehouse.code})`,
+    changes: [],
+    metadata: {
+      code: warehouse.code,
+      isDefault: warehouse.isDefault,
+      isActive: warehouse.isActive
+    },
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   return warehouse;
 }
 
@@ -273,12 +294,16 @@ export async function createWarehouse(
 export async function updateWarehouse(
   tenantId: string,
   warehouseId: string,
-  data: UpdateWarehouseDto
+  userId: string,
+  data: UpdateWarehouseDto,
+  auditCtx: AuditContext
 ): Promise<IWarehouse> {
   const warehouse = await WarehouseModel.findOne({ _id: warehouseId, tenantId });
   if (!warehouse) {
     throw new ApiError(404, 'Warehouse not found');
   }
+
+  const beforeWarehouse = warehouse.toObject() as unknown as Record<string, unknown>;
 
   // Check code uniqueness if code is provided and different
   if (data.code && data.code.toUpperCase() !== warehouse.code) {
@@ -326,6 +351,23 @@ export async function updateWarehouse(
   // Invalidate cache
   await invalidateWarehouseCache(tenantId);
 
+  const afterWarehouse = warehouse.toObject() as unknown as Record<string, unknown>;
+  const changes = diffObjects(beforeWarehouse, afterWarehouse);
+
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'warehouse.updated',
+    entityType: 'warehouse',
+    entityId: warehouse._id.toString(),
+    entityName: `${warehouse.name} (${warehouse.code})`,
+    changes,
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   return warehouse;
 }
 
@@ -333,7 +375,9 @@ export async function updateWarehouse(
 
 export async function deactivateWarehouse(
   tenantId: string,
-  warehouseId: string
+  warehouseId: string,
+  requesterId: string,
+  auditCtx: AuditContext
 ): Promise<IWarehouse> {
   const warehouse = await WarehouseModel.findOne({ _id: warehouseId, tenantId });
   if (!warehouse) {
@@ -382,6 +426,20 @@ export async function deactivateWarehouse(
   // Invalidate cache
   await invalidateWarehouseCache(tenantId);
 
+  createAuditLog({
+    tenantId,
+    performedBy: requesterId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'warehouse.deactivated',
+    entityType: 'warehouse',
+    entityId: warehouse._id.toString(),
+    entityName: `${warehouse.name} (${warehouse.code})`,
+    changes: [{ field: 'isActive', oldValue: true, newValue: false }],
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   return warehouse;
 }
 
@@ -389,7 +447,9 @@ export async function deactivateWarehouse(
 
 export async function reactivateWarehouse(
   tenantId: string,
-  warehouseId: string
+  warehouseId: string,
+  requesterId: string,
+  auditCtx: AuditContext
 ): Promise<IWarehouse> {
   const warehouse = await WarehouseModel.findOne({ _id: warehouseId, tenantId });
   if (!warehouse) {
@@ -405,6 +465,20 @@ export async function reactivateWarehouse(
 
   // Invalidate cache
   await invalidateWarehouseCache(tenantId);
+
+  createAuditLog({
+    tenantId,
+    performedBy: requesterId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'warehouse.reactivated',
+    entityType: 'warehouse',
+    entityId: warehouse._id.toString(),
+    entityName: `${warehouse.name} (${warehouse.code})`,
+    changes: [{ field: 'isActive', oldValue: false, newValue: true }],
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
 
   return warehouse;
 }

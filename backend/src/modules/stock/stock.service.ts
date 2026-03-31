@@ -11,6 +11,7 @@ import { enqueueProductUpsert } from '../../queues/jobs/searchSync.job';
 import { ApiError } from '../../utils/ApiError';
 import { invalidateWarehouseCache } from '../warehouses/warehouses.service';
 import { invalidateDashboardActivityCache, triggerStatsRefresh } from '../dashboard/dashboard.service';
+import { createAuditLog, type AuditContext } from '../../utils/audit';
 
 interface BaseMovementInput {
   productId: string;
@@ -321,13 +322,14 @@ export async function recordOut(tenantId: string, userId: string, data: RecordOu
 export async function recordAdjustment(
   tenantId: string,
   userId: string,
-  data: RecordAdjustmentInput
+  data: RecordAdjustmentInput,
+  auditCtx: AuditContext
 ): Promise<IStockMovement> {
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
 
-    const { product } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
+    const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
     const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId);
 
     if (data.quantity < 0 && warehouseStock.quantity + data.quantity < 0) {
@@ -390,6 +392,26 @@ export async function recordAdjustment(
         })
       )
     ]);
+
+    createAuditLog({
+      tenantId,
+      performedBy: userId,
+      performedByName: auditCtx.performedByName,
+      performedByEmail: auditCtx.performedByEmail,
+      action: 'stock.adjusted',
+      entityType: 'stock',
+      entityId: product._id.toString(),
+      entityName: `${product.name} (${product.sku})`,
+      metadata: {
+        warehouseId: data.warehouseId,
+        warehouseName: warehouse.name,
+        quantity: data.quantity,
+        quantityBefore,
+        quantityAfter
+      },
+      ipAddress: auditCtx.ipAddress,
+      userAgent: auditCtx.userAgent
+    }).catch(() => {});
 
     return created[0];
   } catch (error) {

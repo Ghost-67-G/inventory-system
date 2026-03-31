@@ -23,6 +23,7 @@ import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { UsersPage } from '@/pages/settings/UsersPage';
 import { ReportsPage } from '@/pages/reports/ReportsPage';
+import { AuditLogPage } from '@/pages/audit/AuditLogPage';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
 import { useAuthStore } from '@/store/authStore';
 import { useTenantStore } from '@/store/tenantStore';
@@ -161,6 +162,14 @@ export const router = createBrowserRouter([
                     element: (
                       <PermissionGuard permission="settings.view" fallback={<Navigate to="/" replace />}>
                         <SettingsPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/audit',
+                    element: (
+                      <PermissionGuard permission="audit.view" fallback={<Navigate to="/dashboard" replace />}>
+                        <AuditLogPage />
                       </PermissionGuard>
                     )
                   },

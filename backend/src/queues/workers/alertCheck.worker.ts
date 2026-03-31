@@ -6,6 +6,7 @@ import { Product } from '../../models/Product';
 import { WarehouseStockModel } from '../../models/WarehouseStock';
 import { deleteCache, CACHE_KEYS } from '../../config/redis';
 import { logger } from '../../utils/logger';
+import { enqueueLowStockEmail } from '../jobs/emailNotification.job';
 
 interface AlertCheckPayload {
   tenantId: string;
@@ -58,7 +59,7 @@ export function startAlertCheckWorker(): Worker {
         const existing = await StockAlertModel.findOne({ tenantId, productId, warehouseId, status: 'PENDING' });
 
         if (!existing) {
-          await StockAlertModel.create({
+          const alert = await StockAlertModel.create({
             tenantId,
             productId,
             warehouseId,
@@ -76,6 +77,8 @@ export function startAlertCheckWorker(): Worker {
             currentStock,
             threshold
           });
+
+          enqueueLowStockEmail(tenantId, alert._id.toString()).catch(() => {});
         } else {
           existing.currentStock = currentStock;
           existing.threshold = threshold;

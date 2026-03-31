@@ -44,28 +44,48 @@ export const getStock = catchAsync(async (req: Request, res: Response) => {
 export const create = catchAsync(async (req: Request, res: Response) => {
   if (!req.tenantId || !req.user?.id) throw new ApiError(400, 'tenantId or userId missing');
 
-  const warehouse = await service.createWarehouse(req.tenantId, req.user.id, req.body);
+  const warehouse = await service.createWarehouse(req.tenantId, req.user.id, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(201).json({ success: true, data: { warehouse } });
 });
 
 export const update = catchAsync(async (req: Request, res: Response) => {
-  if (!req.tenantId) throw new ApiError(400, 'tenantId missing');
+  if (!req.tenantId || !req.user?.id) throw new ApiError(400, 'tenantId missing');
 
-  const warehouse = await service.updateWarehouse(req.tenantId, req.params.warehouseId, req.body);
+  const warehouse = await service.updateWarehouse(req.tenantId, req.params.warehouseId, req.user.id, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: { warehouse } });
 });
 
 export const deactivate = catchAsync(async (req: Request, res: Response) => {
-  if (!req.tenantId) throw new ApiError(400, 'tenantId missing');
+  if (!req.tenantId || !req.user?.id) throw new ApiError(400, 'tenantId missing');
 
-  await service.deactivateWarehouse(req.tenantId, req.params.warehouseId);
+  await service.deactivateWarehouse(req.tenantId, req.params.warehouseId, req.user.id, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, message: 'Warehouse deactivated' });
 });
 
 export const reactivate = catchAsync(async (req: Request, res: Response) => {
-  if (!req.tenantId) throw new ApiError(400, 'tenantId missing');
+  if (!req.tenantId || !req.user?.id) throw new ApiError(400, 'tenantId missing');
 
-  const warehouse = await service.reactivateWarehouse(req.tenantId, req.params.warehouseId);
+  const warehouse = await service.reactivateWarehouse(req.tenantId, req.params.warehouseId, req.user.id, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: { warehouse } });
 });
 

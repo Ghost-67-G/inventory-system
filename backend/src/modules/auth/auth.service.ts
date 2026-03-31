@@ -130,7 +130,9 @@ export async function login(
   const accessToken = generateAccessToken({
     userId: String(user._id),
     tenantId: String(user.tenantId),
-    role: user.role
+    role: user.role,
+    name: user.name,
+    email: user.email
   });
   const refreshToken = generateRefreshToken({
     userId: String(user._id),
@@ -175,7 +177,9 @@ export async function refreshToken(token: string): Promise<{ accessToken: string
   const accessToken = generateAccessToken({
     userId: String(user._id),
     tenantId: String(user.tenantId),
-    role: user.role
+    role: user.role,
+    name: user.name,
+    email: user.email
   });
   const newRefreshToken = generateRefreshToken({
     userId: String(user._id),

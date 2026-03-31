@@ -84,3 +84,205 @@ export async function sendInviteEmail(to: string, data: InviteEmailData): Promis
 
   await sendEmail(to, `You've been invited to join ${data.tenantName}`, html);
 }
+
+function formatCurrency(value: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toFixed(2)}`;
+  }
+}
+
+interface LowStockEmailData {
+  ownerName: string;
+  productName: string;
+  sku: string;
+  currentStock: number;
+  threshold: number;
+  unit: string;
+  warehouseName: string;
+  currency: string;
+  appUrl: string;
+}
+
+export async function sendLowStockAlertEmail(to: string, data: LowStockEmailData): Promise<void> {
+  const subject = `⚠️ Low stock: ${data.productName} (${data.currentStock} ${data.unit} remaining)`;
+  const html = `
+    <div style="background:#f8fafc;padding:24px;font-family:Arial,sans-serif;color:#0f172a;">
+      <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+        <div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;">
+          <h2 style="margin:0;font-size:20px;">Inventory System</h2>
+          <div style="margin-top:12px;background:#fef3c7;color:#92400e;padding:8px 12px;border-radius:6px;font-weight:600;">Low Stock Alert</div>
+        </div>
+        <div style="padding:20px 24px;">
+          <p style="margin:0 0 12px;">Hi ${data.ownerName},</p>
+          <p style="margin:0 0 16px;color:#334155;">A product is below its configured stock threshold and needs attention.</p>
+          <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <tr><td style="padding:8px 0;color:#64748b;width:45%;">Product</td><td style="padding:8px 0;font-weight:600;">${data.productName}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b;">SKU</td><td style="padding:8px 0;">${data.sku}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b;">Warehouse</td><td style="padding:8px 0;">${data.warehouseName}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b;">Current stock</td><td style="padding:8px 0;color:#dc2626;font-weight:700;">${data.currentStock} ${data.unit}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b;">Alert threshold</td><td style="padding:8px 0;">${data.threshold} ${data.unit}</td></tr>
+          </table>
+          <div style="margin-top:20px;">
+            <a href="${data.appUrl}/alerts" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600;">View Alerts</a>
+          </div>
+        </div>
+        <div style="padding:14px 24px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;">
+          You're receiving this because low stock alerts are enabled. Manage preferences in Settings.
+        </div>
+      </div>
+    </div>
+  `;
+
+  await sendEmail(to, subject, html);
+}
+
+interface DailySummaryItem {
+  name: string;
+  sku: string;
+  totalStock: number;
+  unit: string;
+  threshold: number;
+}
+
+interface DailySummaryEmailData {
+  ownerName: string;
+  date: string;
+  pendingAlerts: number;
+  movementsToday: number;
+  totalStockValue: number;
+  currency: string;
+  topLowStock: DailySummaryItem[];
+  appUrl: string;
+}
+
+export async function sendDailySummaryEmail(to: string, data: DailySummaryEmailData): Promise<void> {
+  const subject = `📦 Daily inventory summary — ${data.date}`;
+  const pendingColor = data.pendingAlerts > 0 ? '#dc2626' : '#16a34a';
+  const lowStockTable =
+    data.topLowStock.length > 0
+      ? `
+      <h3 style="margin:20px 0 8px;font-size:15px;">Products needing attention:</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;color:#64748b;">Name</th>
+            <th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;color:#64748b;">Stock</th>
+            <th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;color:#64748b;">Threshold</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.topLowStock
+            .slice(0, 10)
+            .map(
+              (item) =>
+                `<tr>
+                  <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${item.name} (${item.sku})</td>
+                  <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${item.totalStock} ${item.unit}</td>
+                  <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${item.threshold} ${item.unit}</td>
+                </tr>`
+            )
+            .join('')}
+        </tbody>
+      </table>
+      `
+      : '';
+
+  const html = `
+    <div style="background:#f8fafc;padding:24px;font-family:Arial,sans-serif;color:#0f172a;">
+      <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+        <div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;">
+          <h2 style="margin:0;font-size:20px;">Daily Inventory Summary</h2>
+          <p style="margin:6px 0 0;color:#64748b;">${data.date}</p>
+        </div>
+        <div style="padding:20px 24px;">
+          <p style="margin:0 0 14px;">Hi ${data.ownerName},</p>
+          <div style="font-size:0;">
+            <div style="display:inline-block;width:48%;vertical-align:top;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-right:2%;margin-bottom:10px;">
+              <div style="font-size:12px;color:#64748b;">Pending alerts</div>
+              <div style="font-size:20px;font-weight:700;color:${pendingColor};">${data.pendingAlerts}</div>
+            </div>
+            <div style="display:inline-block;width:48%;vertical-align:top;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:10px;">
+              <div style="font-size:12px;color:#64748b;">Movements today</div>
+              <div style="font-size:20px;font-weight:700;">${data.movementsToday}</div>
+            </div>
+            <div style="display:inline-block;width:48%;vertical-align:top;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-right:2%;">
+              <div style="font-size:12px;color:#64748b;">Total stock value</div>
+              <div style="font-size:20px;font-weight:700;">${formatCurrency(data.totalStockValue, data.currency)}</div>
+            </div>
+            <div style="display:inline-block;width:48%;vertical-align:top;border:1px solid #e2e8f0;border-radius:8px;padding:10px;">
+              <div style="font-size:12px;color:#64748b;">Status</div>
+              <div style="font-size:20px;font-weight:700;">Healthy</div>
+            </div>
+          </div>
+          ${lowStockTable}
+          <div style="margin-top:20px;">
+            <a href="${data.appUrl}/dashboard" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600;">Open Dashboard</a>
+          </div>
+        </div>
+        <div style="padding:14px 24px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;">
+          You can disable daily summaries anytime in Settings.
+        </div>
+      </div>
+    </div>
+  `;
+
+  await sendEmail(to, subject, html);
+}
+
+interface ImportCompletionEmailData {
+  userName: string;
+  fileName: string;
+  status: 'COMPLETED' | 'PARTIAL' | 'FAILED';
+  successCount: number;
+  errorCount: number;
+  totalRows: number;
+  appUrl: string;
+}
+
+export async function sendImportCompletionEmail(to: string, data: ImportCompletionEmailData): Promise<void> {
+  const subject =
+    data.status === 'COMPLETED'
+      ? `Import complete — ${data.successCount} products added`
+      : data.status === 'PARTIAL'
+        ? `Import finished with errors — ${data.successCount} added, ${data.errorCount} failed`
+        : `Import failed — ${data.fileName}`;
+
+  const statusColor = data.status === 'COMPLETED' ? '#16a34a' : data.status === 'PARTIAL' ? '#d97706' : '#dc2626';
+  const statusTitle =
+    data.status === 'COMPLETED'
+      ? 'Import Successful'
+      : data.status === 'PARTIAL'
+        ? 'Import Finished With Errors'
+        : 'Import Failed';
+
+  const html = `
+    <div style="background:#f8fafc;padding:24px;font-family:Arial,sans-serif;color:#0f172a;">
+      <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+        <div style="padding:14px 24px;background:${statusColor};color:#ffffff;font-weight:700;">${statusTitle}</div>
+        <div style="padding:20px 24px;">
+          <p style="margin:0 0 12px;">Hi ${data.userName},</p>
+          <p style="margin:0 0 16px;color:#334155;">Your import file <strong>${data.fileName}</strong> has finished processing.</p>
+          <ul style="padding-left:18px;margin:0 0 16px;">
+            <li style="margin:6px 0;">${data.successCount} products added</li>
+            ${data.errorCount > 0 ? `<li style="margin:6px 0;">${data.errorCount} rows skipped</li>` : ''}
+            <li style="margin:6px 0;">${data.totalRows} total rows</li>
+          </ul>
+          ${
+            data.errorCount > 0
+              ? '<p style="margin:0 0 16px;color:#92400e;background:#fef3c7;padding:10px;border-radius:6px;">Download the error report from the import page to see which rows failed.</p>'
+              : ''
+          }
+          <a href="${data.appUrl}/products/import" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600;">View Import Results</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await sendEmail(to, subject, html);
+}

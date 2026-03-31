@@ -11,6 +11,7 @@ import { startAlertCheckWorker } from './queues/workers/alertCheck.worker';
 import { enqueueScheduledDashboardRefresh } from './queues/jobs/dashboardStats.job';
 import { startDashboardStatsWorker } from './queues/workers/dashboardStats.worker';
 import { startCsvImportWorker } from './queues/workers/csvImport.worker';
+import { startEmailNotificationWorker, startEmailSchedulerWorker } from './queues/workers/emailNotification.worker';
 import { logger } from './utils/logger';
 import { TenantModel } from './models/Tenant';
 import { WarehouseModel } from './models/Warehouse';
@@ -28,6 +29,8 @@ const start = async (): Promise<void> => {
   startAlertCheckWorker();
   startDashboardStatsWorker();
   startCsvImportWorker();
+  startEmailNotificationWorker();
+  startEmailSchedulerWorker();
 
   const schedulerQueue = new Queue('dashboard-scheduler', { connection: { url: config.REDIS_URL } });
   const schedulerWorker = new Worker(
@@ -50,6 +53,16 @@ const start = async (): Promise<void> => {
     {
       repeat: { every: 5 * 60 * 1000 },
       jobId: 'dashboard-scheduler-repeatable'
+    }
+  );
+
+  const emailSchedulerQueue = new Queue('email-scheduler', { connection: { url: config.REDIS_URL } });
+  await emailSchedulerQueue.add(
+    'check-daily-summaries',
+    {},
+    {
+      repeat: { every: 15 * 60 * 1000 },
+      jobId: 'daily-summary-scheduler'
     }
   );
 

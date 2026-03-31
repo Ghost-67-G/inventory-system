@@ -2,8 +2,15 @@ import { config } from '../../config';
 import { CACHE_KEYS, deleteCache, getCache, setCache } from '../../config/redis';
 import type { ICustomField, ITenant } from '../../models/Tenant';
 import { TenantModel } from '../../models/Tenant';
+import { createAuditLog, diffObjects, type AuditContext } from '../../utils/audit';
 import { ApiError } from '../../utils/ApiError';
-import type { AddCustomFieldBody, ReorderCustomFieldsBody, UpdateCustomFieldBody, UpdateGeneralSettingsBody } from './settings.schema';
+import type {
+  AddCustomFieldBody,
+  ReorderCustomFieldsBody,
+  UpdateCustomFieldBody,
+  UpdateGeneralSettingsBody,
+  UpdateNotificationPreferencesBody
+} from './settings.schema';
 
 const TENANT_SETTINGS_TTL = 60 * 60; // 1 hour
 
@@ -43,13 +50,16 @@ export async function getTenantSettings(tenantId: string): Promise<ITenant> {
 
 export async function updateGeneralSettings(
   tenantId: string,
-  _requesterId: string,
-  data: UpdateGeneralSettingsBody
+  requesterId: string,
+  data: UpdateGeneralSettingsBody,
+  auditCtx: AuditContext
 ): Promise<ITenant> {
   const tenant = await TenantModel.findById(tenantId);
   if (!tenant) {
     throw new ApiError(404, 'Tenant not found');
   }
+
+  const oldSettings = JSON.parse(JSON.stringify(tenant.settings));
 
   if (data.name !== undefined) {
     const newSlug = generateSlug(data.name);
@@ -71,12 +81,104 @@ export async function updateGeneralSettings(
 
   await tenant.save();
 
+  createAuditLog({
+    tenantId,
+    performedBy: requesterId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'settings.updated',
+    entityType: 'settings',
+    entityId: tenantId,
+    entityName: 'Tenant settings',
+    changes: diffObjects(oldSettings as Record<string, unknown>, JSON.parse(JSON.stringify(tenant.settings)) as Record<string, unknown>),
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   await deleteCache(CACHE_KEYS.tenantSettings(tenantId));
   if (config.DEPLOYMENT_MODE === 'self_hosted') {
     await deleteCache(CACHE_KEYS.selfHostedTenantId);
   }
 
   return tenant;
+}
+
+export async function getNotificationPreferences(tenantId: string): Promise<{
+  lowStockAlerts: boolean;
+  dailySummary: boolean;
+  importCompletion: boolean;
+}> {
+  const tenant = await TenantModel.findById(tenantId).select('settings.emailNotifications').lean();
+  if (!tenant) {
+    throw new ApiError(404, 'Tenant not found');
+  }
+
+  return {
+    lowStockAlerts: tenant.settings?.emailNotifications?.lowStockAlerts ?? true,
+    dailySummary: tenant.settings?.emailNotifications?.dailySummary ?? false,
+    importCompletion: tenant.settings?.emailNotifications?.importCompletion ?? true
+  };
+}
+
+export async function updateNotificationPreferences(
+  tenantId: string,
+  requesterId: string,
+  data: UpdateNotificationPreferencesBody,
+  auditCtx: AuditContext
+): Promise<{
+  lowStockAlerts: boolean;
+  dailySummary: boolean;
+  importCompletion: boolean;
+}> {
+  const tenant = await TenantModel.findById(tenantId);
+  if (!tenant) {
+    throw new ApiError(404, 'Tenant not found');
+  }
+
+  const oldSettings = JSON.parse(JSON.stringify(tenant.settings));
+
+  if (!tenant.settings.emailNotifications) {
+    tenant.settings.emailNotifications = {
+      lowStockAlerts: true,
+      dailySummary: false,
+      importCompletion: true
+    };
+  }
+
+  if (data.lowStockAlerts !== undefined) {
+    tenant.settings.emailNotifications.lowStockAlerts = data.lowStockAlerts;
+  }
+
+  if (data.dailySummary !== undefined) {
+    tenant.settings.emailNotifications.dailySummary = data.dailySummary;
+  }
+
+  if (data.importCompletion !== undefined) {
+    tenant.settings.emailNotifications.importCompletion = data.importCompletion;
+  }
+
+  await tenant.save();
+  await deleteCache(CACHE_KEYS.tenantSettings(tenantId));
+
+  createAuditLog({
+    tenantId,
+    performedBy: requesterId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'settings.updated',
+    entityType: 'settings',
+    entityId: tenantId,
+    entityName: 'Tenant settings',
+    changes: diffObjects(oldSettings as Record<string, unknown>, JSON.parse(JSON.stringify(tenant.settings)) as Record<string, unknown>),
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
+  return {
+    lowStockAlerts: tenant.settings.emailNotifications.lowStockAlerts,
+    dailySummary: tenant.settings.emailNotifications.dailySummary,
+    importCompletion: tenant.settings.emailNotifications.importCompletion
+  };
 }
 
 export async function addCustomField(

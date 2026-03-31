@@ -72,7 +72,20 @@ export const reorderCustomFieldsSchema = z.object({
   }),
 });
 
+export const updateNotificationPreferencesSchema = z.object({
+  body: z
+    .object({
+      lowStockAlerts: z.boolean().optional(),
+      dailySummary: z.boolean().optional(),
+      importCompletion: z.boolean().optional()
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+      message: 'At least one preference must be provided'
+    })
+});
+
 export type UpdateGeneralSettingsBody = z.infer<typeof updateGeneralSettingsSchema>['body'];
 export type AddCustomFieldBody = z.infer<typeof addCustomFieldSchema>['body'];
 export type UpdateCustomFieldBody = z.infer<typeof updateCustomFieldSchema>['body'];
 export type ReorderCustomFieldsBody = z.infer<typeof reorderCustomFieldsSchema>['body'];
+export type UpdateNotificationPreferencesBody = z.infer<typeof updateNotificationPreferencesSchema>['body'];

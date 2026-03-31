@@ -9,6 +9,7 @@ import { ImportJob, type IImportJobError, type ImportJobStatus } from '../../mod
 import { Product } from '../../models/Product';
 import { TenantModel } from '../../models/Tenant';
 import { enqueueProductUpsert } from '../jobs/searchSync.job';
+import { enqueueImportCompletionEmail } from '../jobs/emailNotification.job';
 import { logger } from '../../utils/logger';
 
 interface CsvImportPayload {
@@ -406,6 +407,8 @@ async function processImport(job: Job<CsvImportPayload>): Promise<void> {
       completedAt: new Date()
     });
 
+    enqueueImportCompletionEmail(tenantId, jobId, userId).catch(() => {});
+
     await emitCompletion(tenantId, jobId, finalStatus, successCount, errorCount);
     logger.info('csv_import_completed', { jobId, tenantId, fileName, successCount, errorCount, status: finalStatus });
   } catch (error) {
@@ -428,6 +431,8 @@ async function processImport(job: Job<CsvImportPayload>): Promise<void> {
       errors,
       completedAt: new Date()
     });
+
+    enqueueImportCompletionEmail(tenantId, jobId, userId).catch(() => {});
 
     await emitCompletion(tenantId, jobId, 'FAILED', successCount, failedErrorCount);
   } finally {

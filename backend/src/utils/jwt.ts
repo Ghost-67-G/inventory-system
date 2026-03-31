@@ -6,6 +6,8 @@ export interface AccessTokenPayload {
   userId: string;
   tenantId: string;
   role: string;
+  name?: string;
+  email?: string;
   iat: number;
   exp: number;
 }
@@ -17,9 +19,21 @@ export interface RefreshTokenPayload {
   exp: number;
 }
 
-export function generateAccessToken(payload: { userId: string; tenantId: string; role: string }): string {
+export function generateAccessToken(payload: {
+  userId: string;
+  tenantId: string;
+  role: string;
+  name: string;
+  email: string;
+}): string {
   return jwt.sign(
-    { userId: payload.userId, tenantId: payload.tenantId, role: payload.role },
+    {
+      userId: payload.userId,
+      tenantId: payload.tenantId,
+      role: payload.role,
+      name: payload.name,
+      email: payload.email
+    },
     config.JWT_ACCESS_SECRET,
     { expiresIn: `${config.JWT_ACCESS_EXPIRATION_MINUTES}m` }
   );

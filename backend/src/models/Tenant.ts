@@ -18,6 +18,11 @@ export interface ITenantSettings {
   lowStockThreshold: number;
   dateFormat: string;
   measurementUnit: 'metric' | 'imperial';
+  emailNotifications: {
+    lowStockAlerts: boolean;
+    dailySummary: boolean;
+    importCompletion: boolean;
+  };
 }
 
 export interface ITenant extends Document {
@@ -54,7 +59,12 @@ const tenantSchema = new Schema<ITenant>(
       timezone: { type: String, default: 'UTC' },
       lowStockThreshold: { type: Number, default: 10 },
       dateFormat: { type: String, default: 'MM/DD/YYYY' },
-      measurementUnit: { type: String, enum: ['metric', 'imperial'], default: 'metric' }
+      measurementUnit: { type: String, enum: ['metric', 'imperial'], default: 'metric' },
+      emailNotifications: {
+        lowStockAlerts: { type: Boolean, default: true },
+        dailySummary: { type: Boolean, default: false },
+        importCompletion: { type: Boolean, default: true }
+      }
     },
     customFields: { type: [customFieldSchema], default: [] },
     onboardingComplete: { type: Boolean, default: false }
