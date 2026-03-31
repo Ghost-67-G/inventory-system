@@ -8,7 +8,12 @@ export const recordIn = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const movement = await service.recordIn(req.tenantId, req.user.id, req.body);
+  const movement = await service.recordIn(req.tenantId, req.user.id, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(201).json({ success: true, data: { movement } });
 });
 
@@ -17,7 +22,12 @@ export const recordOut = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const movement = await service.recordOut(req.tenantId, req.user.id, req.body);
+  const movement = await service.recordOut(req.tenantId, req.user.id, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(201).json({ success: true, data: { movement } });
 });
 
@@ -40,7 +50,12 @@ export const recordWaste = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const movement = await service.recordWaste(req.tenantId, req.user.id, req.body);
+  const movement = await service.recordWaste(req.tenantId, req.user.id, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(201).json({ success: true, data: { movement } });
 });
 
@@ -49,7 +64,12 @@ export const recordTransfer = catchAsync(async (req: Request, res: Response) => 
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const movements = await service.recordTransfer(req.tenantId, req.user.id, req.body);
+  const movements = await service.recordTransfer(req.tenantId, req.user.id, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(201).json({ success: true, data: { movements } });
 });
 
@@ -103,7 +123,12 @@ export const acknowledgeAlert = catchAsync(async (req: Request, res: Response) =
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const alert = await service.acknowledgeAlert(req.tenantId, req.params.id, req.user.id);
+  const alert = await service.acknowledgeAlert(req.tenantId, req.params.id, req.user.id, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: { alert } });
 });
 
@@ -112,6 +137,11 @@ export const bulkAcknowledge = catchAsync(async (req: Request, res: Response) =>
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const { acknowledged } = await service.bulkAcknowledge(req.tenantId, req.body.alertIds, req.user.id);
+  const { acknowledged } = await service.bulkAcknowledge(req.tenantId, req.body.alertIds, req.user.id, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: { acknowledged } });
 });

@@ -33,20 +33,35 @@ export const getOne = catchAsync(async (req: Request, res: Response) => {
 export const create = catchAsync(async (req: Request, res: Response) => {
   if (!req.tenantId || !req.user?.id) throw new ApiError(400, 'tenantId missing');
 
-  const category = await service.createCategory(req.tenantId, req.user.id, req.body);
+  const category = await service.createCategory(req.tenantId, req.user.id, req.body, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(201).json({ success: true, data: { category } });
 });
 
 export const update = catchAsync(async (req: Request, res: Response) => {
-  if (!req.tenantId) throw new ApiError(400, 'tenantId missing');
+  if (!req.tenantId || !req.user?.id) throw new ApiError(400, 'tenantId missing');
 
-  const category = await service.updateCategory(req.tenantId, req.params.categoryId, req.body);
+  const category = await service.updateCategory(req.tenantId, req.params.categoryId, req.body, req.user.id, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, data: { category } });
 });
 
 export const remove = catchAsync(async (req: Request, res: Response) => {
-  if (!req.tenantId) throw new ApiError(400, 'tenantId missing');
+  if (!req.tenantId || !req.user?.id) throw new ApiError(400, 'tenantId missing');
 
-  await service.deleteCategory(req.tenantId, req.params.categoryId);
+  await service.deleteCategory(req.tenantId, req.params.categoryId, req.user.id, {
+    performedByName: req.user.name,
+    performedByEmail: req.user.email,
+    ipAddress: req.ip ?? null,
+    userAgent: (req.headers['user-agent'] as string | undefined) ?? null
+  });
   res.status(200).json({ success: true, message: 'Category deleted' });
 });

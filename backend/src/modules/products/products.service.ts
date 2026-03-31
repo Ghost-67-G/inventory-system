@@ -525,7 +525,8 @@ export async function bulkUpdate(
   tenantId: string,
   userId: string,
   productIds: string[],
-  updates: BulkUpdateData
+  updates: BulkUpdateData,
+  auditCtx: AuditContext
 ): Promise<{ updated: number }> {
   const tenantObjId = new mongoose.Types.ObjectId(tenantId);
   const userObjId = new mongoose.Types.ObjectId(userId);
@@ -568,6 +569,26 @@ export async function bulkUpdate(
     },
     { $set }
   );
+
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'product.updated',
+    entityType: 'product',
+    entityName: `${productIds.length} products (bulk update)`,
+    changes: Object.entries(updates)
+      .filter(([, value]) => value !== undefined)
+      .map(([field, newValue]) => ({ field, oldValue: null, newValue })),
+    metadata: {
+      bulk: true,
+      productIds,
+      updatedCount: productIds.length
+    },
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
 
   // Enqueue MeiliSearch sync for each product (fire and forget)
   Promise.allSettled(

@@ -154,20 +154,66 @@ async function verifyProductAndWarehouse(
   return { product, warehouse };
 }
 
-export async function recordIn(tenantId: string, userId: string, data: RecordInInput): Promise<IStockMovement> {
+function logStockMutationAudit(params: {
+  tenantId: string;
+  userId: string;
+  auditCtx: AuditContext;
+  product: IProduct;
+  actionType: 'IN' | 'OUT' | 'ADJUSTMENT' | 'WASTE' | 'TRANSFER';
+  metadata: Record<string, unknown>;
+}): void {
+  createAuditLog({
+    tenantId: params.tenantId,
+    performedBy: params.userId,
+    performedByName: params.auditCtx.performedByName,
+    performedByEmail: params.auditCtx.performedByEmail,
+    action: 'stock.adjusted',
+    entityType: 'stock',
+    entityId: params.product._id.toString(),
+    entityName: `${params.product.name} (${params.product.sku})`,
+    metadata: {
+      movementType: params.actionType,
+      ...params.metadata
+    },
+    ipAddress: params.auditCtx.ipAddress,
+    userAgent: params.auditCtx.userAgent
+  }).catch(() => {});
+}
+
+export async function recordIn(
+  tenantId: string,
+  userId: string,
+  data: RecordInInput,
+  auditCtx: AuditContext
+): Promise<IStockMovement> {
   const session = await mongoose.startSession();
   let movement: IStockMovement | null = null;
+  let auditSnapshot:
+    | {
+        product: IProduct;
+        warehouse: IWarehouse;
+        quantityBefore: number;
+        quantityAfter: number;
+      }
+    | undefined;
 
   try {
     session.startTransaction();
 
-    const { product } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
+    const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
     const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId);
 
     const quantityBefore = warehouseStock.quantity;
     const quantityAfter = quantityBefore + data.quantity;
     const totalStockBefore = product.totalStock;
     const totalStockAfter = totalStockBefore + data.quantity;
+
+    auditSnapshot = {
+      product,
+      warehouse,
+      quantityBefore,
+      quantityAfter
+    };
 
     const created = await StockMovementModel.create(
       [
@@ -219,6 +265,25 @@ export async function recordIn(tenantId: string, userId: string, data: RecordInI
       )
     ]);
 
+    if (auditSnapshot) {
+      logStockMutationAudit({
+        tenantId,
+        userId,
+        auditCtx,
+        product: auditSnapshot.product,
+        actionType: 'IN',
+        metadata: {
+          warehouseId: data.warehouseId,
+          warehouseName: auditSnapshot.warehouse.name,
+          quantity: data.quantity,
+          quantityBefore: auditSnapshot.quantityBefore,
+          quantityAfter: auditSnapshot.quantityAfter,
+          referenceType: data.referenceType ?? 'MANUAL',
+          note: data.note ?? ''
+        }
+      });
+    }
+
     return movement;
   } catch (error) {
     await safeAbortTransaction(session);
@@ -228,7 +293,12 @@ export async function recordIn(tenantId: string, userId: string, data: RecordInI
   }
 }
 
-export async function recordOut(tenantId: string, userId: string, data: RecordOutInput): Promise<IStockMovement> {
+export async function recordOut(
+  tenantId: string,
+  userId: string,
+  data: RecordOutInput,
+  auditCtx: AuditContext
+): Promise<IStockMovement> {
   const preStock = await WarehouseStockModel.findOne({
     tenantId,
     warehouseId: data.warehouseId,
@@ -246,10 +316,18 @@ export async function recordOut(tenantId: string, userId: string, data: RecordOu
   }
 
   const session = await mongoose.startSession();
+  let auditSnapshot:
+    | {
+        product: IProduct;
+        warehouse: IWarehouse;
+        quantityBefore: number;
+        quantityAfter: number;
+      }
+    | undefined;
   try {
     session.startTransaction();
 
-    const { product } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
+    const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
     const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId);
 
     if (warehouseStock.quantity < data.quantity) {
@@ -260,6 +338,13 @@ export async function recordOut(tenantId: string, userId: string, data: RecordOu
     const quantityAfter = quantityBefore - data.quantity;
     const totalStockBefore = product.totalStock;
     const totalStockAfter = totalStockBefore - data.quantity;
+
+    auditSnapshot = {
+      product,
+      warehouse,
+      quantityBefore,
+      quantityAfter
+    };
 
     const created = await StockMovementModel.create(
       [
@@ -309,6 +394,25 @@ export async function recordOut(tenantId: string, userId: string, data: RecordOu
         })
       )
     ]);
+
+    if (auditSnapshot) {
+      logStockMutationAudit({
+        tenantId,
+        userId,
+        auditCtx,
+        product: auditSnapshot.product,
+        actionType: 'OUT',
+        metadata: {
+          warehouseId: data.warehouseId,
+          warehouseName: auditSnapshot.warehouse.name,
+          quantity: data.quantity,
+          quantityBefore: auditSnapshot.quantityBefore,
+          quantityAfter: auditSnapshot.quantityAfter,
+          referenceType: data.referenceType ?? 'MANUAL',
+          note: data.note ?? ''
+        }
+      });
+    }
 
     return created[0];
   } catch (error) {
@@ -422,7 +526,12 @@ export async function recordAdjustment(
   }
 }
 
-export async function recordWaste(tenantId: string, userId: string, data: RecordWasteInput): Promise<IStockMovement> {
+export async function recordWaste(
+  tenantId: string,
+  userId: string,
+  data: RecordWasteInput,
+  auditCtx: AuditContext
+): Promise<IStockMovement> {
   const preStock = await WarehouseStockModel.findOne({
     tenantId,
     warehouseId: data.warehouseId,
@@ -436,10 +545,18 @@ export async function recordWaste(tenantId: string, userId: string, data: Record
   }
 
   const session = await mongoose.startSession();
+  let auditSnapshot:
+    | {
+        product: IProduct;
+        warehouse: IWarehouse;
+        quantityBefore: number;
+        quantityAfter: number;
+      }
+    | undefined;
   try {
     session.startTransaction();
 
-    const { product } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
+    const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
     const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId);
 
     if (warehouseStock.quantity < data.quantity) {
@@ -450,6 +567,13 @@ export async function recordWaste(tenantId: string, userId: string, data: Record
     const quantityAfter = quantityBefore - data.quantity;
     const totalStockBefore = product.totalStock;
     const totalStockAfter = totalStockBefore - data.quantity;
+
+    auditSnapshot = {
+      product,
+      warehouse,
+      quantityBefore,
+      quantityAfter
+    };
 
     const created = await StockMovementModel.create(
       [
@@ -500,6 +624,24 @@ export async function recordWaste(tenantId: string, userId: string, data: Record
       )
     ]);
 
+    if (auditSnapshot) {
+      logStockMutationAudit({
+        tenantId,
+        userId,
+        auditCtx,
+        product: auditSnapshot.product,
+        actionType: 'WASTE',
+        metadata: {
+          warehouseId: data.warehouseId,
+          warehouseName: auditSnapshot.warehouse.name,
+          quantity: data.quantity,
+          quantityBefore: auditSnapshot.quantityBefore,
+          quantityAfter: auditSnapshot.quantityAfter,
+          note: data.note ?? ''
+        }
+      });
+    }
+
     return created[0];
   } catch (error) {
     await safeAbortTransaction(session);
@@ -512,7 +654,8 @@ export async function recordWaste(tenantId: string, userId: string, data: Record
 export async function recordTransfer(
   tenantId: string,
   userId: string,
-  data: RecordTransferInput
+  data: RecordTransferInput,
+  auditCtx: AuditContext
 ): Promise<{ out: IStockMovement; in: IStockMovement }> {
   const preSource = await WarehouseStockModel.findOne({
     tenantId,
@@ -667,6 +810,26 @@ export async function recordTransfer(
         })
       )
     ]);
+
+    logStockMutationAudit({
+      tenantId,
+      userId,
+      auditCtx,
+      product,
+      actionType: 'TRANSFER',
+      metadata: {
+        sourceWarehouseId: data.sourceWarehouseId,
+        sourceWarehouseName: sourceWarehouse.name,
+        destinationWarehouseId: data.destinationWarehouseId,
+        destinationWarehouseName: destinationWarehouse.name,
+        quantity: data.quantity,
+        sourceQuantityBefore: srcQuantityBefore,
+        sourceQuantityAfter: srcQuantityAfter,
+        destinationQuantityBefore: dstQuantityBefore,
+        destinationQuantityAfter: dstQuantityAfter,
+        note: data.note ?? ''
+      }
+    });
 
     return { out: movementOut, in: movementIn };
   } catch (error) {
@@ -858,7 +1021,8 @@ export async function getPendingAlertCount(tenantId: string): Promise<number> {
 export async function acknowledgeAlert(
   tenantId: string,
   alertId: string,
-  userId: string
+  userId: string,
+  auditCtx: AuditContext
 ): Promise<IStockAlert> {
   const alert = await StockAlertModel.findOne({ _id: alertId, tenantId });
   if (!alert) {
@@ -873,6 +1037,28 @@ export async function acknowledgeAlert(
   alert.acknowledgedAt = new Date();
   await alert.save();
 
+  const product = await Product.findById(alert.productId).select('name sku').lean();
+  const warehouse = await WarehouseModel.findById(alert.warehouseId).select('name').lean();
+
+  createAuditLog({
+    tenantId,
+    performedBy: userId,
+    performedByName: auditCtx.performedByName,
+    performedByEmail: auditCtx.performedByEmail,
+    action: 'stock.adjusted',
+    entityType: 'stock',
+    entityId: alert.productId.toString(),
+    entityName: product ? `${product.name} (${product.sku})` : 'Stock alert',
+    metadata: {
+      movementType: 'ALERT_ACKNOWLEDGED',
+      alertId: alert._id.toString(),
+      warehouseId: alert.warehouseId.toString(),
+      warehouseName: warehouse?.name ?? null
+    },
+    ipAddress: auditCtx.ipAddress,
+    userAgent: auditCtx.userAgent
+  }).catch(() => {});
+
   await deleteCache(CACHE_KEYS.pendingAlertCount(tenantId));
   return alert;
 }
@@ -880,7 +1066,8 @@ export async function acknowledgeAlert(
 export async function bulkAcknowledge(
   tenantId: string,
   alertIds: string[],
-  userId: string
+  userId: string,
+  auditCtx: AuditContext
 ): Promise<{ acknowledged: number }> {
   const objectIds = alertIds.map((id) => toObjectId(id));
   const totalForTenant = await StockAlertModel.countDocuments({ tenantId, _id: { $in: objectIds } });
@@ -899,6 +1086,25 @@ export async function bulkAcknowledge(
       }
     }
   );
+
+  if ((result.modifiedCount ?? 0) > 0) {
+    createAuditLog({
+      tenantId,
+      performedBy: userId,
+      performedByName: auditCtx.performedByName,
+      performedByEmail: auditCtx.performedByEmail,
+      action: 'stock.adjusted',
+      entityType: 'stock',
+      entityName: 'Bulk alert acknowledge',
+      metadata: {
+        movementType: 'ALERT_BULK_ACKNOWLEDGED',
+        acknowledgedCount: result.modifiedCount ?? 0,
+        alertIds
+      },
+      ipAddress: auditCtx.ipAddress,
+      userAgent: auditCtx.userAgent
+    }).catch(() => {});
+  }
 
   await deleteCache(CACHE_KEYS.pendingAlertCount(tenantId));
   return { acknowledged: result.modifiedCount ?? 0 };
