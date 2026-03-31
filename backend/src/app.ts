@@ -16,6 +16,7 @@ import productsRoutes from './modules/products/products.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import settingsRoutes from './modules/settings/settings.routes';
 import stockRoutes from './modules/stock/stock.routes';
+import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import usersRoutes from './modules/users/users.routes';
 import warehousesRoutes from './modules/warehouses/warehouses.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
@@ -51,6 +52,7 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 app.use(errorHandler);
 

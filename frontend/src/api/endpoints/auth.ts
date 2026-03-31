@@ -1,8 +1,8 @@
-import type { ChangePasswordDto, LoginDto, LoginResponse, RefreshResponse, RegisterDto, SafeUser } from '@/types';
+import type { ChangePasswordDto, LoginDto, LoginResponse, RefreshResponse, RegisterDto, RegisterResponse, SafeUser } from '@/types';
 import client from '@/api/client';
 
 export const authApi = {
-  register: (data: RegisterDto) => client.post<{ success: true; message: string; data: { user: SafeUser } }>('/auth/register', data),
+  register: (data: RegisterDto) => client.post<RegisterResponse>('/auth/register', data),
   login: (data: LoginDto) => client.post<LoginResponse>('/auth/login', data),
   logout: () => client.post('/auth/logout'),
   logoutAll: () => client.post('/auth/logout-all'),

@@ -63,7 +63,7 @@ interface RegisterDto {
   tenantName?: string;
 }
 
-export async function register(data: RegisterDto): Promise<{ user: SafeUser; tenant: ITenant }> {
+export async function register(data: RegisterDto): Promise<{ user: SafeUser; tenant: ITenant; requiresOnboarding: boolean }> {
   let tenant: ITenant;
 
   if (config.DEPLOYMENT_MODE === 'saas') {
@@ -94,7 +94,7 @@ export async function register(data: RegisterDto): Promise<{ user: SafeUser; ten
   // Fire and forget
   void sendVerificationEmail(user.email, user.name, rawToken).catch(() => undefined);
 
-  return { user: toSafeUser(user), tenant };
+  return { user: toSafeUser(user), tenant, requiresOnboarding: true };
 }
 
 // ─── Login ───────────────────────────────────────────────────────────────────

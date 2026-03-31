@@ -4,8 +4,10 @@ import type { ICustomField, Tenant } from '../types/index.js';
 
 interface TenantState {
   tenant: Tenant | null;
+  onboardingComplete: boolean;
 
   setTenant: (tenant: Tenant) => void;
+  setOnboardingComplete: (value: boolean) => void;
   updateSettings: (settings: Partial<Tenant['settings']>) => void;
   updateCustomFields: (fields: ICustomField[]) => void;
   addCustomField: (field: ICustomField) => void;
@@ -20,8 +22,15 @@ export const useTenantStore = create<TenantState>()(
   persist(
     (set, get) => ({
       tenant: null,
+      onboardingComplete: false,
 
-      setTenant: (tenant) => set({ tenant }),
+      setTenant: (tenant) => set({ tenant, onboardingComplete: tenant.onboardingComplete }),
+
+      setOnboardingComplete: (value) =>
+        set((state) => ({
+          onboardingComplete: value,
+          tenant: state.tenant ? { ...state.tenant, onboardingComplete: value } : state.tenant
+        })),
 
       updateSettings: (settings) =>
         set((state) => {
@@ -65,7 +74,7 @@ export const useTenantStore = create<TenantState>()(
           };
         }),
 
-      clearTenant: () => set({ tenant: null }),
+      clearTenant: () => set({ tenant: null, onboardingComplete: false }),
 
       getCustomField: (key) => {
         return get().tenant?.customFields.find((f) => f.key === key);
@@ -73,7 +82,7 @@ export const useTenantStore = create<TenantState>()(
     }),
     {
       name: 'tenant-storage',
-      partialize: (state) => ({ tenant: state.tenant }),
+      partialize: (state) => ({ tenant: state.tenant, onboardingComplete: state.onboardingComplete }),
     }
   )
 );

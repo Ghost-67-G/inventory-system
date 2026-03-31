@@ -131,6 +131,16 @@ export interface LoginResponse {
   };
 }
 
+export interface RegisterResponse {
+  success: true;
+  message: string;
+  data: {
+    user: SafeUser;
+    tenant: Tenant;
+    requiresOnboarding: boolean;
+  };
+}
+
 export interface RefreshResponse {
   success: true;
   data: {
@@ -261,6 +271,47 @@ export interface Tenant {
   settings: TenantSettings;
   customFields: ICustomField[];
   onboardingComplete: boolean;
+}
+
+export interface OnboardingStatus {
+  onboardingComplete: boolean;
+  currentStep: 1 | 2 | 3 | 4;
+  completedSteps: number[];
+  tenant: {
+    name: string;
+    currency: string;
+    timezone: string;
+    lowStockThreshold: number;
+  };
+  hasWarehouse: boolean;
+  hasCategory: boolean;
+  hasProduct: boolean;
+  warehouseName?: string | null;
+  productName?: string | null;
+}
+
+export interface StepOneDto {
+  businessName: string;
+  currency: string;
+  timezone: string;
+  lowStockThreshold: number;
+}
+
+export interface StepTwoDto {
+  warehouseName: string;
+  warehouseCode?: string;
+  city?: string;
+  country?: string;
+}
+
+export interface StepThreeDto {
+  categoryName: string;
+  categoryColor: string;
+  productName: string;
+  productSku: string;
+  productUnit: string;
+  productSellingPrice: number;
+  productCostPrice: number;
 }
 
 export const SUPPORTED_CURRENCIES = [
