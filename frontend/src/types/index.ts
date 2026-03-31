@@ -69,7 +69,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'alert.view',
     'alert.acknowledge',
     'report.view',
-    'report.export',
     'settings.view',
     'dashboard.view'
   ],
@@ -579,3 +578,94 @@ export interface DashboardStats {
   computedAt: string;
 }
 
+// ─── Reports ───────────────────────────────────────────────────────────────────
+
+export interface StockValuationRow {
+  _id: string;
+  sku: string;
+  name: string;
+  category: { _id?: string; name: string; color: string } | null;
+  unit: string;
+  costPrice: number;
+  sellingPrice: number;
+  margin: number;
+  effectiveStock: number;
+  stockValue: number;
+  potentialRevenue: number;
+  warehouseBreakdown: Array<{
+    warehouseCode: string;
+    warehouseName: string;
+    quantity: number;
+  }>;
+}
+
+export interface StockValuationSummary {
+  totalProducts: number;
+  totalUnits: number;
+  totalStockValue: number;
+  totalPotentialRevenue: number;
+  avgMargin: number;
+}
+
+export interface StockValuationParams {
+  categoryId?: string;
+  warehouseId?: string;
+  isActive?: 'true' | 'false';
+  sortBy?: 'name' | 'sku' | 'totalStock' | 'stockValue';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface LowStockRow {
+  sku: string;
+  productName: string;
+  categoryName: string;
+  categoryColor: string;
+  warehouseName: string;
+  warehouseCode: string;
+  unit: string;
+  currentStock: number;
+  threshold: number;
+  shortage: number;
+  reorderSuggestion: number;
+  restockCost: number;
+}
+
+export interface LowStockSummary {
+  totalItems: number;
+  outOfStock: number;
+  criticalItems: number;
+  totalRestockCost: number;
+}
+
+export interface LowStockParams {
+  categoryId?: string;
+  warehouseId?: string;
+  sortBy?: 'shortage' | 'name' | 'currentStock';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface MovementsReportParams {
+  dateFrom?: string;
+  dateTo?: string;
+  productId?: string;
+  warehouseId?: string;
+  type?: MovementType | 'TRANSFER';
+  performedBy?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface WasteAdjustmentSummary {
+  waste: { count: number; totalQuantity: number; totalValue: number };
+  adjustment: { count: number; totalQuantity: number; totalValue: number };
+}
+
+export interface WasteAdjustmentsParams {
+  dateFrom?: string;
+  dateTo?: string;
+  productId?: string;
+  warehouseId?: string;
+  type?: 'WASTE' | 'ADJUSTMENT';
+  cursor?: string;
+  limit?: number;
+}

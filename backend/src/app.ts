@@ -13,6 +13,7 @@ import alertsRoutes from './modules/alerts/alerts.routes';
 import authRoutes from './modules/auth/auth.routes';
 import categoriesRoutes from './modules/categories/categories.routes';
 import productsRoutes from './modules/products/products.routes';
+import reportsRoutes from './modules/reports/reports.routes';
 import settingsRoutes from './modules/settings/settings.routes';
 import stockRoutes from './modules/stock/stock.routes';
 import usersRoutes from './modules/users/users.routes';
@@ -47,6 +48,7 @@ app.use('/api/products', productsRoutes);
 app.use('/api/warehouses', warehousesRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/alerts', alertsRoutes);
+app.use('/api/reports', reportsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

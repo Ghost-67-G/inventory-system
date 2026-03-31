@@ -71,7 +71,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'alert.view',
     'alert.acknowledge',
     'report.view',
-    'report.export',
     'settings.view',
     'dashboard.view'
   ],
