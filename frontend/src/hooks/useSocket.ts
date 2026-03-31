@@ -41,6 +41,22 @@ export const useSocket = () => {
       });
 
       socket.on(
+        'import:completed',
+        (payload: { jobId: string; status: 'COMPLETED' | 'PARTIAL' | 'FAILED'; successCount: number; errorCount: number }) => {
+          void queryClient.invalidateQueries({ queryKey: ['import', 'jobs'] });
+          void queryClient.invalidateQueries({ queryKey: ['products'] });
+
+          if (payload.status === 'COMPLETED') {
+            toast.success(`Import complete - ${payload.successCount} products added`);
+          } else if (payload.status === 'PARTIAL') {
+            toast.warning(`Import finished - ${payload.successCount} added, ${payload.errorCount} failed`);
+          } else {
+            toast.error('Import failed - check the error report');
+          }
+        }
+      );
+
+      socket.on(
         'alert:new',
         (payload: { productName?: string; currentStock?: number; threshold?: number; warehouseId?: string }) => {
           void queryClient.invalidateQueries({ queryKey: ['stock', 'alerts'] });
@@ -58,6 +74,7 @@ export const useSocket = () => {
       socket.off('connect');
       socket.off('stock:updated');
       socket.off('dashboard:refreshed');
+      socket.off('import:completed');
       socket.off('alert:new');
       socket.disconnect();
     };

@@ -223,6 +223,38 @@ export interface ListProductsParams {
   unit?: string;
 }
 
+export type ImportJobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'PARTIAL';
+
+export interface ImportError {
+  row: number;
+  sku: string;
+  field: string;
+  message: string;
+}
+
+export interface IImportJob {
+  _id: string;
+  tenantId: string;
+  createdBy: string;
+  status: ImportJobStatus;
+  fileName: string;
+  totalRows: number;
+  processedRows: number;
+  successCount: number;
+  errorCount: number;
+  errors: ImportError[];
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateImportResponse {
+  jobId: string;
+  status: 'PENDING';
+  totalRows: number;
+}
+
 export interface UserListResponse {
   users: SafeUser[];
   total: number;

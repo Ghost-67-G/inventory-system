@@ -13,6 +13,7 @@ import { ChangePasswordPage } from '@/pages/auth/ChangePasswordPage';
 import { AcceptInvitePage } from '@/pages/auth/AcceptInvitePage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { ProductsPage } from '@/pages/products/ProductsPage';
+import { ImportPage } from '@/pages/products/ImportPage';
 import { ProductDetailPage } from '@/pages/products/ProductDetailPage';
 import { WarehousesPage } from '@/pages/warehouses/WarehousesPage';
 import { WarehouseDetailPage } from '@/pages/warehouses/WarehouseDetailPage';
@@ -96,6 +97,14 @@ export const router = createBrowserRouter([
                     element: (
                       <PermissionGuard permission="product.view" fallback={<Navigate to="/" replace />}>
                         <ProductsPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/products/import',
+                    element: (
+                      <PermissionGuard permission="product.create" fallback={<Navigate to="/products" replace />}>
+                        <ImportPage />
                       </PermissionGuard>
                     )
                   },
