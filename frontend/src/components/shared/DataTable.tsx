@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  type ColumnVisibilityState,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
@@ -26,6 +27,8 @@ export interface DataTableProps<TData> {
   onSelectionChange?: (selectedRows: TData[]) => void;
   emptyMessage?: string;
   loadingRows?: number;
+  hiddenColumnIds?: string[];
+  maxHeight?: string;
 }
 
 export function DataTable<TData>({
@@ -42,10 +45,13 @@ export function DataTable<TData>({
   enableRowSelection = false,
   onSelectionChange,
   emptyMessage = 'No data found',
-  loadingRows = 10
+  loadingRows = 10,
+  hiddenColumnIds = [],
+  maxHeight = 'calc(100dvh - 320px)'
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({});
   const parentRef = useRef<HTMLDivElement>(null);
 
   const selectionColumn: ColumnDef<TData> = {
@@ -78,8 +84,9 @@ export function DataTable<TData>({
   const table = useReactTable({
     data: safeData,
     columns: tableColumns,
-    state: { sorting, rowSelection },
+    state: { sorting, rowSelection, columnVisibility },
     onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: (updater) => {
       const newState = typeof updater === 'function' ? updater(rowSelection) : updater;
       setRowSelection(newState);
@@ -103,6 +110,14 @@ export function DataTable<TData>({
     getSortedRowModel: getSortedRowModel()
   });
 
+  useEffect(() => {
+    const nextState: ColumnVisibilityState = {};
+    hiddenColumnIds.forEach((id) => {
+      nextState[id] = false;
+    });
+    setColumnVisibility(nextState);
+  }, [hiddenColumnIds]);
+
   const rows = table.getRowModel().rows;
 
   useEffect(() => {
@@ -121,20 +136,20 @@ export function DataTable<TData>({
   }, [hasNextPage, isFetchingNextPage, onFetchNextPage]);
 
   return (
-    <div className="flex flex-col rounded-xl border bg-white shadow-sm overflow-hidden">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div
         ref={parentRef}
         className="overflow-auto"
-        style={{ maxHeight: 'calc(100vh - 320px)' }}
+        style={{ maxHeight }}
       >
-        <table className="w-full table-fixed border-collapse text-sm">
-          <thead className="border-b bg-gray-50">
+        <table className="w-full table-fixed border-collapse text-sm text-foreground">
+          <thead className="border-b border-border bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                    className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                     style={{ width: header.getSize() }}
                     onClick={header.column.getToggleSortingHandler()}
                   >
@@ -144,7 +159,7 @@ export function DataTable<TData>({
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {header.column.getCanSort() && (
-                          <span className="text-gray-400">
+                          <span className="text-muted-foreground/70">
                             {header.column.getIsSorted() === 'asc' ? '↑' : header.column.getIsSorted() === 'desc' ? '↓' : '↕'}
                           </span>
                         )}
@@ -158,7 +173,7 @@ export function DataTable<TData>({
           <tbody>
             {isLoading ? (
               Array.from({ length: loadingRows }).map((_, idx) => (
-                <tr key={idx} className="border-b">
+                <tr key={idx} className="border-b border-border">
                   {tableColumns.map((column, colIdx) => (
                     <td
                       key={colIdx}
@@ -172,7 +187,7 @@ export function DataTable<TData>({
               ))
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={tableColumns.length} className="h-32 px-4 py-3 text-center text-gray-500 text-sm">
+                <td colSpan={tableColumns.length} className="h-32 px-4 py-3 text-center text-sm text-muted-foreground">
                   {emptyMessage}
                 </td>
               </tr>
@@ -180,8 +195,8 @@ export function DataTable<TData>({
               rows.map((row) => (
                 <tr
                   key={row.id}
-                  className={`border-b transition-colors hover:bg-gray-50 ${
-                    row.getIsSelected() ? 'bg-blue-50' : ''
+                    className={`border-b border-border transition-colors hover:bg-muted/50 ${
+                    row.getIsSelected() ? 'bg-muted/60' : ''
                   } ${onRowClick ? 'cursor-pointer' : ''}`}
                   style={{ height: estimatedRowHeight ?? rowHeight }}
                   onClick={() => onRowClick?.(row.original)}
@@ -203,8 +218,8 @@ export function DataTable<TData>({
               <tr>
                 <td colSpan={tableColumns.length} className="px-4 py-4">
                   <div className="flex items-center justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-                    <span className="ml-2 text-sm text-gray-500">Loading more...</span>
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Loading more...</span>
                   </div>
                 </td>
               </tr>

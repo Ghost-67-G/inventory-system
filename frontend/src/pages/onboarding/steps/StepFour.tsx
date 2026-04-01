@@ -10,8 +10,8 @@ interface StepFourProps {
 
 function ChecklistItem({ done, label }: { done: boolean; label: string }) {
   return (
-    <li className="flex items-start gap-2 text-sm text-slate-700">
-      {done ? <CheckCircle2 size={16} className="mt-0.5 text-emerald-600" /> : <Minus size={16} className="mt-0.5 text-slate-400" />}
+    <li className="flex items-start gap-2 text-sm text-foreground">
+      {done ? <CheckCircle2 size={16} className="mt-0.5 text-emerald-600 dark:text-emerald-400" /> : <Minus size={16} className="mt-0.5 text-muted-foreground" />}
       <span>{label}</span>
     </li>
   );
@@ -25,15 +25,15 @@ export function StepFour({ status, onComplete, isCompleting }: StepFourProps) {
       </style>
 
       <div className="flex flex-col items-center text-center">
-        <div className="mb-4 rounded-full bg-emerald-100 p-3" style={{ animation: 'onboarding-pop-in 200ms ease-out' }}>
-          <CheckCircle2 size={56} className="text-emerald-600" />
+        <div className="mb-4 rounded-full bg-emerald-100 p-3 dark:bg-emerald-900/30" style={{ animation: 'onboarding-pop-in 200ms ease-out' }}>
+          <CheckCircle2 size={56} className="text-emerald-600 dark:text-emerald-400" />
         </div>
-        <h1 className="text-2xl font-semibold text-slate-900">You&apos;re all set! 🎉</h1>
-        <p className="text-sm text-slate-600">Your inventory system is ready to use.</p>
+        <h1 className="text-2xl font-semibold text-foreground">You&apos;re all set! 🎉</h1>
+        <p className="text-sm text-muted-foreground">Your inventory system is ready to use.</p>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 text-sm font-medium text-slate-800">Summary</p>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <p className="mb-3 text-sm font-medium text-foreground">Summary</p>
         <ul className="space-y-2">
           <ChecklistItem
             done={true}
@@ -51,30 +51,30 @@ export function StepFour({ status, onComplete, isCompleting }: StepFourProps) {
       </div>
 
       <div>
-        <p className="mb-3 text-sm font-medium text-slate-800">What to do next</p>
+        <p className="mb-3 text-sm font-medium text-foreground">What to do next</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 p-3">
-            <Package size={18} className="text-slate-700" />
-            <p className="mt-2 text-sm font-medium text-slate-800">Add more products</p>
-            <p className="text-xs text-slate-500">Import via CSV or add one by one</p>
+          <div className="rounded-xl border border-border bg-card p-3">
+            <Package size={18} className="text-foreground" />
+            <p className="mt-2 text-sm font-medium text-foreground">Add more products</p>
+            <p className="text-xs text-muted-foreground">Import via CSV or add one by one</p>
             <Button className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/products')}>
               Go to Products →
             </Button>
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-3">
-            <ArrowDownToLine size={18} className="text-slate-700" />
-            <p className="mt-2 text-sm font-medium text-slate-800">Record stock in</p>
-            <p className="text-xs text-slate-500">Add your current inventory levels</p>
+          <div className="rounded-xl border border-border bg-card p-3">
+            <ArrowDownToLine size={18} className="text-foreground" />
+            <p className="mt-2 text-sm font-medium text-foreground">Record stock in</p>
+            <p className="text-xs text-muted-foreground">Add your current inventory levels</p>
             <Button className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/stock')}>
               Record stock →
             </Button>
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-3">
-            <Users size={18} className="text-slate-700" />
-            <p className="mt-2 text-sm font-medium text-slate-800">Invite your team</p>
-            <p className="text-xs text-slate-500">Add managers and staff members</p>
+          <div className="rounded-xl border border-border bg-card p-3">
+            <Users size={18} className="text-foreground" />
+            <p className="mt-2 text-sm font-medium text-foreground">Invite your team</p>
+            <p className="text-xs text-muted-foreground">Add managers and staff members</p>
             <Button className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/settings/users')}>
               Manage team →
             </Button>
@@ -86,7 +86,7 @@ export function StepFour({ status, onComplete, isCompleting }: StepFourProps) {
         {isCompleting ? 'Finishing setup...' : 'Go to dashboard →'}
       </Button>
 
-      <p className="text-center text-xs text-slate-500">You can revisit setup anytime from Settings → Onboarding</p>
+      <p className="text-center text-xs text-muted-foreground">You can revisit setup anytime from Settings → Onboarding</p>
     </div>
   );
 }

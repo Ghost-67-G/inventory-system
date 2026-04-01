@@ -63,17 +63,17 @@ export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">Invite member</h2>
-        <p className="mt-1 text-sm text-slate-500">Invite a teammate to your workspace.</p>
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 className="text-lg font-semibold text-foreground">Invite member</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Invite a teammate to your workspace.</p>
 
-        {error ? <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+        {error ? <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{error}</div> : null}
 
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               placeholder="Jordan Lee"
               {...register('name')}
             />
@@ -81,9 +81,9 @@ export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               placeholder="jordan@example.com"
               {...register('email')}
             />
@@ -91,13 +91,13 @@ export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Role</label>
-            <select className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" {...register('role')}>
+            <label className="mb-1 block text-sm font-medium text-foreground">Role</label>
+            <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('role')}>
               <option value="manager">Manager</option>
               <option value="staff">Staff</option>
               <option value="viewer">Viewer</option>
             </select>
-            <p className="mt-1 text-xs text-slate-500">{roleDescriptions[selectedRole]}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{roleDescriptions[selectedRole]}</p>
             {errors.role ? <p className="mt-1 text-xs text-red-600">{errors.role.message}</p> : null}
           </div>
 

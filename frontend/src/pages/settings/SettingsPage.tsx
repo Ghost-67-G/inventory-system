@@ -20,6 +20,7 @@ import {
   useUpdateNotificationPreferences
 } from '@/hooks/useNotificationPreferences';
 import { useTenantStore } from '@/store/tenantStore';
+import { useWindowSize } from '@/hooks/useWindowSize';
 import { AccountTab } from '@/pages/settings/tabs/AccountTab';
 import { CustomFieldsTab } from '@/pages/settings/tabs/CustomFieldsTab';
 import { GeneralSettingsTab } from '@/pages/settings/tabs/GeneralSettingsTab';
@@ -46,6 +47,7 @@ export function SettingsPage() {
   const updatePreferences = useUpdateNotificationPreferences();
   const [draft, setDraft] = useState<EmailNotificationPreferences | null>(null);
   const [showSaved, setShowSaved] = useState(false);
+  const { isMobile } = useWindowSize();
 
   useSettings();
 
@@ -100,39 +102,55 @@ export function SettingsPage() {
       <PageHeader title="Settings" subtitle="Manage your workspace configuration" />
 
       {!canManage ? (
-        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
           You have view-only access to settings. Contact an owner to make changes.
         </div>
       ) : null}
 
-      <div className="mb-4 flex border-b border-slate-200">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? 'border-blue-600 text-blue-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
+      {isMobile ? (
+        <div className="mb-4">
+          <select
+            value={activeTab}
+            onChange={(event) => setActiveTab(event.target.value as TabKey)}
+            className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
           >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+            {TABS.map((tab) => (
+              <option key={tab.key} value={tab.key}>
+                {tab.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div className="mb-4 flex border-b border-border">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'border-blue-600 text-blue-700 dark:text-blue-400'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {activeTab === 'general' ? <GeneralSettingsTab canManage={canManage} /> : null}
 
       {activeTab === 'general' ? (
         <PermissionGuard permission="settings.view">
-          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+          <section className="mt-6 rounded-lg border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Email notifications</h3>
-                <p className="mt-1 text-sm text-slate-600">Choose what emails you receive about your inventory</p>
+                <h3 className="text-base font-semibold text-foreground">Email notifications</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Choose what emails you receive about your inventory</p>
               </div>
               {showSaved ? (
-                <span className="inline-flex items-center gap-1 text-sm text-emerald-700">
+                <span className="inline-flex items-center gap-1 text-sm text-emerald-700 dark:text-emerald-400">
                   <Check className="h-4 w-4" />
                   Saved
                 </span>
@@ -143,16 +161,16 @@ export function SettingsPage() {
               <div className="rounded-lg border border-slate-200 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Low stock alerts</p>
-                    <p className="text-xs text-slate-600">Get emailed when a product drops below its alert threshold</p>
-                    <p className="mt-1 text-xs text-slate-500">Max once per product every 4 hours</p>
+                    <p className="text-sm font-medium text-foreground">Low stock alerts</p>
+                    <p className="text-xs text-muted-foreground">Get emailed when a product drops below its alert threshold</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Max once per product every 4 hours</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => togglePreference('lowStockAlerts')}
                     disabled={!canEditNotifications || !draft}
                     className={`relative h-7 w-12 rounded-full transition ${
-                      draft?.lowStockAlerts ? 'bg-slate-900' : 'bg-slate-300'
+                      draft?.lowStockAlerts ? 'bg-primary' : 'bg-muted-foreground/40'
                     } ${!canEditNotifications ? 'opacity-50' : ''}`}
                     aria-pressed={Boolean(draft?.lowStockAlerts)}
                   >
@@ -168,16 +186,16 @@ export function SettingsPage() {
               <div className="rounded-lg border border-slate-200 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Daily inventory summary</p>
-                    <p className="text-xs text-slate-600">Receive a morning summary of alerts and activity at 8:00 AM</p>
-                    <p className="mt-1 text-xs text-slate-500">Sent at 8:00 AM in your configured timezone ({timezone})</p>
+                    <p className="text-sm font-medium text-foreground">Daily inventory summary</p>
+                    <p className="text-xs text-muted-foreground">Receive a morning summary of alerts and activity at 8:00 AM</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Sent at 8:00 AM in your configured timezone ({timezone})</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => togglePreference('dailySummary')}
                     disabled={!canEditNotifications || !draft}
                     className={`relative h-7 w-12 rounded-full transition ${
-                      draft?.dailySummary ? 'bg-slate-900' : 'bg-slate-300'
+                      draft?.dailySummary ? 'bg-primary' : 'bg-muted-foreground/40'
                     } ${!canEditNotifications ? 'opacity-50' : ''}`}
                     aria-pressed={Boolean(draft?.dailySummary)}
                   >
@@ -193,15 +211,15 @@ export function SettingsPage() {
               <div className="rounded-lg border border-slate-200 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Import notifications</p>
-                    <p className="text-xs text-slate-600">Get emailed when a CSV import finishes</p>
+                    <p className="text-sm font-medium text-foreground">Import notifications</p>
+                    <p className="text-xs text-muted-foreground">Get emailed when a CSV import finishes</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => togglePreference('importCompletion')}
                     disabled={!canEditNotifications || !draft}
                     className={`relative h-7 w-12 rounded-full transition ${
-                      draft?.importCompletion ? 'bg-slate-900' : 'bg-slate-300'
+                      draft?.importCompletion ? 'bg-primary' : 'bg-muted-foreground/40'
                     } ${!canEditNotifications ? 'opacity-50' : ''}`}
                     aria-pressed={Boolean(draft?.importCompletion)}
                   >
@@ -223,8 +241,8 @@ export function SettingsPage() {
 
       <PermissionGuard permission="settings.manage">
         <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
-          <h3 className="text-base font-semibold text-slate-900">Setup wizard</h3>
-          <p className="mt-1 text-sm text-slate-600">
+          <h3 className="text-base font-semibold text-foreground">Setup wizard</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
             Run through the initial setup wizard again to review or update your business configuration.
           </p>
           <Button className="mt-4" variant="outline" onClick={() => setRestartDialogOpen(true)}>

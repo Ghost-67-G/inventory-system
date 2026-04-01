@@ -109,19 +109,19 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 className="text-lg font-semibold text-foreground">
           {mode === 'create' ? 'Add category' : 'Edit category'}
         </h2>
 
         <form className="mt-4 space-y-4" onSubmit={onSubmit}>
           {/* Name */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               Name <span className="text-red-500">*</span>
             </label>
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
               placeholder="e.g. Electronics, Raw Materials, Packaging"
               {...register('name')}
             />
@@ -133,7 +133,7 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
 
           {/* Color */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Color</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Color</label>
             <div className="flex flex-wrap gap-2">
               {PRESET_COLORS.map((color) => (
                 <button
@@ -158,9 +158,9 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
               ))}
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <span className="text-sm text-slate-500">#</span>
+              <span className="text-sm text-muted-foreground">#</span>
               <input
-                className="w-28 rounded-md border border-slate-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-28 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
                 maxLength={7}
                 placeholder="6366f1"
                 value={selectedColor}
@@ -177,17 +177,17 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
 
           {/* Description */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Description <span className="text-slate-400 text-xs">(optional)</span>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Description <span className="text-xs text-muted-foreground">(optional)</span>
             </label>
             <textarea
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
               rows={3}
               maxLength={500}
               {...register('description')}
             />
             <div className="mt-0.5 flex justify-end">
-              <span className="text-xs text-slate-400">{descriptionValue.length}/500</span>
+              <span className="text-xs text-muted-foreground">{descriptionValue.length}/500</span>
             </div>
             {errors.description ? (
               <p className="mt-1 text-xs text-red-600">{errors.description.message}</p>
@@ -203,8 +203,8 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
                   role="switch"
                   aria-checked={isActiveValue}
                   onClick={() => setValue('isActive', !isActiveValue)}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 ${
-                    isActiveValue ? 'bg-slate-800' : 'bg-slate-300'
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring/50 ${
+                    isActiveValue ? 'bg-primary' : 'bg-muted'
                   }`}
                 >
                   <span
@@ -213,10 +213,10 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
                     }`}
                   />
                 </button>
-                <label className="text-sm font-medium text-slate-700">Active</label>
+                <label className="text-sm font-medium text-foreground">Active</label>
               </div>
               {!isActiveValue ? (
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Inactive categories won&apos;t appear in product forms
                 </p>
               ) : null}

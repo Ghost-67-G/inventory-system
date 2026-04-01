@@ -84,15 +84,15 @@ export function ConfirmDeactivateWarehouseDialog({
             time.
           </p>
           {warehouse.isDefault && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <p className="text-sm text-amber-900">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-900/20">
+              <p className="text-sm text-amber-900 dark:text-amber-400">
                 <strong>Warning: This is your default warehouse.</strong> Another active warehouse will be
                 automatically set as the new default.
               </p>
             </div>
           )}
           {apiError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
               {apiError}
             </div>
           )}

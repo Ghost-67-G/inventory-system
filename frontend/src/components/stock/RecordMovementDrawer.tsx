@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useWindowSize } from '@/hooks/useWindowSize';
 import { productsApi } from '@/api/endpoints/products';
 import { useWarehousesDropdown } from '@/hooks/useWarehouses';
 import {
@@ -64,6 +65,8 @@ export function RecordMovementDrawer({
   prefilledProductId,
   prefilledWarehouseId
 }: RecordMovementDrawerProps) {
+  const { width } = useWindowSize();
+  const isMobile = width < 768;
   const [activeType, setActiveType] = useState<DrawerType>(type);
   const [search, setSearch] = useState('');
 
@@ -223,7 +226,7 @@ export function RecordMovementDrawer({
 
   return (
     <Sheet open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : null)}>
-      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+      <SheetContent side={isMobile ? 'bottom' : 'right'} className={isMobile ? 'h-[90vh] w-full overflow-y-auto' : 'w-full overflow-y-auto sm:max-w-xl'}>
         <SheetHeader>
           <SheetTitle>{TYPE_LABELS[activeType]}</SheetTitle>
         </SheetHeader>
@@ -234,8 +237,8 @@ export function RecordMovementDrawer({
               key={movementType}
               type="button"
               onClick={() => setActiveType(movementType)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium ${
-                activeType === movementType ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
+              className={`min-h-11 rounded-md px-3 py-1.5 text-xs font-medium md:min-h-0 ${
+                activeType === movementType ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
               }`}
             >
               {movementType[0].toUpperCase() + movementType.slice(1)}
@@ -246,13 +249,13 @@ export function RecordMovementDrawer({
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 pb-24">
           <div className="space-y-1">
             <label className="text-sm font-medium">Search product</label>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by SKU or name" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by SKU or name" className="h-11 md:h-9" />
           </div>
 
           <div className="space-y-1">
             <label className="text-sm font-medium">Product</label>
             <select
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
               value={form.watch('productId')}
               disabled={Boolean(prefilledProductId)}
               onChange={(e) => form.setValue('productId', e.target.value)}
@@ -270,7 +273,7 @@ export function RecordMovementDrawer({
             <div className="space-y-1">
               <label className="text-sm font-medium">Warehouse</label>
               <select
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
                 value={form.watch('warehouseId')}
                 onChange={(e) => form.setValue('warehouseId', e.target.value)}
               >
@@ -287,7 +290,7 @@ export function RecordMovementDrawer({
               <div className="space-y-1">
                 <label className="text-sm font-medium">Source warehouse</label>
                 <select
-                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
                   value={form.watch('sourceWarehouseId')}
                   onChange={(e) => form.setValue('sourceWarehouseId', e.target.value)}
                 >
@@ -302,7 +305,7 @@ export function RecordMovementDrawer({
               <div className="space-y-1">
                 <label className="text-sm font-medium">Destination warehouse</label>
                 <select
-                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
                   value={form.watch('destinationWarehouseId')}
                   onChange={(e) => form.setValue('destinationWarehouseId', e.target.value)}
                 >
@@ -327,9 +330,10 @@ export function RecordMovementDrawer({
               step="any"
               value={Number.isNaN(quantity) ? '' : quantity}
               onChange={(e) => form.setValue('quantity', Number(e.target.value))}
+              className="h-11 md:h-9"
             />
             {activeType === 'adjustment' ? (
-              <p className="text-xs text-slate-500">Positive to add stock, negative to remove.</p>
+              <p className="text-xs text-muted-foreground">Positive to add stock, negative to remove.</p>
             ) : null}
           </div>
 
@@ -337,7 +341,7 @@ export function RecordMovementDrawer({
             <div className="space-y-1">
               <label className="text-sm font-medium">Reference (optional)</label>
               <select
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
                 value={form.watch('referenceType') ?? 'MANUAL'}
                 onChange={(e) => form.setValue('referenceType', e.target.value as 'MANUAL' | 'PURCHASE' | 'SALE')}
               >
@@ -369,7 +373,7 @@ export function RecordMovementDrawer({
           </div>
 
           {activeType !== 'transfer' && selectedStock ? (
-            <div className="rounded-md border bg-slate-50 p-3 text-sm">
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
               <div>
                 Current stock: <strong>{selectedStock.quantity}</strong> {selectedProduct?.unit ?? ''} in {selectedStock.warehouse.name}
               </div>
@@ -388,7 +392,7 @@ export function RecordMovementDrawer({
           ) : null}
 
           {activeType === 'transfer' && sourceStock && destinationStock ? (
-            <div className="rounded-md border bg-slate-50 p-3 text-sm space-y-1">
+            <div className="space-y-1 rounded-md border border-border bg-muted/40 p-3 text-sm">
               <div>
                 Source after: <strong>{sourceStock.quantity - quantity}</strong> {selectedProduct?.unit ?? ''}
               </div>
@@ -400,8 +404,8 @@ export function RecordMovementDrawer({
 
           {submitError ? <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</div> : null}
 
-          <div className="fixed bottom-0 right-0 w-full border-t bg-white p-4 sm:w-[32rem]">
-            <Button type="submit" className="w-full" disabled={mutationPending}>
+          <div className="fixed bottom-0 left-0 right-0 w-full border-t bg-background p-4 md:left-auto md:w-lg">
+            <Button type="submit" className="h-11 min-h-11 w-full md:h-9 md:min-h-0" disabled={mutationPending}>
               {BUTTON_LABELS[activeType]}
             </Button>
           </div>

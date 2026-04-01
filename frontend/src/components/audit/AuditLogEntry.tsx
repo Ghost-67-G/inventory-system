@@ -55,14 +55,14 @@ function formatValue(field: string, value: unknown): string {
 }
 
 function getActionBadgeClass(action: AuditAction): string {
-  if (action.includes('created')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  if (action.includes('updated')) return 'bg-blue-50 text-blue-700 border-blue-200';
-  if (action.includes('deleted')) return 'bg-red-50 text-red-700 border-red-200';
-  if (action.includes('deactivated')) return 'bg-amber-50 text-amber-700 border-amber-200';
-  if (action.includes('reactivated')) return 'bg-teal-50 text-teal-700 border-teal-200';
-  if (action.includes('role_changed')) return 'bg-violet-50 text-violet-700 border-violet-200';
-  if (action.includes('adjusted')) return 'bg-orange-50 text-orange-700 border-orange-200';
-  return 'bg-slate-50 text-slate-700 border-slate-200';
+  if (action.includes('created')) return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800';
+  if (action.includes('updated')) return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
+  if (action.includes('deleted')) return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
+  if (action.includes('deactivated')) return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800';
+  if (action.includes('reactivated')) return 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800';
+  if (action.includes('role_changed')) return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800';
+  if (action.includes('adjusted')) return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800';
+  return 'bg-muted text-muted-foreground border-border';
 }
 
 function getActionLabel(action: AuditAction): string {
@@ -91,7 +91,7 @@ function getEntityIcon(entityType: IAuditLog['entityType']) {
 function UserInitial({ name }: { name: string }) {
   const initial = (name || '?').charAt(0).toUpperCase();
   return (
-    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
+    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
       {initial}
     </span>
   );
@@ -102,10 +102,10 @@ function ChangeRow({ change }: { change: AuditChange }) {
   const newValue = formatValue(change.field, change.newValue);
 
   return (
-    <div className="grid grid-cols-1 gap-2 border-t border-slate-100 py-2 text-sm md:grid-cols-3">
-      <div className="text-slate-600">{formatFieldName(change.field)}</div>
-      <div title={oldValue} className="truncate text-slate-500">{oldValue}</div>
-      <div title={newValue} className="truncate font-medium text-slate-900">{newValue}</div>
+    <div className="grid grid-cols-1 gap-2 border-t border-border py-2 text-sm md:grid-cols-3">
+      <div className="text-muted-foreground">{formatFieldName(change.field)}</div>
+      <div title={oldValue} className="truncate text-muted-foreground">{oldValue}</div>
+      <div title={newValue} className="truncate font-medium text-foreground">{newValue}</div>
     </div>
   );
 }
@@ -118,44 +118,44 @@ export function AuditLogEntry({ log, compact = false }: AuditLogEntryProps) {
 
   if (compact) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-slate-500">{formatTimestamp(log.createdAt)}</span>
+          <span className="text-xs text-muted-foreground">{formatTimestamp(log.createdAt)}</span>
           <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${actionClass}`}>{actionLabel}</span>
         </div>
-        <div className="mt-2 text-sm text-slate-700">by {log.performedByName}</div>
-        <div className="mt-1 text-xs text-slate-500">{log.changes.length} fields changed</div>
+        <div className="mt-2 text-sm text-foreground">by {log.performedByName}</div>
+        <div className="mt-1 text-xs text-muted-foreground">{log.changes.length} fields changed</div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
+    <div className="rounded-lg border border-border bg-card">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
         className="w-full p-4 text-left"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-center">
-          <div className="md:col-span-2 text-xs text-slate-500">{formatTimestamp(log.createdAt)}</div>
+          <div className="md:col-span-2 text-xs text-muted-foreground">{formatTimestamp(log.createdAt)}</div>
           <div className="md:col-span-2 flex items-center gap-2">
             <UserInitial name={log.performedByName} />
-            <span className="truncate text-sm text-slate-800">{log.performedByName}</span>
+            <span className="truncate text-sm text-foreground">{log.performedByName}</span>
           </div>
           <div className="md:col-span-2">
             <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${actionClass}`}>{actionLabel}</span>
           </div>
-          <div className="md:col-span-3 flex items-center gap-2 text-sm text-slate-700">
-            <Icon className="h-4 w-4 text-slate-500" />
+          <div className="md:col-span-3 flex items-center gap-2 text-sm text-foreground">
+            <Icon className="h-4 w-4 text-muted-foreground" />
             <span className="truncate">{log.entityName}</span>
           </div>
-          <div className="md:col-span-2 text-sm text-slate-600">{log.changes.length} fields changed</div>
-          <div className="md:col-span-1 text-right text-xs text-slate-400">{log.ipAddress ?? ''}</div>
+          <div className="md:col-span-2 text-sm text-muted-foreground">{log.changes.length} fields changed</div>
+          <div className="md:col-span-1 text-right text-xs text-muted-foreground">{log.ipAddress ?? ''}</div>
         </div>
       </button>
 
       {expanded ? (
-        <div className="border-t border-slate-200 px-4 pb-2">
+        <div className="border-t border-border px-4 pb-2">
           {log.changes.length > 0 ? (
             <div className="pt-2">
               {log.changes.map((change, index) => (
@@ -163,7 +163,7 @@ export function AuditLogEntry({ log, compact = false }: AuditLogEntryProps) {
               ))}
             </div>
           ) : (
-            <div className="py-3 text-sm text-slate-500">No field-level changes captured for this action.</div>
+            <div className="py-3 text-sm text-muted-foreground">No field-level changes captured for this action.</div>
           )}
         </div>
       ) : null}

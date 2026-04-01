@@ -21,9 +21,9 @@ export function ConfirmDeactivateDialog({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">Deactivate {name}?</h2>
-        <p className="mt-2 text-sm text-slate-600">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 className="text-lg font-semibold text-foreground">Deactivate {name}?</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           They will be immediately signed out and lose access. You can reactivate at any time.
         </p>
 

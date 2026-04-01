@@ -81,28 +81,28 @@ export function WarehousesPage() {
       {/* Summary Strip */}
       {summary && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-sm font-medium text-gray-600">Total warehouses</p>
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Total warehouses</p>
             <div className="mt-2">
-              <div className="text-2xl font-bold">{summary.total}</div>
+              <div className="text-2xl font-bold text-foreground">{summary.total}</div>
             </div>
           </div>
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-sm font-medium text-gray-600">Active warehouses</p>
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Active warehouses</p>
             <div className="mt-2">
-              <div className="text-2xl font-bold text-green-600">{summary.active}</div>
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.active}</div>
             </div>
           </div>
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-sm font-medium text-gray-600">Total products</p>
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Total products</p>
             <div className="mt-2">
-              <div className="text-2xl font-bold">{summary.totalProducts}</div>
+              <div className="text-2xl font-bold text-foreground">{summary.totalProducts}</div>
             </div>
           </div>
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-sm font-medium text-gray-600">Units in stock</p>
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Units in stock</p>
             <div className="mt-2">
-              <div className="text-2xl font-bold">{summary.totalUnits}</div>
+              <div className="text-2xl font-bold text-foreground">{summary.totalUnits}</div>
             </div>
           </div>
         </div>
@@ -133,9 +133,9 @@ export function WarehousesPage() {
 
       {/* Warehouse Cards Grid */}
       {filteredWarehouses.length === 0 ? (
-        <div className="rounded-xl border bg-white p-8 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
           <div className="flex flex-col items-center justify-center py-12">
-            <p className="mb-4 text-gray-500">No warehouses found</p>
+            <p className="mb-4 text-muted-foreground">No warehouses found</p>
             <PermissionGuard permission="warehouse.manage" fallback={null}>
               <Button
                 variant="outline"
@@ -154,25 +154,25 @@ export function WarehousesPage() {
           {filteredWarehouses.map((warehouse) => (
             <article
               key={warehouse._id}
-              className={`flex flex-col rounded-xl border bg-white shadow-sm ${!warehouse.isActive ? 'opacity-60' : ''}`}
+              className={`flex flex-col rounded-xl border border-border bg-card shadow-sm ${!warehouse.isActive ? 'opacity-60' : ''}`}
             >
-              <div className="flex items-start justify-between border-b p-4">
+              <div className="flex items-start justify-between border-b border-border p-4">
                   <div className="flex-1">
-                  <h3 className="text-base font-semibold text-gray-900">{warehouse.name}</h3>
+                  <h3 className="text-base font-semibold text-foreground">{warehouse.name}</h3>
                     <div className="mt-1 flex items-center gap-2">
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">
+                    <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
                         {warehouse.code}
                     </span>
                     {warehouse.isDefault && (
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                         Default
                       </span>
                     )}
                     <span
-                      className={`inline-flex items-center gap-1 text-xs ${warehouse.isActive ? 'text-green-700' : 'text-gray-500'}`}
+                      className={`inline-flex items-center gap-1 text-xs ${warehouse.isActive ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`}
                     >
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${warehouse.isActive ? 'bg-green-500' : 'bg-gray-400'}`}
+                        className={`h-1.5 w-1.5 rounded-full ${warehouse.isActive ? 'bg-green-500' : 'bg-muted-foreground'}`}
                       />
                       {warehouse.isActive ? 'Active' : 'Inactive'}
                     </span>
@@ -227,19 +227,19 @@ export function WarehousesPage() {
 
               <div className="flex-1 space-y-4 p-4">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-gray-50 p-2">
-                    <p className="text-xs text-gray-600">Products</p>
-                    <p className="text-lg font-semibold">{warehouse.stockSummary.totalProducts}</p>
+                  <div className="rounded-lg bg-muted/50 p-2">
+                    <p className="text-xs text-muted-foreground">Products</p>
+                    <p className="text-lg font-semibold text-foreground">{warehouse.stockSummary.totalProducts}</p>
                   </div>
-                  <div className="rounded-lg bg-gray-50 p-2">
-                    <p className="text-xs text-gray-600">Units</p>
-                    <p className="text-lg font-semibold">{warehouse.stockSummary.totalUnits}</p>
+                  <div className="rounded-lg bg-muted/50 p-2">
+                    <p className="text-xs text-muted-foreground">Units</p>
+                    <p className="text-lg font-semibold text-foreground">{warehouse.stockSummary.totalUnits}</p>
                   </div>
                 </div>
 
                 {/* Address */}
                 {Object.values(warehouse.address || {}).some(Boolean) && (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     {warehouse.address?.city && warehouse.address?.country
                       ? `${warehouse.address.city}, ${warehouse.address.country}`
                       : Object.values(warehouse.address || {})
@@ -249,14 +249,14 @@ export function WarehousesPage() {
                 )}
 
                 {warehouse.description && (
-                  <p className="line-clamp-2 text-sm text-gray-600">{warehouse.description}</p>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">{warehouse.description}</p>
                 )}
               </div>
 
-              <div className="flex items-center justify-between border-t p-4">
+              <div className="flex items-center justify-between border-t border-border p-4">
                 <Link
                   to={`/warehouses/${warehouse._id}`}
-                  className="text-sm font-medium text-blue-600 hover:underline"
+                  className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
                 >
                   View stock →
                 </Link>

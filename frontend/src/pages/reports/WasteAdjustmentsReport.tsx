@@ -101,8 +101,8 @@ export function WasteAdjustmentsReport() {
           if (type === 'WASTE') {
             return (
               <div className="flex items-center gap-2">
-                <Trash2 className="h-4 w-4 text-red-600" />
-                <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+                <span className="rounded px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
                   Waste
                 </span>
               </div>
@@ -110,8 +110,8 @@ export function WasteAdjustmentsReport() {
           }
           return (
             <div className="flex items-center gap-2">
-              <Repeat2 className="h-4 w-4 text-blue-600" />
-              <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+              <Repeat2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="rounded px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                 Adjustment
               </span>
             </div>
@@ -147,7 +147,7 @@ export function WasteAdjustmentsReport() {
           const type = info.row.original.type;
           const quantity = info.getValue();
           const product = info.row.original.product as any;
-          const color = type === 'WASTE' ? 'text-red-600' : 'text-blue-600';
+          const color = type === 'WASTE' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400';
           return (
             <span className={`font-medium ${color}`}>
               {type === 'WASTE' ? '-' : '±'}{quantity} {product?.unit}
@@ -168,7 +168,7 @@ export function WasteAdjustmentsReport() {
           const product = info.row.original.product as any;
           const costPrice = product?.costPrice ?? 0;
           const value = quantity * costPrice;
-          const color = type === 'WASTE' ? 'text-red-600' : 'text-gray-600';
+          const color = type === 'WASTE' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground';
           return (
             <span className={color}>
               {formatCurrency(value, 'USD')}
@@ -202,7 +202,7 @@ export function WasteAdjustmentsReport() {
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium">From</label>
+            <label className="text-sm font-medium text-foreground">From</label>
             <Input
               type="date"
               value={customDateFrom}
@@ -214,7 +214,7 @@ export function WasteAdjustmentsReport() {
             />
           </div>
           <div>
-            <label className="text-sm font-medium">To</label>
+            <label className="text-sm font-medium text-foreground">To</label>
             <Input
               type="date"
               value={customDateTo}
@@ -229,11 +229,11 @@ export function WasteAdjustmentsReport() {
       </div>
 
       {/* Type Filter */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <select 
           value={params.type || ''} 
           onChange={(e) => updateParams({ type: e.target.value as any || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All types</option>
           <option value="WASTE">Waste Only</option>
@@ -243,7 +243,7 @@ export function WasteAdjustmentsReport() {
         <select 
           value={params.productId || ''} 
           onChange={(e) => updateParams({ productId: e.target.value || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All products</option>
           {products?.map((p) => (
@@ -254,7 +254,7 @@ export function WasteAdjustmentsReport() {
         <select 
           value={params.warehouseId || ''} 
           onChange={(e) => updateParams({ warehouseId: e.target.value || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All warehouses</option>
           {warehouses?.map((w) => (
@@ -312,7 +312,7 @@ export function WasteAdjustmentsReport() {
       </div>
 
       {/* Data Table with Infinite Scroll */}
-      <div className="border rounded-lg overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         <DataTable
           columns={columns as any}
           data={allMovements}

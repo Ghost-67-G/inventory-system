@@ -27,12 +27,12 @@ export const MOVEMENT_META: Record<MovementType, MovementMeta> = {
 };
 
 const colorStyles: Record<MovementMeta['color'], { background: string; icon: string; amount: string }> = {
-  green: { background: '#dcfce7', icon: '#15803d', amount: 'text-emerald-700' },
-  red: { background: '#fee2e2', icon: '#dc2626', amount: 'text-red-700' },
-  blue: { background: '#dbeafe', icon: '#2563eb', amount: 'text-blue-700' },
-  amber: { background: '#fef3c7', icon: '#d97706', amount: 'text-amber-700' },
-  teal: { background: '#d1fae5', icon: '#1D9E75', amount: 'text-emerald-700' },
-  purple: { background: '#ede9fe', icon: '#534AB7', amount: 'text-violet-700' }
+  green: { background: 'bg-green-100 dark:bg-green-900/30', icon: 'text-green-600 dark:text-green-400', amount: 'text-green-600 dark:text-green-400' },
+  red: { background: 'bg-red-100 dark:bg-red-900/30', icon: 'text-red-600 dark:text-red-400', amount: 'text-red-600 dark:text-red-400' },
+  blue: { background: 'bg-blue-100 dark:bg-blue-900/30', icon: 'text-blue-600 dark:text-blue-400', amount: 'text-blue-600 dark:text-blue-400' },
+  amber: { background: 'bg-amber-100 dark:bg-amber-900/30', icon: 'text-amber-600 dark:text-amber-400', amount: 'text-amber-600 dark:text-amber-400' },
+  teal: { background: 'bg-teal-100 dark:bg-teal-900/30', icon: 'text-teal-600 dark:text-teal-400', amount: 'text-teal-600 dark:text-teal-400' },
+  purple: { background: 'bg-purple-100 dark:bg-purple-900/30', icon: 'text-purple-600 dark:text-purple-400', amount: 'text-purple-600 dark:text-purple-400' }
 };
 
 export function ActivityFeedItem({ movement }: { movement: IStockMovement }) {
@@ -47,20 +47,20 @@ export function ActivityFeedItem({ movement }: { movement: IStockMovement }) {
 
   return (
     <div className="flex items-start gap-3 py-3">
-      <div className="mt-0.5 rounded-full p-2" style={{ backgroundColor: color.background }}>
-        <Icon size={14} style={{ color: color.icon }} />
+      <div className={`mt-0.5 rounded-full p-2 ${color.background}`}>
+        <Icon size={14} className={color.icon} />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-900">{movement.product?.name ?? 'Unknown product'}</p>
-        <p className="text-xs text-slate-500">
+        <p className="truncate text-sm font-medium text-foreground">{movement.product?.name ?? 'Unknown product'}</p>
+        <p className="text-xs text-muted-foreground">
           {movement.quantity} {movement.product?.unit ?? ''} - {movement.warehouse?.name ?? 'Unknown warehouse'}
         </p>
       </div>
 
       <div className="text-right">
         <p className={`text-sm font-semibold ${color.amount}`}>{quantityText}</p>
-        <p className="text-xs text-slate-500">{formatDistanceToNow(new Date(movement.createdAt), { addSuffix: true })}</p>
+        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(movement.createdAt), { addSuffix: true })}</p>
       </div>
     </div>
   );

@@ -13,12 +13,14 @@ import { useWarehousesDropdown } from '@/hooks/useWarehouses';
 import { formatCurrency } from '@/lib/formatting';
 import type { StockValuationRow, StockValuationParams } from '@/types';
 import { createColumnHelper } from '@tanstack/react-table';
+import { useWindowSize } from '@/hooks/useWindowSize';
 
 const columnHelper = createColumnHelper<StockValuationRow>();
 
 export function StockValuationReport() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [expandedWarehouseId, setExpandedWarehouseId] = useState<string | null>(null);
+  const { isMobile } = useWindowSize();
 
   // Get filter params from URL
   const params: StockValuationParams = {
@@ -259,7 +261,13 @@ export function StockValuationReport() {
 
       {/* Data Table */}
       <div className="border rounded-lg overflow-hidden">
-        <DataTable columns={columns as any} data={rows} isLoading={isLoading} emptyMessage="No products found" />
+        <DataTable
+          columns={columns as any}
+          data={rows}
+          isLoading={isLoading}
+          hiddenColumnIds={isMobile ? ['category', 'unit', 'costPrice', 'sellingPrice', 'margin', 'warehouseBreakdown'] : []}
+          emptyMessage="No products found"
+        />
       </div>
     </div>
   );

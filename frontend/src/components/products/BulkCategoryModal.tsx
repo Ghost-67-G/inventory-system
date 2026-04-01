@@ -51,7 +51,7 @@ export default function BulkCategoryModal({
           <select
             value={selectedCategoryId ?? ''}
             onChange={(e) => setSelectedCategoryId(e.target.value || null)}
-            className="w-full px-3 py-2 border rounded-md text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="">No category</option>
             {categories?.map((cat) => (

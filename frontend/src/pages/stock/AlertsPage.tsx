@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { WarehouseBadge } from '@/components/shared/WarehouseBadge';
 import StockBadge from '@/components/shared/StockBadge';
+import { useWindowSize } from '@/hooks/useWindowSize';
 import { useAcknowledgeAlert, useAlerts, useBulkAcknowledge, usePendingAlertCount } from '@/hooks/useStock';
 import { usePermission } from '@/hooks/usePermission';
 import type { IStockAlert } from '@/types';
@@ -13,6 +14,7 @@ import type { IStockAlert } from '@/types';
 export function AlertsPage() {
   const [tab, setTab] = useState<'PENDING' | 'ACKNOWLEDGED' | 'ALL'>('PENDING');
   const [selected, setSelected] = useState<IStockAlert[]>([]);
+  const { isMobile, isTablet } = useWindowSize();
   const { canDo } = usePermission();
 
   const alertsQuery = useAlerts({ status: tab === 'ALL' ? undefined : tab });
@@ -26,11 +28,14 @@ export function AlertsPage() {
   const columns = useMemo<ColumnDef<IStockAlert>[]>(
     () => [
       {
+        id: 'status',
         header: 'Status',
         cell: ({ row }) => (
           <span
             className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-              row.original.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+              row.original.status === 'PENDING'
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
             }`}
           >
             {row.original.status === 'PENDING' ? 'Pending' : 'Acknowledged'}
@@ -38,15 +43,17 @@ export function AlertsPage() {
         )
       },
       {
+        id: 'product',
         header: 'Product',
         cell: ({ row }) => (
           <div>
-            <div className="font-medium text-slate-900">{row.original.product?.name ?? '-'}</div>
-            <div className="text-xs text-slate-500">{row.original.product?.sku ?? '-'}</div>
+            <div className="font-medium text-foreground">{row.original.product?.name ?? '-'}</div>
+            <div className="text-xs text-muted-foreground">{row.original.product?.sku ?? '-'}</div>
           </div>
         )
       },
       {
+        id: 'warehouse',
         header: 'Warehouse',
         cell: ({ row }) =>
           row.original.warehouse ? (
@@ -56,6 +63,7 @@ export function AlertsPage() {
           )
       },
       {
+        id: 'currentStock',
         header: 'Current stock',
         cell: ({ row }) => (
           <StockBadge
@@ -66,14 +74,17 @@ export function AlertsPage() {
         )
       },
       {
+        id: 'threshold',
         header: 'Threshold',
         cell: ({ row }) => `${row.original.threshold} ${row.original.product?.unit ?? ''}`
       },
       {
+        id: 'created',
         header: 'Created',
         cell: ({ row }) => formatDistanceToNow(new Date(row.original.createdAt), { addSuffix: true })
       },
       {
+        id: 'actions',
         header: 'Actions',
         cell: ({ row }) =>
           row.original.status === 'PENDING' && canDo('alert.acknowledge') ? (
@@ -88,7 +99,7 @@ export function AlertsPage() {
               Acknowledge
             </Button>
           ) : (
-            <span className="text-xs text-slate-400">-</span>
+            <span className="text-xs text-muted-foreground">-</span>
           )
       }
     ],
@@ -140,24 +151,53 @@ export function AlertsPage() {
         </div>
       ) : null}
 
-      <DataTable<IStockAlert>
-        columns={columns}
-        data={alerts}
-        enableRowSelection={canDo('alert.acknowledge')}
-        onSelectionChange={(rows) => setSelected(rows)}
-        getRowId={(row) => row._id}
-        isLoading={alertsQuery.isLoading}
-        isFetchingNextPage={alertsQuery.isFetchingNextPage}
-        hasNextPage={alertsQuery.hasNextPage}
-        onFetchNextPage={() => void alertsQuery.fetchNextPage()}
-        emptyMessage={
-          tab === 'PENDING'
-            ? 'All caught up! No pending alerts.'
-            : tab === 'ACKNOWLEDGED'
-              ? 'No acknowledged alerts yet.'
-              : 'No alerts found.'
-        }
-      />
+      {isMobile ? (
+        <div className="space-y-3">
+          {alerts.map((alert) => (
+            <article key={alert._id} className="min-h-20 rounded-xl border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{alert.product?.name ?? '-'}</p>
+                  <p className="text-xs text-muted-foreground">{alert.warehouse?.name ?? '-'}</p>
+                </div>
+                <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(alert.createdAt), { addSuffix: true })}</span>
+              </div>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xl font-bold text-red-600 dark:text-red-400">{alert.currentStock}</p>
+                  <p className="text-xs text-muted-foreground">/ {alert.threshold} threshold</p>
+                </div>
+                {alert.status === 'PENDING' && canDo('alert.acknowledge') ? (
+                  <Button className="h-11 min-h-11" onClick={() => acknowledgeMutation.mutate(alert._id)}>
+                    Acknowledge
+                  </Button>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <DataTable<IStockAlert>
+          columns={columns}
+          data={alerts}
+          enableRowSelection={canDo('alert.acknowledge')}
+          onSelectionChange={(rows) => setSelected(rows)}
+          getRowId={(row) => row._id}
+          isLoading={alertsQuery.isLoading}
+          isFetchingNextPage={alertsQuery.isFetchingNextPage}
+          hasNextPage={alertsQuery.hasNextPage}
+          onFetchNextPage={() => void alertsQuery.fetchNextPage()}
+          emptyMessage={
+            tab === 'PENDING'
+              ? 'All caught up! No pending alerts.'
+              : tab === 'ACKNOWLEDGED'
+                ? 'No acknowledged alerts yet.'
+                : 'No alerts found.'
+          }
+          hiddenColumnIds={isTablet ? ['threshold'] : []}
+          maxHeight="calc(100dvh - 260px)"
+        />
+      )}
     </div>
   );
 }

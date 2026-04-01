@@ -47,7 +47,7 @@ const TabsList = React.forwardRef<
   HTMLDivElement,
   TabsListProps
 >(({ children, className = '', ...props }, ref) => (
-  <div ref={ref} role="tablist" className={`flex border-b border-gray-200 ${className}`} {...props}>
+  <div ref={ref} role="tablist" className={`flex border-b border-border ${className}`} {...props}>
     {children}
   </div>
 ));
@@ -74,8 +74,8 @@ const TabsTrigger = React.forwardRef<
       onClick={() => onValueChange(tabValue)}
       className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
         isActive
-          ? 'border-blue-600 text-blue-600'
-          : 'border-transparent text-gray-600 hover:text-gray-900'
+          ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+          : 'border-transparent text-muted-foreground hover:text-foreground'
       } ${className}`}
       {...props}
     >

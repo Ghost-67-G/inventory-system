@@ -35,9 +35,9 @@ function formatMoney(value: number, currency: string): string {
 
 function DashboardStatsSkeleton() {
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
       {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div key={index} className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <Skeleton className="mb-3 h-4 w-2/3" />
           <Skeleton className="mb-2 h-8 w-1/2" />
           <Skeleton className="h-3 w-1/3" />
@@ -78,8 +78,8 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">Operational and financial inventory snapshot</p>
+        <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Operational and financial inventory snapshot</p>
       </div>
 
       {statsQuery.isLoading ? (
@@ -92,7 +92,7 @@ export function DashboardPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <StatCard
             label="Total products"
             value={stats?.overview.totalProducts.toLocaleString() ?? 0}
@@ -146,23 +146,23 @@ export function DashboardPage() {
       )}
 
       {isStatsStale ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="rounded-lg border border-amber-200 bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
           Stats may be slightly outdated - refresh in progress.
         </div>
       ) : null}
 
-      <section className="grid gap-4 lg:grid-cols-5">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm lg:col-span-3">
           <div className="mb-3">
-            <h2 className="text-base font-semibold text-slate-900">Stock movements</h2>
-            <p className="text-xs text-slate-500">Last 30 days</p>
+            <h2 className="text-base font-semibold text-foreground">Stock movements</h2>
+            <p className="text-xs text-muted-foreground">Last 30 days</p>
           </div>
           <MovementBarChart data={stats?.charts.movements ?? []} isLoading={statsQuery.isLoading} />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm lg:col-span-2">
           <div className="mb-3">
-            <h2 className="text-base font-semibold text-slate-900">Value by category</h2>
+            <h2 className="text-base font-semibold text-foreground">Value by category</h2>
           </div>
           <CategoryDonutChart
             data={stats?.charts.categories ?? []}
@@ -172,16 +172,89 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-base font-semibold text-slate-900">Warehouse utilization</h2>
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <h2 className="mb-3 text-base font-semibold text-foreground">Warehouse utilization</h2>
         <WarehouseBarChart data={stats?.charts.warehouses ?? []} isLoading={statsQuery.isLoading} />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm lg:col-span-2 lg:order-last">
+          <h2 className="text-base font-semibold text-foreground">Quick actions</h2>
+          <div className="mt-3 divide-y divide-border rounded-lg border border-border">
+            <PermissionGuard permission="stock.adjust">
+              <button
+                type="button"
+                className="flex min-h-13 w-full items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50"
+                onClick={() => openDrawer('in')}
+              >
+                <Plus className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Add stock</p>
+                  <p className="text-xs text-muted-foreground">Record stock in from a purchase or return</p>
+                </div>
+              </button>
+            </PermissionGuard>
+
+            <PermissionGuard permission="stock.adjust">
+              <button
+                type="button"
+                className="flex min-h-13 w-full items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50"
+                onClick={() => openDrawer('out')}
+              >
+                <Minus className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Remove stock</p>
+                  <p className="text-xs text-muted-foreground">Record stock out for a sale or usage</p>
+                </div>
+              </button>
+            </PermissionGuard>
+
+            <PermissionGuard permission="stock.adjust">
+              <button
+                type="button"
+                className="flex min-h-13 w-full items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50"
+                onClick={() => openDrawer('transfer')}
+              >
+                <ArrowLeftRight className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Transfer stock</p>
+                  <p className="text-xs text-muted-foreground">Move stock between warehouses</p>
+                </div>
+              </button>
+            </PermissionGuard>
+
+            {(stats?.overview.pendingAlerts ?? 0) > 0 ? (
+              <PermissionGuard permission="alert.view">
+                <button
+                  type="button"
+                  className="flex min-h-13 w-full items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50"
+                  onClick={() => navigate('/alerts')}
+                >
+                  <Bell className="mt-0.5 h-4 w-4 text-red-600 dark:text-red-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-foreground">View alerts</p>
+                      <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        {stats?.overview.pendingAlerts}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{stats?.overview.pendingAlerts} items need attention</p>
+                  </div>
+                </button>
+              </PermissionGuard>
+            ) : null}
+          </div>
+
+          <p className="mt-3 text-xs text-muted-foreground">
+            Last updated{' '}
+            {stats?.computedAt ? formatDistanceToNow(new Date(stats.computedAt), { addSuffix: true }) : 'just now'}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm lg:col-span-3 lg:order-first">
           <div className="mb-2">
-            <h2 className="text-base font-semibold text-slate-900">Recent activity</h2>
-            <p className="text-xs text-slate-500">Last 10 movements</p>
+            <h2 className="text-base font-semibold text-foreground">Recent activity</h2>
+            <p className="text-xs text-muted-foreground">Last 10 movements</p>
           </div>
 
           <div>
@@ -194,91 +267,18 @@ export function DashboardPage() {
             ) : activityQuery.data && activityQuery.data.length > 0 ? (
               <>
                 {activityQuery.data.map((movement, index) => (
-                  <div key={movement._id} className={index !== activityQuery.data.length - 1 ? 'border-b border-slate-100' : ''}>
+                  <div key={movement._id} className={index !== activityQuery.data.length - 1 ? 'border-b border-border' : ''}>
                     <ActivityFeedItem movement={movement} />
                   </div>
                 ))}
-                <Link to="/stock" className="mt-2 inline-block text-sm font-medium text-slate-700 hover:text-slate-900">
+                <Link to="/stock" className="mt-2 inline-block text-sm font-medium text-muted-foreground hover:text-foreground">
                   View all movements -&gt;
                 </Link>
               </>
             ) : (
-              <p className="py-8 text-center text-sm text-slate-500">No recent activity.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">No recent activity.</p>
             )}
           </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900">Quick actions</h2>
-          <div className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
-            <PermissionGuard permission="stock.adjust">
-              <button
-                type="button"
-                className="flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-slate-50"
-                onClick={() => openDrawer('in')}
-              >
-                <Plus className="mt-0.5 h-4 w-4 text-slate-700" />
-                <div>
-                  <p className="text-sm font-medium text-slate-900">Add stock</p>
-                  <p className="text-xs text-slate-500">Record stock in from a purchase or return</p>
-                </div>
-              </button>
-            </PermissionGuard>
-
-            <PermissionGuard permission="stock.adjust">
-              <button
-                type="button"
-                className="flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-slate-50"
-                onClick={() => openDrawer('out')}
-              >
-                <Minus className="mt-0.5 h-4 w-4 text-slate-700" />
-                <div>
-                  <p className="text-sm font-medium text-slate-900">Remove stock</p>
-                  <p className="text-xs text-slate-500">Record stock out for a sale or usage</p>
-                </div>
-              </button>
-            </PermissionGuard>
-
-            <PermissionGuard permission="stock.adjust">
-              <button
-                type="button"
-                className="flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-slate-50"
-                onClick={() => openDrawer('transfer')}
-              >
-                <ArrowLeftRight className="mt-0.5 h-4 w-4 text-slate-700" />
-                <div>
-                  <p className="text-sm font-medium text-slate-900">Transfer stock</p>
-                  <p className="text-xs text-slate-500">Move stock between warehouses</p>
-                </div>
-              </button>
-            </PermissionGuard>
-
-            {(stats?.overview.pendingAlerts ?? 0) > 0 ? (
-              <PermissionGuard permission="alert.view">
-                <button
-                  type="button"
-                  className="flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-slate-50"
-                  onClick={() => navigate('/alerts')}
-                >
-                  <Bell className="mt-0.5 h-4 w-4 text-red-700" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-slate-900">View alerts</p>
-                      <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                        {stats?.overview.pendingAlerts}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500">{stats?.overview.pendingAlerts} items need attention</p>
-                  </div>
-                </button>
-              </PermissionGuard>
-            ) : null}
-          </div>
-
-          <p className="mt-3 text-xs text-slate-500">
-            Last updated{' '}
-            {stats?.computedAt ? formatDistanceToNow(new Date(stats.computedAt), { addSuffix: true }) : 'just now'}
-          </p>
         </div>
       </section>
 

@@ -1,15 +1,17 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type ColumnDef } from '@tanstack/react-table';
-import { Plus, Search, RefreshCw, Upload, X } from 'lucide-react';
+import { Filter, Plus, Search, RefreshCw, Upload, X } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import CategoryBadge from '@/components/shared/CategoryBadge';
+import { FloatingActionButton } from '@/components/shared/FloatingActionButton';
 import StockBadge from '@/components/shared/StockBadge';
 import ProductFormDrawer from '@/components/products/ProductFormDrawer';
 import ConfirmDeleteProductDialog from '@/components/products/ConfirmDeleteProductDialog';
 import BulkCategoryModal from '@/components/products/BulkCategoryModal';
 import { Button } from '@/components/ui/button';
+import { useWindowSize } from '@/hooks/useWindowSize';
 import { useCategoriesDropdown } from '@/hooks/useCategories';
 import { useProducts, useProductCount, useBulkUpdateProducts } from '@/hooks/useProducts';
 import { useTenantFormatting } from '@/hooks/useTenantFormatting';
@@ -44,9 +46,11 @@ export function ProductsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const debouncedSearch = useDebounce(searchInput, 400);
+  const { isMobile, isTablet } = useWindowSize();
 
   const [selectedProducts, setSelectedProducts] = useState<IProduct[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [editingProduct, setEditingProduct] = useState<IProduct | undefined>(undefined);
   const [deleteProduct, setDeleteProduct] = useState<IProduct | null>(null);
   const [bulkCategoryModalOpen, setBulkCategoryModalOpen] = useState(false);
@@ -110,7 +114,7 @@ export function ProductsPage() {
       header: 'SKU',
       size: 120,
       cell: ({ getValue }) => (
-        <span className="font-mono text-xs text-gray-500">{getValue() as string}</span>
+        <span className="font-mono text-xs text-muted-foreground">{getValue() as string}</span>
       )
     },
     {
@@ -120,10 +124,11 @@ export function ProductsPage() {
       size: 240,
       cell: ({ row }) => (
         <div>
-          <div className="font-medium text-gray-900 line-clamp-1">{row.original.name}</div>
-          {row.original.description && (
-            <div className="text-xs text-gray-500 line-clamp-1">{row.original.description}</div>
-          )}
+          <div className="line-clamp-1 font-medium text-foreground">{row.original.name}</div>
+          <div className="text-xs text-muted-foreground">SKU: {row.original.sku}</div>
+          {!isMobile && !isTablet && row.original.description ? (
+            <div className="line-clamp-1 text-xs text-muted-foreground">{row.original.description}</div>
+          ) : null}
         </div>
       )
     },
@@ -134,7 +139,7 @@ export function ProductsPage() {
       size: 140,
       cell: ({ row }) => {
         const cat = row.original.category;
-        if (!cat) return <span className="text-xs text-gray-400">Uncategorized</span>;
+        if (!cat) return <span className="text-xs text-muted-foreground">Uncategorized</span>;
         return <CategoryBadge name={cat.name} color={cat.color} size="sm" />;
       }
     },
@@ -143,7 +148,7 @@ export function ProductsPage() {
       accessorKey: 'unit',
       header: 'Unit',
       size: 80,
-      cell: ({ getValue }) => <span className="text-sm text-gray-600">{getValue() as string}</span>
+      cell: ({ getValue }) => <span className="text-sm text-muted-foreground">{getValue() as string}</span>
     },
     {
       id: 'stock',
@@ -164,7 +169,7 @@ export function ProductsPage() {
       header: 'Price',
       size: 120,
       cell: ({ getValue }) => (
-        <span className="font-medium">{formatMoney(getValue() as number)}</span>
+        <span className="font-medium text-foreground">{formatMoney(getValue() as number)}</span>
       )
     },
     {
@@ -177,7 +182,9 @@ export function ProductsPage() {
         return (
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+              active
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-muted text-muted-foreground'
             }`}
           >
             {active ? 'Active' : 'Inactive'}
@@ -190,10 +197,10 @@ export function ProductsPage() {
       header: '',
       size: 80,
       cell: ({ row }) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {canDo('product.update') && (
             <button
-              className="text-xs text-blue-600 hover:underline"
+              className="rounded px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-50 hover:underline dark:text-blue-400 dark:hover:bg-blue-900/20"
               onClick={() => {
                 setEditingProduct(row.original);
                 setDrawerOpen(true);
@@ -204,7 +211,7 @@ export function ProductsPage() {
           )}
           {canDo('product.delete') && (
             <button
-              className="text-xs text-red-500 hover:underline"
+              className="rounded px-2 py-1 text-xs text-red-600 transition-colors hover:bg-red-50 hover:underline dark:text-red-400 dark:hover:bg-red-900/20"
               onClick={() => setDeleteProduct(row.original)}
             >
               Delete
@@ -213,7 +220,7 @@ export function ProductsPage() {
         </div>
       )
     }
-  ], [formatMoney, canDo]);
+  ], [formatMoney, canDo, isMobile, isTablet]);
 
   return (
     <div>
@@ -221,7 +228,7 @@ export function ProductsPage() {
         title="Products"
         subtitle={productCount !== undefined ? `${productCount.toLocaleString()} products` : undefined}
       >
-        <div className="flex items-center gap-2">
+        <div className="hidden items-center gap-2 md:flex">
           <PermissionGuard permission="product.create">
             <Button variant="outline" onClick={() => navigate('/products/import')}>
               <Upload className="mr-2 h-4 w-4" />
@@ -245,106 +252,113 @@ export function ProductsPage() {
       {/* Toolbar */}
       <div className="mb-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-64">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <div className="relative min-w-0 flex-1 md:min-w-64">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              className="w-full rounded-lg border border-input bg-white pl-9 pr-4 py-2 text-sm"
+              className="h-11 w-full rounded-lg border border-input bg-background py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground md:h-9 md:min-h-0"
               placeholder="Search by name, SKU, or description..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
             {searchInput && isLoading && (
-              <RefreshCw className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 animate-spin" />
+              <RefreshCw className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
             )}
           </div>
 
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="rounded-lg border border-input bg-white px-3 py-2 text-sm"
-          >
-            <option value="">All categories</option>
-            {categories?.map((cat) => (
-              <option key={cat._id} value={cat._id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+          <Button type="button" variant="outline" className="h-11 min-h-11 md:hidden" onClick={() => setShowMobileFilters((value) => !value)}>
+            <Filter className="mr-2 h-4 w-4" />
+            Filters
+          </Button>
 
-          <select
-            value={isActiveFilter}
-            onChange={(e) => setIsActiveFilter(e.target.value as 'true' | 'false' | 'all')}
-            className="rounded-lg border border-input bg-white px-3 py-2 text-sm"
-          >
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-            <option value="all">All</option>
-          </select>
-
-          <button
-            onClick={() => setLowStockOnly(!lowStockOnly)}
-            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-              lowStockOnly
-                ? 'bg-amber-100 border-amber-300 text-amber-700'
-                : 'border-input bg-white text-gray-700'
-            }`}
-          >
-            Low stock only
-          </button>
-
-          <select
-            value={`${sortBy}:${sortOrder}`}
-            onChange={(e) => {
-              const [by, order] = e.target.value.split(':');
-              setSortBy(by as 'name' | 'sku' | 'totalStock' | 'createdAt');
-              setSortOrder(order as 'asc' | 'desc');
-            }}
-            className="rounded-lg border border-input bg-white px-3 py-2 text-sm"
-          >
-            <option value="createdAt:desc">Newest first</option>
-            <option value="createdAt:asc">Oldest first</option>
-            <option value="name:asc">Name A-Z</option>
-            <option value="name:desc">Name Z-A</option>
-            <option value="totalStock:asc">Stock low-high</option>
-            <option value="totalStock:desc">Stock high-low</option>
-          </select>
-
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+          <div className={`${showMobileFilters ? 'grid' : 'hidden'} w-full grid-cols-1 gap-2 md:flex md:w-auto md:items-center md:gap-2`}>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="h-11 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground md:h-9 md:min-h-0"
             >
-              <X className="h-3 w-3" />
-              Clear filters
+              <option value="">All categories</option>
+              {categories?.map((cat) => (
+                <option key={cat._id} value={cat._id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={isActiveFilter}
+              onChange={(e) => setIsActiveFilter(e.target.value as 'true' | 'false' | 'all')}
+              className="h-11 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground md:h-9 md:min-h-0"
+            >
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+              <option value="all">All</option>
+            </select>
+
+            <button
+              onClick={() => setLowStockOnly(!lowStockOnly)}
+              className={`h-11 rounded-lg border px-3 py-2 text-sm transition-colors md:h-9 md:min-h-0 ${
+                lowStockOnly
+                  ? 'border-amber-300 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  : 'border-input bg-background text-foreground hover:bg-muted'
+              }`}
+            >
+              Low stock only
             </button>
-          )}
+
+            <select
+              value={`${sortBy}:${sortOrder}`}
+              onChange={(e) => {
+                const [by, order] = e.target.value.split(':');
+                setSortBy(by as 'name' | 'sku' | 'totalStock' | 'createdAt');
+                setSortOrder(order as 'asc' | 'desc');
+              }}
+              className="h-11 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground md:h-9 md:min-h-0"
+            >
+              <option value="createdAt:desc">Newest first</option>
+              <option value="createdAt:asc">Oldest first</option>
+              <option value="name:asc">Name A-Z</option>
+              <option value="name:desc">Name Z-A</option>
+              <option value="totalStock:asc">Stock low-high</option>
+              <option value="totalStock:desc">Stock high-low</option>
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:h-auto"
+              >
+                <X className="h-3 w-3" />
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
         {selectedProducts.length > 0 && (
-          <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-4 py-2">
-            <span className="text-sm font-medium text-blue-700">
+          <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 dark:border-blue-800 dark:bg-blue-900/20">
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
               {selectedProducts.length} selected
             </span>
             <button
-              className="ml-2 rounded px-3 py-1 bg-white border text-sm hover:bg-gray-50"
+              className="ml-2 rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted"
               onClick={() => setBulkCategoryModalOpen(true)}
             >
               Change category
             </button>
             <button
-              className="rounded px-3 py-1 bg-white border text-sm hover:bg-gray-50"
+              className="rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted"
               onClick={() => void handleBulkDeactivate()}
             >
               Deactivate
             </button>
             <button
-              className="rounded px-3 py-1 bg-white border text-sm hover:bg-gray-50"
+              className="rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted"
               onClick={() => void handleBulkActivate()}
             >
               Activate
             </button>
             <button
-              className="ml-auto text-sm text-blue-600 hover:underline"
+              className="ml-auto text-sm text-blue-600 hover:underline dark:text-blue-400"
               onClick={() => setSelectedProducts([])}
             >
               Clear selection
@@ -365,6 +379,24 @@ export function ProductsPage() {
         enableRowSelection={canDo('product.update') || canDo('product.delete')}
         onSelectionChange={setSelectedProducts}
         emptyMessage={hasActiveFilters ? 'No products match your filters' : 'No products yet'}
+        hiddenColumnIds={
+          isMobile
+            ? ['sku', 'category', 'unit', 'sellingPrice', 'status']
+            : isTablet
+              ? ['sellingPrice', 'category']
+              : []
+        }
+        maxHeight={isMobile ? 'calc(100dvh - 160px)' : 'calc(100dvh - 280px)'}
+      />
+
+      <FloatingActionButton
+        onClick={() => {
+          setEditingProduct(undefined);
+          setDrawerOpen(true);
+        }}
+        icon={Plus}
+        label="Add product"
+        permission="product.create"
       />
 
       <ProductFormDrawer
