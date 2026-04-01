@@ -88,8 +88,8 @@ export function OnboardingPage() {
 
   if (statusQuery.isLoading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-slate-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
+      <div className="grid min-h-screen place-items-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
       </div>
     );
   }
@@ -97,26 +97,26 @@ export function OnboardingPage() {
   const stepLineProgress = ((currentStep - 1) / 3) * 100;
 
   return (
-    <div className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6">
+    <div className="min-h-screen bg-background px-4 py-6 sm:px-6">
       <style>
         {`@keyframes onboarding-step-enter { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }`}
       </style>
 
-      <div className="mx-auto max-w-140">
+      <div className="mx-auto w-full max-w-140">
         <div className="mb-6 flex items-center justify-between">
-          <p className="text-sm font-semibold tracking-wide text-slate-900">Inventory System</p>
+          <p className="text-sm font-semibold tracking-wide text-foreground">Inventory System</p>
           <button
             type="button"
             onClick={() => setSkipDialogOpen(true)}
-            className="text-sm text-slate-600 underline-offset-4 hover:underline"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
             disabled={skipOnboarding.isPending}
           >
             Skip setup
           </button>
         </div>
 
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
-          <div className="relative mb-4 h-1 rounded-full bg-slate-200">
+        <div className="mb-6 rounded-xl border border-border bg-card p-4">
+          <div className="relative mb-4 h-1 rounded-full bg-muted">
             <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${stepLineProgress}%` }} />
           </div>
 
@@ -134,19 +134,19 @@ export function OnboardingPage() {
                         ? 'border-emerald-500 bg-emerald-500 text-white'
                         : isCurrent
                           ? 'h-9 w-9 border-blue-600 bg-blue-600 text-white'
-                          : 'border-slate-300 bg-white text-slate-500'
+                          : 'border-border bg-background text-muted-foreground'
                     }`}
                   >
                     {isDone ? <Check size={14} /> : stepNumber}
                   </div>
-                  <span className="text-xs text-slate-600">{label}</span>
+                  <span className="hidden text-xs text-muted-foreground sm:block">{label}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div key={currentStep} className="rounded-xl border border-slate-200 bg-white p-5" style={{ animation: 'onboarding-step-enter 200ms ease-out' }}>
+        <div key={currentStep} className="rounded-xl border border-border bg-card p-5" style={{ animation: 'onboarding-step-enter 200ms ease-out' }}>
           {currentStep === 1 ? <StepOne status={statusQuery.data} onNext={handleNext} /> : null}
           {currentStep === 2 ? <StepTwo status={statusQuery.data} onNext={handleNext} /> : null}
           {currentStep === 3 ? <StepThree status={statusQuery.data} onNext={handleNext} /> : null}
@@ -155,7 +155,7 @@ export function OnboardingPage() {
           ) : null}
 
           {currentStep === 2 || currentStep === 3 ? (
-            <div className="mt-5 border-t border-slate-200 pt-4">
+            <div className="mt-5 border-t border-border pt-4">
               <Button variant="outline" onClick={handleBack}>
                 Back
               </Button>

@@ -118,8 +118,8 @@ export function LowStockReport() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <CheckCircle className="h-16 w-16 text-green-600 mb-4" />
-        <h3 className="text-lg font-bold text-gray-900 mb-2">No Low Stock Items</h3>
-        <p className="text-muted-foreground text-center max-w-md">
+        <h3 className="mb-2 text-lg font-bold text-foreground">No Low Stock Items</h3>
+        <p className="max-w-md text-center text-muted-foreground">
           Your inventory is healthy! All products are stocked above their thresholds.
         </p>
       </div>
@@ -129,11 +129,11 @@ export function LowStockReport() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <select 
           value={params.categoryId || ''} 
           onChange={(e) => updateParams({ categoryId: e.target.value || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All categories</option>
           {categories?.map((c) => (
@@ -144,7 +144,7 @@ export function LowStockReport() {
         <select 
           value={params.warehouseId || ''} 
           onChange={(e) => updateParams({ warehouseId: e.target.value || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All warehouses</option>
           {warehouses?.map((w) => (
@@ -155,7 +155,7 @@ export function LowStockReport() {
         <select 
           value={params.sortBy} 
           onChange={(e) => updateParams({ sortBy: e.target.value as any })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="shortage">Shortage (Most Urgent)</option>
           <option value="currentStock">Current Stock</option>
@@ -182,7 +182,7 @@ export function LowStockReport() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <ReportSummaryCard
             label="Total Low Stock Items"
             value={summary.totalItems}
@@ -216,7 +216,7 @@ export function LowStockReport() {
       </div>
 
       {/* Data Table */}
-      <div className="border rounded-lg overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         <DataTable
           columns={columns as any}
           data={rows}

@@ -16,6 +16,7 @@ import { importApi } from '@/api/endpoints/import';
 import { useImportJob, useImportJobs, useUploadCsv } from '@/hooks/useImport';
 import { formatRelativeTime } from '@/lib/formatting';
 import type { IImportJob, ImportError } from '@/types';
+import { useWindowSize } from '@/hooks/useWindowSize';
 
 type TerminalStatus = 'COMPLETED' | 'FAILED' | 'PARTIAL';
 
@@ -121,6 +122,7 @@ export function ImportPage() {
   const [historyCursor, setHistoryCursor] = useState<string | undefined>(undefined);
   const [historyJobs, setHistoryJobs] = useState<IImportJob[]>([]);
   const [historyHasMore, setHistoryHasMore] = useState(false);
+  const { isMobile } = useWindowSize();
   const [historyNextCursor, setHistoryNextCursor] = useState<string | null>(null);
 
   const { upload, isUploading, uploadProgress, uploadError } = useUploadCsv();
@@ -221,16 +223,16 @@ export function ImportPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Import products" subtitle="Upload a CSV file to add products in bulk">
-        <Link className="text-sm text-slate-600 hover:text-slate-900" to="/products">
+        <Link className="text-sm text-muted-foreground hover:text-foreground" to="/products">
           {'<- Products'}
         </Link>
       </PageHeader>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="space-y-4 xl:col-span-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="space-y-4">
           <section className="rounded-xl border bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">1. Download the template</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <h2 className="text-base font-semibold text-foreground">1. Download the template</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Use our CSV template to ensure your data is formatted correctly.
             </p>
             <Button className="mt-4" variant="outline" onClick={() => void handleTemplateDownload()}>
@@ -240,8 +242,8 @@ export function ImportPage() {
           </section>
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">2. Prepare your data</h2>
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
+            <h2 className="text-base font-semibold text-foreground">2. Prepare your data</h2>
+            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               <li>- Required columns: sku, name, unit</li>
               <li>- Categories must already exist in your account</li>
               <li>- SKUs must be unique - duplicates will be skipped</li>
@@ -249,8 +251,8 @@ export function ImportPage() {
               <li>- Row 1 must be the header row</li>
             </ul>
 
-            <details className="mt-4 rounded-lg border border-slate-200">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700">
+            <details className="mt-4 rounded-lg border border-border">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground">
                 {'View all column descriptions ->'}
               </summary>
               <div className="overflow-x-auto border-t">
@@ -265,9 +267,9 @@ export function ImportPage() {
                   <tbody>
                     {COLUMN_INFO.map((column) => (
                       <tr key={column.name} className="border-t">
-                        <td className="px-4 py-2 font-mono text-xs text-slate-700">{column.name}</td>
-                        <td className="px-4 py-2 text-slate-600">{column.required}</td>
-                        <td className="px-4 py-2 text-slate-600">{column.description}</td>
+                        <td className="px-4 py-2 font-mono text-xs text-foreground">{column.name}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{column.required}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{column.description}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -277,14 +279,14 @@ export function ImportPage() {
           </section>
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">3. Upload your file</h2>
+            <h2 className="text-base font-semibold text-foreground">3. Upload your file</h2>
 
             {!isUploading && !currentJob?.status && (
               <div className="mt-4 space-y-3">
                 {!selectedFile ? (
                   <button
-                    className={`flex h-44 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed transition ${
-                      dragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'
+                    className={`flex ${isMobile ? 'h-30' : 'h-45'} w-full flex-col items-center justify-center rounded-xl border-2 border-dashed transition ${
+                      dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-border bg-muted/40 hover:bg-muted/60'
                     }`}
                     onClick={() => fileInputRef.current?.click()}
                     onDragOver={(event) => {
@@ -302,18 +304,18 @@ export function ImportPage() {
                     }}
                     type="button"
                   >
-                    <Upload className="mb-2 h-8 w-8 text-slate-500" />
-                    <p className="text-sm font-medium text-slate-800">Drop your CSV file here</p>
-                    <p className="text-xs text-slate-500">or click to browse</p>
+                    <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm font-medium text-foreground">Drop your CSV file here</p>
+                    <p className="text-xs text-muted-foreground">or click to browse</p>
                   </button>
                 ) : (
-                  <div className="rounded-xl border bg-slate-50 p-4">
+                  <div className="rounded-xl border border-border bg-muted/40 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-slate-500" />
+                        <FileText className="h-8 w-8 text-muted-foreground" />
                         <div>
-                          <p className="text-sm font-medium text-slate-900">{selectedFile.name}</p>
-                          <p className="text-xs text-slate-500">{formatFileSize(selectedFile.size)}</p>
+                          <p className="text-sm font-medium text-foreground">{selectedFile.name}</p>
+                          <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
                         </div>
                       </div>
                       <button
@@ -484,7 +486,7 @@ export function ImportPage() {
           ) : null}
 
           <div className="mt-4 space-y-3">
-            {historyJobs.map((job) => (
+            {(isMobile ? historyJobs.slice(0, 5) : historyJobs).map((job) => (
               <div className="rounded-lg border p-3" key={job._id}>
                 <button
                   className="w-full text-left"
@@ -516,7 +518,17 @@ export function ImportPage() {
             ))}
           </div>
 
-          {historyHasMore ? (
+          {isMobile && historyJobs.length > 5 ? (
+            <button
+              type="button"
+              className="mt-2 text-sm text-blue-600 hover:underline dark:text-blue-400"
+              onClick={() => setHistoryCursor(historyNextCursor ?? undefined)}
+            >
+              View all
+            </button>
+          ) : null}
+
+          {!isMobile && historyHasMore ? (
             <Button
               className="mt-4 w-full"
               onClick={() => setHistoryCursor(historyNextCursor ?? undefined)}

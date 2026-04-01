@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { AuditLogEntry } from '@/components/audit/AuditLogEntry';
+import { useWindowSize } from '@/hooks/useWindowSize';
 import { useAuditLogs } from '@/hooks/useAudit';
 import { useUsers } from '@/hooks/useUsers';
 import type { AuditAction, AuditEntityType } from '@/types';
@@ -36,6 +37,7 @@ export function AuditLogPage() {
   const [performedBy, setPerformedBy] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const { isMobile } = useWindowSize();
 
   const { data: usersData } = useUsers({ page: 1, limit: 100 });
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useAuditLogs({
@@ -63,9 +65,9 @@ export function AuditLogPage() {
     <div>
       <PageHeader title="Audit log" subtitle="Complete history of changes made by your team" />
 
-      <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-6">
+      <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-6">
         <select
-          className="h-9 rounded-lg border border-slate-300 px-2 text-sm"
+          className="h-11 rounded-lg border border-input px-2 text-sm md:h-9"
           value={entityType}
           onChange={(event) => {
             const next = event.target.value as '' | AuditEntityType;
@@ -79,7 +81,7 @@ export function AuditLogPage() {
         </select>
 
         <select
-          className="h-9 rounded-lg border border-slate-300 px-2 text-sm"
+          className="h-11 rounded-lg border border-input px-2 text-sm md:h-9"
           value={action}
           onChange={(event) => setAction(event.target.value as '' | AuditAction)}
         >
@@ -90,7 +92,7 @@ export function AuditLogPage() {
         </select>
 
         <select
-          className="h-9 rounded-lg border border-slate-300 px-2 text-sm"
+          className="h-11 rounded-lg border border-input px-2 text-sm md:h-9"
           value={performedBy}
           onChange={(event) => setPerformedBy(event.target.value)}
         >
@@ -107,19 +109,19 @@ export function AuditLogPage() {
       </div>
 
       <div className="space-y-3">
-        {isLoading ? <div className="text-sm text-slate-500">Loading audit events...</div> : null}
+        {isLoading ? <div className="text-sm text-muted-foreground">Loading audit events...</div> : null}
 
         {!isLoading && logs.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+          <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
             {entityType || action || performedBy || dateFrom || dateTo
               ? 'No events match your filters'
               : 'No audit events found'}
           </div>
         ) : null}
 
-        {logs.map((log) => (
-          <AuditLogEntry key={log._id} log={log} />
-        ))}
+        {isMobile
+          ? logs.map((log) => <AuditLogEntry key={log._id} log={log} compact />)
+          : logs.map((log) => <AuditLogEntry key={log._id} log={log} />)}
       </div>
 
       {hasNextPage ? (
@@ -130,7 +132,7 @@ export function AuditLogPage() {
         </div>
       ) : null}
 
-      <p className="mt-6 text-xs text-slate-500">Audit logs are retained for 90 days.</p>
+      <p className="mt-6 text-xs text-muted-foreground">Audit logs are retained for 90 days.</p>
     </div>
   );
 }

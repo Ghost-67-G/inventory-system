@@ -47,7 +47,7 @@ export function CategoriesPage() {
       {/* Search */}
       <div className="mb-4">
         <input
-          className="w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
           placeholder="Search categories..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -56,7 +56,7 @@ export function CategoriesPage() {
 
       {/* Loading */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-slate-400">Loading categories…</div>
+        <div className="py-12 text-center text-sm text-muted-foreground">Loading categories…</div>
       ) : hasAnyCategories ? (
         /* Empty state — no categories at all */
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -66,15 +66,15 @@ export function CategoriesPage() {
             viewBox="0 0 56 56"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="mb-4 text-slate-300"
+            className="mb-4 text-muted-foreground"
           >
             <rect x="4" y="14" width="48" height="32" rx="4" stroke="currentColor" strokeWidth="2" fill="none" />
             <path d="M4 22h48" stroke="currentColor" strokeWidth="2" />
-            <circle cx="40" cy="40" r="10" fill="white" stroke="currentColor" strokeWidth="2" />
+            <circle cx="40" cy="40" r="10" fill="hsl(var(--card))" stroke="currentColor" strokeWidth="2" />
             <path d="M40 36v8M36 40h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
-          <p className="text-base font-medium text-slate-700">No categories yet</p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="text-base font-medium text-foreground">No categories yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
             Create your first category to start organising products
           </p>
           {canDo('category.manage') ? (
@@ -86,7 +86,7 @@ export function CategoriesPage() {
       ) : hasSearchNoResults ? (
         /* Empty state — search no results */
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-base font-medium text-slate-700">
+          <p className="text-base font-medium text-foreground">
             No categories match &ldquo;{searchTerm}&rdquo;
           </p>
           <Button
@@ -159,7 +159,7 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
 
   return (
     <div
-      className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm ${
+      className={`rounded-xl border border-border bg-card p-4 shadow-sm ${
         !category.isActive ? 'opacity-50' : ''
       }`}
     >
@@ -170,10 +170,10 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
             className="shrink-0 rounded-full"
             style={{ width: 16, height: 16, backgroundColor: category.color, display: 'inline-block' }}
           />
-          <span className="truncate font-medium text-slate-900 text-sm">{category.name}</span>
+          <span className="truncate text-sm font-medium text-foreground">{category.name}</span>
         </div>
         {!category.isActive ? (
-          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
             Inactive
           </span>
         ) : null}
@@ -182,7 +182,7 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
       {/* Description */}
       {category.description ? (
         <p
-          className="mt-2 text-xs text-slate-500"
+          className="mt-2 text-xs text-muted-foreground"
           style={{
             display: '-webkit-box',
             WebkitLineClamp: 2,
@@ -196,7 +196,7 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
 
       {/* Bottom row */}
       <div className="mt-3 flex items-center justify-between">
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-muted-foreground">
           {category.productCount} product{category.productCount !== 1 ? 's' : ''}
         </span>
 
@@ -205,7 +205,7 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
             <button
               type="button"
               onClick={onEdit}
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Edit category"
             >
               <Pencil size={14} />
@@ -216,7 +216,7 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
                 <button
                   type="button"
                   disabled
-                  className="rounded p-1 text-slate-300 cursor-not-allowed"
+                  className="cursor-not-allowed rounded p-1 text-muted-foreground/60"
                   aria-label="Cannot delete — category has products"
                 >
                   <Trash2 size={14} />
@@ -226,7 +226,7 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
               <button
                 type="button"
                 onClick={onDelete}
-                className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                 title="Delete category"
               >
                 <Trash2 size={14} />

@@ -112,19 +112,19 @@ export function StepOne({ status, onNext }: StepOneProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Let&apos;s set up your business</h1>
-        <p className="text-sm text-slate-600">This takes less than 2 minutes. You can change these later.</p>
+        <h1 className="text-2xl font-semibold text-foreground">Let&apos;s set up your business</h1>
+        <p className="text-sm text-muted-foreground">This takes less than 2 minutes. You can change these later.</p>
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">Business name</label>
-        <Input placeholder="e.g. Apex Electronics, Crescent Wholesale" {...register('businessName')} />
+        <label className="mb-1 block text-sm font-medium text-foreground">Business name</label>
+        <Input placeholder="e.g. Apex Electronics, Crescent Wholesale" {...register('businessName')} className="h-11 md:h-9" />
         {errors.businessName ? <p className="mt-1 text-xs text-red-600">{errors.businessName.message}</p> : null}
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
-        <select className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" {...register('currency')}>
+        <label className="mb-1 block text-sm font-medium text-foreground">Currency</label>
+        <select className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:h-9" {...register('currency')}>
           {CURRENCY_OPTIONS.map((currency) => (
             <option key={currency.code} value={currency.code}>
               {toFlag(currency.flag)} {currency.label} ({currency.code}) {currency.symbol}
@@ -135,8 +135,8 @@ export function StepOne({ status, onNext }: StepOneProps) {
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">Timezone</label>
-        <select className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" {...register('timezone')}>
+        <label className="mb-1 block text-sm font-medium text-foreground">Timezone</label>
+        <select className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:h-9" {...register('timezone')}>
           {Object.entries(TIMEZONE_GROUPS).map(([group, options]) => (
             <optgroup key={group} label={group}>
               {options.map((timezone) => (
@@ -151,18 +151,18 @@ export function StepOne({ status, onNext }: StepOneProps) {
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">Default low stock alert</label>
-        <p className="mb-2 text-xs text-slate-500">Alert me when any product drops to or below this quantity</p>
+        <label className="mb-1 block text-sm font-medium text-foreground">Default low stock alert</label>
+        <p className="mb-2 text-xs text-muted-foreground">Alert me when any product drops to or below this quantity</p>
         <div className="flex items-center gap-2">
-          <Input type="number" min={0} max={10000} {...register('lowStockThreshold')} />
-          <span className="text-sm text-slate-500">units</span>
+          <Input type="number" min={0} max={10000} {...register('lowStockThreshold')} className="h-11 md:h-9" />
+          <span className="text-sm text-muted-foreground">units</span>
         </div>
         {errors.lowStockThreshold ? (
           <p className="mt-1 text-xs text-red-600">{errors.lowStockThreshold.message}</p>
         ) : null}
       </div>
 
-      <Button type="submit" className="w-full" disabled={completeStepOne.isPending}>
+      <Button type="submit" className="h-11 min-h-11 w-full md:h-9 md:min-h-0" disabled={completeStepOne.isPending}>
         {completeStepOne.isPending ? 'Saving...' : 'Save and continue →'}
       </Button>
     </form>

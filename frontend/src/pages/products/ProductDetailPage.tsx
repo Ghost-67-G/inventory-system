@@ -33,7 +33,7 @@ export function ProductDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading product...</div>
+        <div className="text-muted-foreground">Loading product...</div>
       </div>
     );
   }
@@ -41,7 +41,7 @@ export function ProductDetailPage() {
   if (!product) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Product not found</div>
+        <div className="text-muted-foreground">Product not found</div>
       </div>
     );
   }
@@ -56,7 +56,7 @@ export function ProductDetailPage() {
       {/* Back button */}
       <button
         onClick={() => navigate('/products')}
-        className="mb-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+        className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Products
@@ -65,12 +65,12 @@ export function ProductDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left column — main info */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-xl border bg-white p-6 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
+                <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="inline-flex items-center rounded bg-gray-100 px-2.5 py-0.5 font-mono text-xs text-gray-600">
+                  <span className="inline-flex items-center rounded bg-muted px-2.5 py-0.5 font-mono text-xs text-muted-foreground">
                     {product.sku}
                   </span>
                   {product.category ? (
@@ -78,7 +78,9 @@ export function ProductDetailPage() {
                   ) : null}
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      product.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      product.isActive
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-muted text-muted-foreground'
                     }`}
                   >
                     {product.isActive ? 'Active' : 'Inactive'}
@@ -107,13 +109,13 @@ export function ProductDetailPage() {
             </div>
 
             {product.description && (
-              <p className="mt-4 text-sm text-gray-600">{product.description}</p>
+              <p className="mt-4 text-sm text-muted-foreground">{product.description}</p>
             )}
 
             {product.tags.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {product.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-blue-50 px-3 py-0.5 text-xs text-blue-600">
+                  <span key={tag} className="rounded-full bg-blue-100 px-3 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                     {tag}
                   </span>
                 ))}
@@ -122,23 +124,23 @@ export function ProductDetailPage() {
           </div>
 
           {/* Pricing */}
-          <div className="rounded-xl border bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Pricing</h3>
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Pricing</h3>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <div className="text-xs text-gray-500">Cost Price</div>
-                <div className="text-lg font-semibold">{formatMoney(product.costPrice)}</div>
+                <div className="text-xs text-muted-foreground">Cost Price</div>
+                <div className="text-lg font-semibold text-foreground">{formatMoney(product.costPrice)}</div>
               </div>
               <div>
-                <div className="text-xs text-gray-500">Selling Price</div>
-                <div className="text-lg font-semibold">{formatMoney(product.sellingPrice)}</div>
+                <div className="text-xs text-muted-foreground">Selling Price</div>
+                <div className="text-lg font-semibold text-foreground">{formatMoney(product.sellingPrice)}</div>
               </div>
               {profitMargin !== null && (
                 <div>
-                  <div className="text-xs text-gray-500">Margin</div>
+                  <div className="text-xs text-muted-foreground">Margin</div>
                   <div
                     className={`text-lg font-semibold ${
-                      Number(profitMargin) > 0 ? 'text-green-600' : 'text-red-600'
+                      Number(profitMargin) > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}
                   >
                     {profitMargin}%
@@ -150,15 +152,15 @@ export function ProductDetailPage() {
 
           {/* Custom fields */}
           {tenant?.customFields && tenant.customFields.length > 0 && (
-            <div className="rounded-xl border bg-white p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Custom Fields</h3>
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-foreground">Custom Fields</h3>
               <dl className="grid grid-cols-2 gap-4">
                 {tenant.customFields.map((field) => {
                   const value = product.customFields?.[field.key];
                   return (
                     <div key={field._id}>
-                      <dt className="text-xs text-gray-500">{field.name}</dt>
-                      <dd className="text-sm text-gray-900">{value !== undefined && value !== null ? String(value) : '—'}</dd>
+                      <dt className="text-xs text-muted-foreground">{field.name}</dt>
+                      <dd className="text-sm text-foreground">{value !== undefined && value !== null ? String(value) : '—'}</dd>
                     </div>
                   );
                 })}
@@ -168,15 +170,15 @@ export function ProductDetailPage() {
 
           {/* Images */}
           {product.images.length > 0 && (
-            <div className="rounded-xl border bg-white p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Images</h3>
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-foreground">Images</h3>
               <div className="flex gap-3 overflow-x-auto">
                 {product.images.map((url, idx) => (
                   <img
                     key={idx}
                     src={url}
                     alt={`${product.name} ${idx + 1}`}
-                    className="h-24 w-24 rounded-lg object-cover border shrink-0"
+                    className="h-24 w-24 shrink-0 rounded-lg border border-border object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
@@ -190,8 +192,8 @@ export function ProductDetailPage() {
         {/* Right column — stock + meta */}
         <div className="space-y-6">
           {/* Stock card */}
-          <div className="rounded-xl border bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Stock</h3>
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Stock</h3>
             <div className="space-y-3">
               <div>
                 <StockBadge
@@ -200,7 +202,7 @@ export function ProductDetailPage() {
                   unit={product.unit}
                 />
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-muted-foreground">
                 Alert at {product.lowStockThreshold} {product.unit}
               </div>
 
@@ -209,6 +211,7 @@ export function ProductDetailPage() {
                   <Button
                     size="sm"
                     variant="outline"
+                    className="min-h-11"
                     onClick={() => {
                       setMovementType('in');
                       setMovementOpen(true);
@@ -223,6 +226,7 @@ export function ProductDetailPage() {
                   <Button
                     size="sm"
                     variant="outline"
+                    className="min-h-11"
                     onClick={() => {
                       setMovementType('out');
                       setMovementOpen(true);
@@ -237,6 +241,7 @@ export function ProductDetailPage() {
                   <Button
                     size="sm"
                     variant="outline"
+                    className="min-h-11"
                     onClick={() => {
                       setMovementType('adjustment');
                       setMovementOpen(true);
@@ -251,6 +256,7 @@ export function ProductDetailPage() {
                   <Button
                     size="sm"
                     variant="outline"
+                    className="min-h-11"
                     onClick={() => {
                       setMovementType('transfer');
                       setMovementOpen(true);
@@ -264,21 +270,21 @@ export function ProductDetailPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Stock by warehouse</h3>
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Stock by warehouse</h3>
 
             {isStockLoading ? (
-              <div className="space-y-2 text-sm text-gray-500">Loading warehouse stock...</div>
+              <div className="space-y-2 text-sm text-muted-foreground">Loading warehouse stock...</div>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2 text-xs font-semibold text-gray-500 uppercase">
+                <div className="grid grid-cols-4 gap-2 text-xs font-semibold uppercase text-muted-foreground">
                   <span>Warehouse</span>
                   <span>In stock</span>
                   <span>Reserved</span>
                   <span>Available</span>
                 </div>
                 {stockByWarehouse.map((entry) => (
-                  <div key={entry.warehouse._id} className="grid grid-cols-4 gap-2 border-t py-2 text-sm">
+                  <div key={entry.warehouse._id} className="grid grid-cols-4 gap-2 border-t border-border py-2 text-sm text-foreground">
                     <WarehouseBadge
                       code={entry.warehouse.code}
                       name={entry.warehouse.name}
@@ -290,7 +296,7 @@ export function ProductDetailPage() {
                     <span>{entry.quantity - entry.reservedQuantity}</span>
                   </div>
                 ))}
-                <div className="grid grid-cols-4 gap-2 border-t pt-2 text-sm font-semibold">
+                <div className="grid grid-cols-4 gap-2 border-t border-border pt-2 text-sm font-semibold text-foreground">
                   <span>Total</span>
                   <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.quantity, 0)}</span>
                   <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.reservedQuantity, 0)}</span>
@@ -303,20 +309,20 @@ export function ProductDetailPage() {
           </div>
 
           {/* Meta card */}
-          <div className="rounded-xl border bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Details</h3>
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Details</h3>
             <dl className="space-y-3">
               <div>
-                <dt className="text-xs text-gray-500">Unit</dt>
-                <dd className="text-sm text-gray-900">{product.unit}</dd>
+                <dt className="text-xs text-muted-foreground">Unit</dt>
+                <dd className="text-sm text-foreground">{product.unit}</dd>
               </div>
               <div>
-                <dt className="text-xs text-gray-500">Created</dt>
-                <dd className="text-sm text-gray-900">{formatDate(product.createdAt)}</dd>
+                <dt className="text-xs text-muted-foreground">Created</dt>
+                <dd className="text-sm text-foreground">{formatDate(product.createdAt)}</dd>
               </div>
               <div>
-                <dt className="text-xs text-gray-500">Last updated</dt>
-                <dd className="text-sm text-gray-900">{formatDate(product.updatedAt)}</dd>
+                <dt className="text-xs text-muted-foreground">Last updated</dt>
+                <dd className="text-sm text-foreground">{formatDate(product.updatedAt)}</dd>
               </div>
             </dl>
 

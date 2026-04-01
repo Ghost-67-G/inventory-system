@@ -45,25 +45,25 @@ export function EditProfileModal({ open, user, onClose }: EditProfileModalProps)
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">Edit profile</h2>
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 className="text-lg font-semibold text-foreground">Edit profile</h2>
 
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
-            <input className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" {...register('name')} />
+            <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
+            <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('name')} />
             {errors.name ? <p className="mt-1 text-xs text-red-600">{errors.name.message}</p> : null}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
             <input
-              className="w-full cursor-not-allowed rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+              className="w-full cursor-not-allowed rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground"
               value={user.email}
               disabled
               readOnly
             />
-            <p className="mt-1 text-xs text-slate-500">Contact support to change email</p>
+            <p className="mt-1 text-xs text-muted-foreground">Contact support to change email</p>
           </div>
 
           <div className="mt-4 flex justify-end gap-2">

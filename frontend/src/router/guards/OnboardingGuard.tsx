@@ -5,8 +5,8 @@ import { useTenantStore } from '@/store/tenantStore';
 
 function FullPageSpinner() {
   return (
-    <div className="grid min-h-screen place-items-center bg-slate-50">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
+    <div className="grid min-h-screen place-items-center bg-background">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
     </div>
   );
 }

@@ -19,10 +19,10 @@ export function DeleteCustomFieldDialog({
 
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">Delete '{fieldName}'?</h2>
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
+        <h2 className="text-lg font-semibold text-foreground">Delete '{fieldName}'?</h2>
 
-        <div className="mt-2 space-y-1 text-sm text-slate-600">
+        <div className="mt-2 space-y-1 text-sm text-muted-foreground">
           <p>This field will be removed from the product form.</p>
           <p>Existing product data stored in this field will be preserved but no longer visible.</p>
         </div>

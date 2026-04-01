@@ -49,7 +49,7 @@ export default function ConfirmDeleteProductDialog({
           <AlertDialogDescription>
             {canDelete ? (
               <>
-                SKU: <span className="font-mono text-gray-900">{product.sku}</span>
+                SKU: <span className="font-mono text-foreground">{product.sku}</span>
                 <br />
                 This product will be permanently deleted.
               </>

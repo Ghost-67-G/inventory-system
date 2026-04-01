@@ -14,6 +14,7 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import { usePermission } from '@/hooks/usePermission';
 import { usePendingAlertCount } from '@/hooks/useStock';
+import { cn } from '@/lib/utils';
 import type { Permission } from '@/types';
 
 interface NavItem {
@@ -22,6 +23,11 @@ interface NavItem {
   icon: LucideIcon;
   permission?: Permission;
   badge?: () => number;
+}
+
+interface SidebarProps {
+  className?: string;
+  onNavigate?: () => void;
 }
 
 const navItems: NavItem[] = [
@@ -37,14 +43,14 @@ const navItems: NavItem[] = [
   { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings.view' }
 ];
 
-export function Sidebar() {
+export function Sidebar({ className, onNavigate }: SidebarProps) {
   const { canDo } = usePermission();
   const location = useLocation();
   const { data: alertCount = 0 } = usePendingAlertCount();
 
   return (
-    <aside className="w-full border-r border-slate-200 bg-white/90 p-4 md:w-64">
-      <h2 className="mb-4 text-lg font-semibold text-slate-900">Inventory</h2>
+    <aside className={cn('sidebar flex h-full w-full flex-col border-r border-border bg-card/95 p-4 backdrop-blur', className)}>
+      <h2 className="mb-4 text-lg font-semibold text-foreground">Inventory</h2>
       <nav className="space-y-2">
         {navItems
           .filter((item) => !item.permission || canDo(item.permission))
@@ -52,10 +58,11 @@ export function Sidebar() {
             <Link
               key={item.href}
               to={item.href}
+              onClick={onNavigate}
               className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
-                location.pathname.endsWith(item.href)
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-700 hover:bg-slate-100'
+                location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <item.icon size={16} />

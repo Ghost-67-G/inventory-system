@@ -11,10 +11,10 @@ import { useDeactivateUser, useReactivateUser, useUsers } from '@/hooks/useUsers
 import type { Role, SafeUser } from '@/types';
 
 const roleBadgeClass: Record<Role, string> = {
-  owner: 'bg-purple-100 text-purple-800',
-  manager: 'bg-blue-100 text-blue-800',
-  staff: 'bg-teal-100 text-teal-800',
-  viewer: 'bg-slate-100 text-slate-700'
+  owner: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+  manager: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  staff: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400',
+  viewer: 'bg-muted text-muted-foreground'
 };
 
 const avatarColorTokens = ['teal', 'purple', 'amber', 'rose', 'blue'] as const;
@@ -40,11 +40,11 @@ function hashName(name: string): number {
 function avatarClassForName(name: string): string {
   const bucket = avatarColorTokens[hashName(name) % avatarColorTokens.length];
   const map: Record<(typeof avatarColorTokens)[number], string> = {
-    teal: 'bg-teal-100 text-teal-700',
-    purple: 'bg-purple-100 text-purple-700',
-    amber: 'bg-amber-100 text-amber-700',
-    rose: 'bg-rose-100 text-rose-700',
-    blue: 'bg-blue-100 text-blue-700'
+    teal: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+    purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    rose: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+    blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
   };
   return map[bucket];
 }
@@ -128,9 +128,9 @@ export function UsersPage() {
         <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
       </PageHeader>
 
-      <div className="mb-4 grid gap-2 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-3">
+      <div className="mb-4 grid gap-2 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
         <input
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           placeholder="Search name or email"
           value={search}
           onChange={(event) => {
@@ -139,7 +139,7 @@ export function UsersPage() {
           }}
         />
         <select
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           value={roleFilter}
           onChange={(event) => {
             setRoleFilter(event.target.value);
@@ -153,7 +153,7 @@ export function UsersPage() {
           <option value="viewer">Viewer</option>
         </select>
         <select
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           value={statusFilter}
           onChange={(event) => {
             setStatusFilter(event.target.value);
@@ -166,10 +166,10 @@ export function UsersPage() {
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+            <tr className="border-b border-border bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <th className="px-4 py-3">User</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Status</th>
@@ -180,7 +180,7 @@ export function UsersPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
                   Loading members...
                 </td>
               </tr>
@@ -188,7 +188,7 @@ export function UsersPage() {
 
             {!isLoading && users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
                   No team members found.
                 </td>
               </tr>
@@ -200,7 +200,7 @@ export function UsersPage() {
               const hideChangeRole = user.role === 'owner';
 
               return (
-                <tr key={user._id} className="border-b border-slate-100 last:border-b-0">
+                <tr key={user._id} className="border-b border-border last:border-b-0">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div
@@ -211,8 +211,8 @@ export function UsersPage() {
                         {getInitials(user.name)}
                       </div>
                       <div>
-                        <p className="font-medium text-slate-900">{user.name}</p>
-                        <p className="text-xs text-slate-500">{user.email}</p>
+                        <p className="font-medium text-foreground">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
                   </td>
@@ -224,13 +224,13 @@ export function UsersPage() {
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-1 text-xs font-medium ${
-                        user.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                        user.isActive ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                       }`}
                     >
                       {user.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {user.lastLoginAt ? formatRelativeTime(user.lastLoginAt) : 'Never'}
                   </td>
                   <td className="px-4 py-3">
@@ -256,7 +256,7 @@ export function UsersPage() {
                             </Button>
                           ) : null}
                           {!hideDeactivate ? (
-                            <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={() => setDeactivateUser(user)}>
+                            <Button size="sm" variant="destructive" onClick={() => setDeactivateUser(user)}>
                               Deactivate
                             </Button>
                           ) : null}
@@ -282,7 +282,7 @@ export function UsersPage() {
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
         <p>
           Showing {showingFrom}-{showingTo} of {data?.total ?? 0} members
         </p>

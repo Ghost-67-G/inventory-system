@@ -27,7 +27,7 @@ const ACCENT_MAP: Record<StatCardProps['accentColor'], string> = {
 export function StatCard({ label, value, icon: Icon, accentColor, helperText, isLoading, onClick, trend }: StatCardProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <Skeleton className="mb-3 h-4 w-2/3" />
         <Skeleton className="mb-2 h-8 w-1/2" />
         <Skeleton className="h-3 w-1/3" />
@@ -41,19 +41,19 @@ export function StatCard({ label, value, icon: Icon, accentColor, helperText, is
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors ${
-        onClick ? 'cursor-pointer hover:bg-slate-50' : 'cursor-default'
+      className={`w-full rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors ${
+        onClick ? 'cursor-pointer hover:bg-muted/50' : 'cursor-default'
       }`}
       style={{ borderLeftWidth: 3, borderLeftColor: accent }}
     >
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-[13px] text-slate-500">{label}</p>
+        <p className="text-[13px] text-muted-foreground">{label}</p>
         <Icon size={20} style={{ color: accent }} />
       </div>
-      <p className="text-[28px] font-medium text-slate-900">{value}</p>
-      {helperText ? <p className="mt-1 text-[11px] text-slate-500">{helperText}</p> : null}
+      <p className="text-[28px] font-medium text-foreground">{value}</p>
+      {helperText ? <p className="mt-1 text-[11px] text-muted-foreground">{helperText}</p> : null}
       {trend ? (
-        <p className="mt-1 text-[11px] text-slate-500">
+        <p className="mt-1 text-[11px] text-muted-foreground">
           {trend.direction === 'up' ? 'Up' : 'Down'} {trend.value}%
         </p>
       ) : null}

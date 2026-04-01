@@ -153,16 +153,16 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h3 className="text-base font-semibold text-slate-900">Business Information</h3>
+      <section className="rounded-xl border border-border bg-card p-5">
+        <h3 className="text-base font-semibold text-foreground">Business Information</h3>
         <div className="mt-4">
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Business name</label>
+          <label className="mb-1.5 block text-sm font-medium text-foreground">Business name</label>
           <input
             {...form.register('name')}
             disabled={!canManage}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Your workspace URL: <span className="font-mono">app.yourdomain.com/{slugPreview}</span>
           </p>
           {form.formState.errors.name && (
@@ -171,16 +171,16 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h3 className="text-base font-semibold text-slate-900">Regional Settings</h3>
+      <section className="rounded-xl border border-border bg-card p-5">
+        <h3 className="text-base font-semibold text-foreground">Regional Settings</h3>
 
         <div className="mt-4 grid gap-5 md:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Currency</label>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">Currency</label>
             <select
               {...form.register('currency')}
               disabled={!canManage}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
             >
               {SUPPORTED_CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -188,17 +188,17 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Prices will display as: {getCurrencySymbol(currency)}1,234.56
             </p>
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Timezone</label>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">Timezone</label>
             <select
               {...form.register('timezone')}
               disabled={!canManage}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
             >
               {groupedTimezones.map((group) => (
                 <optgroup key={group.group} label={group.group}>
@@ -210,36 +210,36 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
                 </optgroup>
               ))}
             </select>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Current time: {getCurrentTimeInTimezone(timezone || 'UTC', clock)}
             </p>
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Date format</label>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">Date format</label>
             <select
               {...form.register('dateFormat')}
               disabled={!canManage}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
             >
               <option value="MM/DD/YYYY">MM/DD/YYYY</option>
               <option value="DD/MM/YYYY">DD/MM/YYYY</option>
               <option value="YYYY-MM-DD">YYYY-MM-DD</option>
             </select>
-            <p className="mt-1 text-xs text-slate-500">Example: {formatDatePreview(dateFormat)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Example: {formatDatePreview(dateFormat)}</p>
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Low stock threshold</label>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">Low stock threshold</label>
             <input
               {...form.register('lowStockThreshold')}
               type="number"
               min={0}
               max={100000}
               disabled={!canManage}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Products with stock at or below this number will trigger low stock alerts.
               Individual products can override this threshold.
             </p>
@@ -247,9 +247,9 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
         </div>
 
         <div className="mt-5">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Measurement unit</label>
+          <label className="mb-2 block text-sm font-medium text-foreground">Measurement unit</label>
           <div className="grid gap-2 sm:grid-cols-2">
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 p-3 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+            <label className="flex items-center gap-2 rounded-lg border border-border p-3 has-checked:border-blue-500 has-checked:bg-blue-50 dark:has-checked:bg-blue-900/20">
               <input
                 type="radio"
                 value="metric"
@@ -257,9 +257,9 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
                 disabled={!canManage}
                 className="accent-blue-600"
               />
-              <span className="text-sm text-slate-700">Metric (kg, ltr, cm)</span>
+              <span className="text-sm text-foreground">Metric (kg, ltr, cm)</span>
             </label>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 p-3 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+            <label className="flex items-center gap-2 rounded-lg border border-border p-3 has-checked:border-blue-500 has-checked:bg-blue-50 dark:has-checked:bg-blue-900/20">
               <input
                 type="radio"
                 value="imperial"
@@ -267,7 +267,7 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
                 disabled={!canManage}
                 className="accent-blue-600"
               />
-              <span className="text-sm text-slate-700">Imperial (lb, fl oz, in)</span>
+              <span className="text-sm text-foreground">Imperial (lb, fl oz, in)</span>
             </label>
           </div>
         </div>

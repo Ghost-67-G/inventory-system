@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils';
+
 interface StockBadgeProps {
   stock: number;
   threshold: number;
@@ -6,58 +8,33 @@ interface StockBadgeProps {
 }
 
 export default function StockBadge({ stock, threshold, unit, showUnit = true }: StockBadgeProps) {
-  let color = '#22c55e'; // green - in stock
-  let bgColor = '#f0fdf4';
+  let valueClass = 'text-green-600 dark:text-green-400';
+  let badgeClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
   let badge: string | null = null;
 
   if (stock > threshold) {
-    // In stock, normal level
-    color = '#22c55e';
-    bgColor = '#f0fdf4';
+    valueClass = 'text-green-600 dark:text-green-400';
+    badgeClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
   } else if (stock > 0 && stock <= threshold) {
-    // Low stock
-    color = '#eab308';
-    bgColor = '#fefce8';
+    valueClass = 'text-amber-600 dark:text-amber-400';
+    badgeClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
     badge = 'Low stock';
   } else if (stock === 0) {
-    // Out of stock
-    color = '#ef4444';
-    bgColor = '#fef2f2';
+    valueClass = 'text-red-600 dark:text-red-400';
+    badgeClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
     badge = 'Out of stock';
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span
-        style={{
-          color,
-          backgroundColor: bgColor,
-          padding: badge ? '4px 8px' : '0',
-          borderRadius: 4,
-          fontSize: 13,
-          fontWeight: 500,
-          display: 'inline-block'
-        }}
-      >
+    <div className="flex items-center gap-2">
+      <span className={cn('text-sm font-medium', valueClass)}>
         {stock} {showUnit ? unit : ''}
       </span>
-      {badge && (
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            backgroundColor: color + '1a',
-            color,
-            padding: '2px 8px',
-            borderRadius: 999,
-            fontSize: 11,
-            fontWeight: 500
-          }}
-        >
+      {badge ? (
+        <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', badgeClass)}>
           {badge}
         </span>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -35,10 +35,10 @@ export function EntityHistoryDrawer({
         </SheetHeader>
 
         <div className="mt-5 space-y-3">
-          {isLoading ? <p className="text-sm text-slate-500">Loading history...</p> : null}
+          {isLoading ? <p className="text-sm text-muted-foreground">Loading history...</p> : null}
 
           {!isLoading && logs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+            <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               No changes recorded yet
             </div>
           ) : null}
@@ -48,7 +48,7 @@ export function EntityHistoryDrawer({
           ))}
 
           {logs.length >= 50 ? (
-            <div className="pt-2 text-center text-xs text-slate-500">
+            <div className="pt-2 text-center text-xs text-muted-foreground">
               Showing latest 50 entries.
             </div>
           ) : null}

@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { useWindowSize } from '@/hooks/useWindowSize';
 import { StockValuationReport } from './StockValuationReport';
 import { MovementHistoryReport } from './MovementHistoryReport';
 import { LowStockReport } from './LowStockReport';
@@ -12,6 +13,7 @@ import { WasteAdjustmentsReport } from './WasteAdjustmentsReport';
  */
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isMobile } = useWindowSize();
   const activeTab = searchParams.get('tab') || 'stock-valuation';
 
   const handleTabChange = (tab: string) => {
@@ -27,8 +29,21 @@ export function ReportsPage() {
         subtitle="Analyse and export your inventory data"
       />
 
+      {isMobile ? (
+        <select
+          value={activeTab}
+          onChange={(event) => handleTabChange(event.target.value)}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="stock-valuation">Stock Valuation</option>
+          <option value="movement-history">Movement History</option>
+          <option value="low-stock">Low Stock</option>
+          <option value="waste-adjustments">Waste & Adjustments</option>
+        </select>
+      ) : null}
+
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className={`grid w-full grid-cols-4 ${isMobile ? 'hidden' : ''}`}>
           <TabsTrigger value="stock-valuation">Stock Valuation</TabsTrigger>
           <TabsTrigger value="movement-history">Movement History</TabsTrigger>
           <TabsTrigger value="low-stock">Low Stock</TabsTrigger>

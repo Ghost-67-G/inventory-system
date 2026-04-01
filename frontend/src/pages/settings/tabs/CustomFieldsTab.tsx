@@ -25,10 +25,10 @@ import { useTenantStore } from '@/store/tenantStore';
 import type { ICustomField } from '@/types';
 
 const TYPE_BADGE_CLASS: Record<ICustomField['type'], string> = {
-  text: 'bg-slate-100 text-slate-700',
-  number: 'bg-blue-100 text-blue-700',
-  boolean: 'bg-amber-100 text-amber-700',
-  date: 'bg-emerald-100 text-emerald-700',
+  text: 'bg-muted text-muted-foreground',
+  number: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  boolean: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  date: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
 };
 
 function SortableRow({
@@ -53,21 +53,21 @@ function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3"
+      className="group flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3"
     >
       <button
         {...attributes}
         {...listeners}
         disabled={!canManage}
-        className="text-slate-300 opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed"
+        className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed"
         aria-label="Drag to reorder"
       >
         <GripVertical size={16} />
       </button>
 
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-slate-900">{field.name}</div>
-        <code className="text-xs text-slate-500">{field.key}</code>
+        <div className="text-sm font-medium text-foreground">{field.name}</div>
+        <code className="text-xs text-muted-foreground">{field.key}</code>
       </div>
 
       <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${TYPE_BADGE_CLASS[field.type]}`}>
@@ -75,7 +75,7 @@ function SortableRow({
       </span>
 
       {field.required ? (
-        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
           Required
         </span>
       ) : null}
@@ -86,7 +86,7 @@ function SortableRow({
             <Pencil size={14} />
           </Button>
           <Button variant="ghost" size="icon-sm" onClick={() => onDelete(field)}>
-            <Trash2 size={14} className="text-red-600" />
+            <Trash2 size={14} className="text-red-600 dark:text-red-400" />
           </Button>
         </div>
       ) : null}
@@ -153,14 +153,14 @@ export function CustomFieldsTab({ canManage }: CustomFieldsTabProps) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Custom fields</h3>
-          <p className="text-sm text-slate-500">
+          <h3 className="text-base font-semibold text-foreground">Custom fields</h3>
+          <p className="text-sm text-muted-foreground">
             Add extra fields to your product records. Changes apply to all products.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
             {fields.length} / 20 fields used
           </span>
           {canManage ? (
@@ -172,14 +172,14 @@ export function CustomFieldsTab({ canManage }: CustomFieldsTabProps) {
       </div>
 
       {fields.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+        <div className="rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center">
           <div className="mx-auto mb-4 flex w-28 flex-col gap-2">
-            <div className="h-2 rounded bg-slate-200" />
-            <div className="h-2 rounded bg-slate-200" />
-            <div className="h-2 rounded bg-slate-200" />
+            <div className="h-2 rounded bg-muted" />
+            <div className="h-2 rounded bg-muted" />
+            <div className="h-2 rounded bg-muted" />
           </div>
-          <h4 className="text-base font-semibold text-slate-900">No custom fields yet</h4>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
+          <h4 className="text-base font-semibold text-foreground">No custom fields yet</h4>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
             Add custom fields to capture extra information on your products, like batch numbers,
             expiry dates, or supplier codes.
           </p>

@@ -68,20 +68,20 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">Change role</h2>
-        <p className="mt-1 text-sm text-slate-500">Update access level for {user.name}.</p>
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 className="text-lg font-semibold text-foreground">Change role</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Update access level for {user.name}.</p>
 
-        <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+        <div className="mt-4 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-foreground">
           Current role: <span className="font-semibold capitalize">{user.role}</span>
         </div>
 
-        {error ? <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+        {error ? <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{error}</div> : null}
 
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Role</label>
-            <select className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" {...register('role')}>
+            <label className="mb-1 block text-sm font-medium text-foreground">Role</label>
+            <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('role')}>
               <option value="manager">Manager</option>
               <option value="staff">Staff</option>
               <option value="viewer">Viewer</option>
@@ -90,7 +90,7 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
           </div>
 
           {isDowngrade ? (
-            <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
               This will remove {user.name}'s ability to manage products and view reports.
             </div>
           ) : null}

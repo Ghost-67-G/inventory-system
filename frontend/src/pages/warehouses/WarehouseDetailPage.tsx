@@ -9,6 +9,7 @@ import { WarehouseFormModal } from '@/components/warehouses/WarehouseFormModal';
 import { ConfirmDeactivateWarehouseDialog } from '@/components/warehouses/ConfirmDeactivateWarehouseDialog';
 import { useWarehouse, useWarehouseStock, useSetDefaultWarehouse } from '@/hooks/useWarehouses';
 import { DataTable } from '@/components/shared/DataTable';
+import { useWindowSize } from '@/hooks/useWindowSize';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { WarehouseStockItem } from '@/types';
 
@@ -31,6 +32,7 @@ export function WarehouseDetailPage() {
   const [formModal, setFormModal] = useState(false);
   const [deactivateDialog, setDeactivateDialog] = useState(false);
   const debouncedSearch = useDebounce(search, 300);
+  const { isMobile } = useWindowSize();
 
   const { data: warehouse, isLoading } = useWarehouse(id || '');
   const { data: stockPages, fetchNextPage, hasNextPage, isFetchingNextPage } = useWarehouseStock(
@@ -47,8 +49,8 @@ export function WarehouseDetailPage() {
         size: 260,
         cell: ({ row }) => (
           <div>
-            <p className="font-medium text-gray-900">{row.original.product.name}</p>
-            <p className="text-xs text-gray-500">{row.original.product.sku}</p>
+            <p className="font-medium text-foreground">{row.original.product.name}</p>
+            <p className="text-xs text-muted-foreground">{row.original.product.sku}</p>
           </div>
         )
       },
@@ -58,16 +60,16 @@ export function WarehouseDetailPage() {
         size: 170,
         cell: ({ row }) =>
           row.original.product.categoryId ? (
-            <span className="text-xs text-gray-600">{row.original.product.categoryId}</span>
+            <span className="text-xs text-muted-foreground">{row.original.product.categoryId}</span>
           ) : (
-            <span className="text-xs text-gray-400">Uncategorized</span>
+            <span className="text-xs text-muted-foreground">Uncategorized</span>
           )
       },
       {
         id: 'unit',
         header: 'Unit',
         size: 90,
-        cell: ({ row }) => <span className="text-sm text-gray-600">{row.original.product.unit}</span>
+        cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.product.unit}</span>
       },
       {
         id: 'quantity',
@@ -76,7 +78,7 @@ export function WarehouseDetailPage() {
         cell: ({ row }) => {
           const low = row.original.quantity <= row.original.product.lowStockThreshold;
           return low ? (
-            <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+            <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
               {row.original.quantity}
             </span>
           ) : (
@@ -90,9 +92,9 @@ export function WarehouseDetailPage() {
         size: 120,
         cell: ({ row }) =>
           row.original.reservedQuantity > 0 ? (
-            <span className="text-gray-600">{row.original.reservedQuantity}</span>
+            <span className="text-muted-foreground">{row.original.reservedQuantity}</span>
           ) : (
-            <span className="text-gray-400">-</span>
+            <span className="text-muted-foreground">-</span>
           )
       },
       {
@@ -100,7 +102,7 @@ export function WarehouseDetailPage() {
         header: 'Available',
         size: 120,
         cell: ({ row }) => (
-          <span className="font-medium text-green-700">
+          <span className="font-medium text-green-700 dark:text-green-400">
             {row.original.quantity - row.original.reservedQuantity}
           </span>
         )
@@ -129,10 +131,10 @@ export function WarehouseDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Warehouses
         </Button>
-        <div className="rounded-xl border bg-white p-12 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-12 shadow-sm">
           <div className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="mb-4 h-8 w-8 text-destructive" />
-            <p className="text-gray-500">Warehouse not found</p>
+            <p className="text-muted-foreground">Warehouse not found</p>
           </div>
         </div>
       </div>
@@ -158,31 +160,31 @@ export function WarehouseDetailPage() {
         <div>
           <h1 className="text-3xl font-bold">{warehouse.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">
+            <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
               {warehouse.code}
             </span>
             {warehouse.isDefault && (
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                 Default warehouse
               </span>
             )}
             {warehouse.isActive ? (
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Active</span>
+              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">Active</span>
             ) : (
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Inactive</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Inactive</span>
             )}
           </div>
         </div>
 
-        <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm lg:col-span-1">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <h2 className="text-base font-semibold text-gray-900">Warehouse Details</h2>
-                {warehouse.description && <p className="mt-2 text-sm text-gray-600">{warehouse.description}</p>}
+                <h2 className="text-base font-semibold text-foreground">Warehouse Details</h2>
+                {warehouse.description && <p className="mt-2 text-sm text-muted-foreground">{warehouse.description}</p>}
                 
                 {/* Address */}
                 {Object.values(warehouse.address || {}).some(Boolean) && (
-                  <div className="mt-3 space-y-0.5 text-sm text-gray-600">
+                  <div className="mt-3 space-y-0.5 text-sm text-muted-foreground">
                     {warehouse.address.street && <p>{warehouse.address.street}</p>}
                     {(warehouse.address.city || warehouse.address.state) && (
                       <p>{[warehouse.address.city, warehouse.address.state].filter(Boolean).join(', ')}</p>
@@ -196,15 +198,15 @@ export function WarehouseDetailPage() {
 
               {/* Stats Cards */}
               <div className="ml-4 space-y-2">
-                <div className="rounded-lg bg-blue-50 p-3 text-center">
-                  <p className="text-xs text-blue-600">Products</p>
-                  <p className="text-2xl font-bold text-blue-900">
+                <div className="rounded-lg bg-blue-50 p-3 text-center dark:bg-blue-900/20">
+                  <p className="text-xs text-blue-600 dark:text-blue-300">Products</p>
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">
                     {warehouse.stockSummary.totalProducts}
                   </p>
                 </div>
-                <div className="rounded-lg bg-green-50 p-3 text-center">
-                  <p className="text-xs text-green-600">Units</p>
-                  <p className="text-2xl font-bold text-green-900">
+                <div className="rounded-lg bg-green-50 p-3 text-center dark:bg-green-900/20">
+                  <p className="text-xs text-green-600 dark:text-green-300">Units</p>
+                  <p className="text-2xl font-bold text-green-900 dark:text-green-200">
                     {warehouse.stockSummary.totalUnits}
                   </p>
                 </div>
@@ -275,15 +277,15 @@ export function WarehouseDetailPage() {
 
         {/* Stock Table */}
         {stockItems.length === 0 ? (
-          <div className="rounded-xl border bg-white p-12 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-12 shadow-sm">
             <div className="flex flex-col items-center justify-center py-12">
               {showLowStockOnly ? (
                 <>
                   <div className="mb-2 text-3xl">✓</div>
-                  <p className="text-gray-500">No low stock items</p>
+                  <p className="text-muted-foreground">No low stock items</p>
                 </>
               ) : (
-                <p className="text-gray-500">No stock in this warehouse</p>
+                <p className="text-muted-foreground">No stock in this warehouse</p>
               )}
             </div>
           </div>
@@ -291,6 +293,7 @@ export function WarehouseDetailPage() {
           <DataTable
             columns={columns}
             data={stockItems}
+            hiddenColumnIds={isMobile ? ['category', 'unit', 'reserved'] : []}
             isFetchingNextPage={isFetchingNextPage}
             hasNextPage={!!hasNextPage}
             onFetchNextPage={() => {

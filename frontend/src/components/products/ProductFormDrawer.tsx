@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { useCategoriesDropdown } from '@/hooks/useCategories';
+import { useWindowSize } from '@/hooks/useWindowSize';
 import { useCreateProduct, useUpdateProduct } from '@/hooks/useProducts';
 import { useTenantStore } from '@/store/tenantStore';
 import type { IProduct, CreateProductDto } from '@/types';
@@ -37,6 +38,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function ProductFormDrawer({ mode, product, open, onClose }: ProductFormDrawerProps) {
+  const { width } = useWindowSize();
+  const isMobile = width < 768;
   const { data: categories } = useCategoriesDropdown();
   const tenant = useTenantStore((state) => state.tenant);
   const createMutation = useCreateProduct();
@@ -178,7 +181,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full max-w-2xl overflow-y-auto">
+      <SheetContent side={isMobile ? 'bottom' : 'right'} className={isMobile ? 'h-[90vh] w-full overflow-y-auto' : 'w-full max-w-2xl overflow-y-auto'}>
         <SheetHeader>
           <SheetTitle>{mode === 'create' ? 'Add Product' : 'Edit Product'}</SheetTitle>
           <SheetDescription>
@@ -186,7 +189,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 px-1 py-6 pb-24 md:pb-6">
           {/* Basic Info Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold">Basic Information</h3>
@@ -199,7 +202,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                 className={errors.sku ? 'border-red-500' : ''}
               />
               {errors.sku && <p className="text-xs text-red-500 mt-1">{errors.sku.message}</p>}
-              <p className="text-xs text-gray-500 mt-1">Must be unique. Will be stored in uppercase.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Must be unique. Will be stored in uppercase.</p>
             </div>
 
             <div>
@@ -226,7 +229,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Category</label>
-                <select {...register('categoryId')} className="w-full px-3 py-2 border rounded-md text-sm">
+                <select {...register('categoryId')} className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9">
                   <option value="">No category</option>
                   {categories?.map((cat) => (
                     <option key={cat._id} value={cat._id}>
@@ -269,7 +272,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                       </label>
 
                       {field.type === 'boolean' ? (
-                        <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+                        <label className="mt-2 flex items-center gap-2 text-sm text-foreground">
                           <input
                             type="checkbox"
                             checked={Boolean(fieldValue)}
@@ -344,7 +347,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                 placeholder="0"
                 className={errors.lowStockThreshold ? 'border-red-500' : ''}
               />
-              <p className="text-xs text-gray-500 mt-1">Alert when stock falls to or below this number</p>
+              <p className="mt-1 text-xs text-muted-foreground">Alert when stock falls to or below this number</p>
             </div>
           </div>
 
@@ -369,12 +372,12 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
             </div>
             <div className="flex flex-wrap gap-2">
               {watchTags.map((tag, idx) => (
-                <span key={idx} className="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
+                <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm">
                   {tag}
                   <button
                     type="button"
                     onClick={() => removeTag(idx)}
-                    className="text-gray-500 hover:text-red-500"
+                    className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                   >
                     ×
                   </button>
@@ -420,11 +423,11 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
           </div>
 
           {/* Footer */}
-          <div className="flex gap-3 pt-6 border-t">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+          <div className="fixed bottom-0 left-0 right-0 flex gap-3 border-t bg-background p-4 md:static md:border-t md:bg-transparent md:px-0 md:pt-6">
+            <Button type="button" variant="outline" onClick={onClose} className="h-11 min-h-11 flex-1 md:h-9 md:min-h-0">
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="flex-1">
+            <Button type="submit" disabled={isLoading} className="h-11 min-h-11 flex-1 md:h-9 md:min-h-0">
               {isLoading ? '...' : mode === 'create' ? 'Create Product' : 'Save Changes'}
             </Button>
           </div>

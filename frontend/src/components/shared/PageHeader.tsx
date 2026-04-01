@@ -7,12 +7,12 @@ interface PageHeaderProps extends PropsWithChildren {
 
 export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
   return (
-    <div className="mb-6 flex items-center justify-between gap-3">
+    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
-        {subtitle ? <p className="text-sm text-slate-500">{subtitle}</p> : null}
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
       </div>
-      <div>{children}</div>
+      <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>
   );
 }

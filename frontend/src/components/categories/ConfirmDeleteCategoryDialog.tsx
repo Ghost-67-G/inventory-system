@@ -21,11 +21,11 @@ export function ConfirmDeleteCategoryDialog({
   if (category.productCount > 0) {
     return (
       <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-        <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-          <h2 className="text-lg font-semibold text-slate-900">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
+          <h2 className="text-lg font-semibold text-foreground">
             Cannot delete &ldquo;{category.name}&rdquo;
           </h2>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             {category.productCount} product{category.productCount > 1 ? 's are' : ' is'} assigned to
             it. Reassign or deactivate those products first.
           </p>
@@ -45,11 +45,11 @@ export function ConfirmDeleteCategoryDialog({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 className="text-lg font-semibold text-foreground">
           Delete &ldquo;{category.name}&rdquo;?
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-muted-foreground">
           This category will be permanently deleted. This cannot be undone.
         </p>
         <div className="mt-4 flex justify-end gap-2">

@@ -14,6 +14,7 @@ import { formatCurrency } from '@/lib/formatting';
 import type { MovementsReportParams, IStockMovement } from '@/types';
 import { createColumnHelper } from '@tanstack/react-table';
 import { AlertCircle, TrendingDown, TrendingUp } from 'lucide-react';
+import { useWindowSize } from '@/hooks/useWindowSize';
 
 const columnHelper = createColumnHelper<IStockMovement>();
 
@@ -37,6 +38,7 @@ export function MovementHistoryReport() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [customDateFrom, setCustomDateFrom] = useState(searchParams.get('dateFrom') || '');
   const [customDateTo, setCustomDateTo] = useState(searchParams.get('dateTo') || '');
+  const { isMobile } = useWindowSize();
 
   // Get filter params from URL
   const params: MovementsReportParams = {
@@ -137,12 +139,12 @@ export function MovementHistoryReport() {
         cell: (info) => {
           const type = info.getValue();
           const badgeClasses = {
-            IN: 'bg-green-100 text-green-800',
-            OUT: 'bg-red-100 text-red-800',
-            ADJUSTMENT: 'bg-blue-100 text-blue-800',
-            WASTE: 'bg-orange-100 text-orange-800',
-            TRANSFER_IN: 'bg-purple-100 text-purple-800',
-            TRANSFER_OUT: 'bg-pink-100 text-pink-800'
+            IN: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+            OUT: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+            ADJUSTMENT: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+            WASTE: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+            TRANSFER_IN: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+            TRANSFER_OUT: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400'
           };
           return (
             <span className={`px-2 py-1 rounded text-xs font-medium ${badgeClasses[type as keyof typeof badgeClasses]}`}>
@@ -183,7 +185,7 @@ export function MovementHistoryReport() {
           const quantity = info.getValue();
           const product = info.row.original.product as any;
           const color =
-            ['IN', 'TRANSFER_IN'].includes(type) ? 'text-green-600' : 'text-red-600';
+            ['IN', 'TRANSFER_IN'].includes(type) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
           return (
             <span className={`font-medium ${color}`}>
               {['IN', 'TRANSFER_IN'].includes(type) ? '+' : '-'}{quantity} {product?.unit}
@@ -355,6 +357,7 @@ export function MovementHistoryReport() {
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           onFetchNextPage={fetchNextPage}
+          hiddenColumnIds={isMobile ? ['createdAt', 'warehouse', 'quantityAfter', 'note', 'performedBy'] : []}
           emptyMessage="No movements found"
         />
       </div>
