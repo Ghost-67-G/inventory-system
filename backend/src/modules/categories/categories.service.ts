@@ -98,7 +98,7 @@ export async function createCategory(
     performedByEmail: auditCtx.performedByEmail,
     action: 'category.created',
     entityType: 'category',
-    entityId: category._id.toString(),
+    entityId: category.id,
     entityName: category.name,
     metadata: {
       description: category.description,
@@ -150,7 +150,7 @@ export async function updateCategory(
       performedByEmail: auditCtx.performedByEmail,
       action: 'category.updated',
       entityType: 'category',
-      entityId: category._id.toString(),
+      entityId: category.id,
       entityName: category.name,
       changes,
       ipAddress: auditCtx.ipAddress,
@@ -188,7 +188,7 @@ export async function deleteCategory(
     performedByEmail: auditCtx.performedByEmail,
     action: 'category.deleted',
     entityType: 'category',
-    entityId: category._id.toString(),
+    entityId: category.id,
     entityName: category.name,
     metadata: {
       description: category.description,

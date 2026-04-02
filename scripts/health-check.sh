@@ -1,0 +1,45 @@
+#!/bin/bash
+# scripts/health-check.sh
+
+set -euo pipefail
+
+if [ -f .env.production ]; then
+  # shellcheck disable=SC1091
+  source .env.production
+fi
+
+MAX_RETRIES=10
+RETRY_INTERVAL=5
+DEFAULT_HEALTH_HOST=${NGINX_BIND_IP:-127.0.0.1}
+DEFAULT_HEALTH_PORT=${NGINX_HTTP_PORT:-18080}
+HEALTH_URL=${HEALTH_URL:-http://${DEFAULT_HEALTH_HOST}:${DEFAULT_HEALTH_PORT}/health}
+
+echo "Checking application health..."
+
+for i in $(seq 1 "$MAX_RETRIES"); do
+  RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" 2>/dev/null || echo "000")
+
+  if [ "$RESPONSE" = "200" ]; then
+    echo "Health check passed (attempt $i/$MAX_RETRIES)"
+
+    BODY=$(curl -s "$HEALTH_URL")
+    echo "Service status: $BODY"
+
+    MONGO=$(echo "$BODY" | grep -o '"mongodb":"[^"]*"' | cut -d'"' -f4 || true)
+    REDIS=$(echo "$BODY" | grep -o '"redis":"[^"]*"' | cut -d'"' -f4 || true)
+
+    if [ "$MONGO" != "ok" ] || [ "$REDIS" != "ok" ]; then
+      echo "Critical service degraded! MongoDB: $MONGO, Redis: $REDIS"
+      exit 1
+    fi
+
+    echo "All critical services healthy"
+    exit 0
+  fi
+
+  echo "Attempt $i/$MAX_RETRIES failed (HTTP $RESPONSE). Retrying in ${RETRY_INTERVAL}s..."
+  sleep "$RETRY_INTERVAL"
+done
+
+echo "Health check failed after $MAX_RETRIES attempts"
+exit 1

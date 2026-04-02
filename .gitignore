@@ -1,0 +1,19 @@
+# Environment files
+.env
+# .env.production
+.env.local
+
+# TLS certificates and secrets
+# nginx/ssl/*
+# !nginx/ssl/.gitkeep
+
+# Runtime artifacts
+backups/
+*.pid
+*.log
+
+# Dependency and build directories
+backend/node_modules/
+backend/dist/
+frontend/node_modules/
+frontend/dist/
