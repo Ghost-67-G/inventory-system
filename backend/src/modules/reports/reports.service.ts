@@ -1,7 +1,7 @@
 import mongoose, { PipelineStage, FilterQuery } from 'mongoose';
 import { Product } from '../../models/Product';
 import { StockMovementModel, type IStockMovement } from '../../models/StockMovement';
-import { WarehouseStockModel, type IWarehouseStock } from '../../models/WarehouseStock';
+import { WarehouseStockModel } from '../../models/WarehouseStock';
 import { ApiError } from '../../utils/ApiError';
 import { Response } from 'express';
 import type { StockValuationQuery, MovementsQuery, LowStockQuery, WasteAdjustmentsQuery } from './reports.schema';
@@ -380,7 +380,7 @@ export async function getMovementsReport(tenantId: string, query: MovementsQuery
   if (hasMore) movements.pop();
 
   const nextCursor = hasMore
-    ? Buffer.from((movements[movements.length - 1] as any)?._id?.toString() ?? '').toString('base64')
+    ? Buffer.from(((movements[movements.length - 1] as unknown as IStockMovement)?._id?.toString()) ?? '').toString('base64')
     : null;
 
   // Summary for full filtered dataset
@@ -449,18 +449,24 @@ export async function streamMovementsCSV(tenantId: string, query: MovementsQuery
 
   try {
     for await (const doc of cursor) {
-      const date = new Date((doc as any).createdAt);
-      const product = (doc as any).productId;
-      const warehouse = (doc as any).warehouseId;
-      const user = (doc as any).performedBy;
+      const typedDoc = doc as unknown as IStockMovement & {
+        productId?: { name?: string; sku?: string; unit?: string };
+        warehouseId?: { code?: string; name?: string };
+        performedBy?: { name?: string };
+      };
+      
+      const date = new Date(typedDoc.createdAt);
+      const product = typedDoc.productId;
+      const warehouse = typedDoc.warehouseId;
+      const user = typedDoc.performedBy;
 
       const signedQty =
-        ['IN', 'TRANSFER_IN'].includes((doc as any).type) ? `+${(doc as any).quantity}` :
-        (doc as any).type === 'ADJUSTMENT'
-          ? (doc as any).quantityAfter > (doc as any).quantityBefore
-            ? `+${(doc as any).quantity}`
-            : `-${(doc as any).quantity}`
-          : `-${(doc as any).quantity}`;
+        ['IN', 'TRANSFER_IN'].includes(typedDoc.type) ? `+${typedDoc.quantity}` :
+        typedDoc.type === 'ADJUSTMENT'
+          ? typedDoc.quantityAfter > typedDoc.quantityBefore
+            ? `+${typedDoc.quantity}`
+            : `-${typedDoc.quantity}`
+          : `-${typedDoc.quantity}`;
 
       const line = [
         date.toISOString().split('T')[0],
@@ -468,11 +474,11 @@ export async function streamMovementsCSV(tenantId: string, query: MovementsQuery
         escapeCsv(product?.name ?? ''),
         escapeCsv(product?.sku ?? ''),
         escapeCsv(`${warehouse?.code ?? ''} ${warehouse?.name ?? ''}`),
-        (doc as any).type,
+        typedDoc.type,
         signedQty,
-        `${(doc as any).quantityAfter} ${product?.unit ?? ''}`,
-        (doc as any).referenceType,
-        escapeCsv((doc as any).note),
+        `${typedDoc.quantityAfter} ${product?.unit ?? ''}`,
+        typedDoc.referenceType,
+        escapeCsv(typedDoc.note),
         escapeCsv(user?.name ?? '')
       ].join(',');
       res.write(line + '\n');
@@ -487,6 +493,22 @@ export async function streamMovementsCSV(tenantId: string, query: MovementsQuery
 /**
  * Low Stock Report — JSON (small dataset, no pagination)
  */
+interface LowStockRow {
+  sku: string;
+  productName: string;
+  categoryName: string;
+  categoryColor: string;
+  warehouseName: string;
+  warehouseCode: string;
+  unit: string;
+  currentStock: number;
+  threshold: number;
+  shortage: number;
+  reorderSuggestion: number;
+  costPrice: number;
+  restockCost: number;
+}
+
 export async function getLowStockReport(tenantId: string, query: LowStockQuery) {
   const pipeline: PipelineStage[] = [
     // Match WarehouseStock for tenant with stock > 0
@@ -583,13 +605,13 @@ export async function getLowStockReport(tenantId: string, query: LowStockQuery) 
     }
   ];
 
-  const rows = await WarehouseStockModel.aggregate(pipeline);
+  const rows = await WarehouseStockModel.aggregate<LowStockRow>(pipeline);
 
   const summary = {
     totalItems: rows.length,
-    outOfStock: rows.filter((r: any) => r.currentStock === 0).length,
-    criticalItems: rows.filter((r: any) => r.currentStock <= Math.floor(r.threshold * 0.25)).length,
-    totalRestockCost: Math.round(rows.reduce((sum: number, r: any) => sum + (r.restockCost ?? 0), 0) * 100) / 100
+    outOfStock: rows.filter((r: LowStockRow) => r.currentStock === 0).length,
+    criticalItems: rows.filter((r: LowStockRow) => r.currentStock <= Math.floor(r.threshold * 0.25)).length,
+    totalRestockCost: Math.round(rows.reduce((sum: number, r: LowStockRow) => sum + (r.restockCost ?? 0), 0) * 100) / 100
   };
 
   return { rows, summary, generatedAt: new Date().toISOString() };
@@ -762,7 +784,7 @@ export async function getWasteAdjustmentsReport(tenantId: string, query: WasteAd
   if (hasMore) movements.pop();
 
   const nextCursor = hasMore
-    ? Buffer.from((movements[movements.length - 1] as any)?._id?.toString() ?? '').toString('base64')
+    ? Buffer.from(((movements[movements.length - 1] as unknown as IStockMovement)?._id?.toString()) ?? '').toString('base64')
     : null;
 
   // Summary with value calculation
@@ -787,15 +809,22 @@ export async function getWasteAdjustmentsReport(tenantId: string, query: WasteAd
     }
   ];
 
+  interface SummaryCount {
+    _id: string;
+    count: number;
+    totalQuantity: number;
+    totalValue: number;
+  }
+
   const summaryCounts = await StockMovementModel.aggregate(summaryPipeline);
 
   const summary = {
-    waste: summaryCounts.find((s: any) => s._id === 'WASTE') ?? {
+    waste: (summaryCounts as SummaryCount[]).find((s: SummaryCount) => s._id === 'WASTE') ?? {
       count: 0,
       totalQuantity: 0,
       totalValue: 0
     },
-    adjustment: summaryCounts.find((s: any) => s._id === 'ADJUSTMENT') ?? {
+    adjustment: (summaryCounts as SummaryCount[]).find((s: SummaryCount) => s._id === 'ADJUSTMENT') ?? {
       count: 0,
       totalQuantity: 0,
       totalValue: 0
@@ -867,24 +896,30 @@ export async function streamWasteAdjustmentsCSV(
 
   try {
     for await (const doc of cursor) {
-      const date = new Date((doc as any).createdAt);
-      const product = (doc as any).productId;
-      const warehouse = (doc as any).warehouseId;
-      const user = (doc as any).performedBy;
+      const typedDoc = doc as unknown as IStockMovement & {
+        productId?: { name?: string; sku?: string; costPrice?: number };
+        warehouseId?: { code?: string; name?: string };
+        performedBy?: { name?: string };
+      };
+      
+      const date = new Date(typedDoc.createdAt);
+      const product = typedDoc.productId;
+      const warehouse = typedDoc.warehouseId;
+      const user = typedDoc.performedBy;
 
-      const estimatedValue = ((doc as any).quantity * (product?.costPrice ?? 0)).toFixed(2);
+      const estimatedValue = ((typedDoc.quantity ?? 0) * (product?.costPrice ?? 0)).toFixed(2);
 
       const line = [
         date.toISOString().split('T')[0],
         date.toTimeString().split(' ')[0],
-        (doc as any).type,
+        typedDoc.type,
         escapeCsv(product?.name ?? ''),
         escapeCsv(product?.sku ?? ''),
         escapeCsv(''), // Category not included in fields — would require additional lookup
         escapeCsv(`${warehouse?.code ?? ''} ${warehouse?.name ?? ''}`),
-        (doc as any).quantity,
+        typedDoc.quantity,
         estimatedValue,
-        escapeCsv((doc as any).note),
+        escapeCsv(typedDoc.note),
         escapeCsv(user?.name ?? '')
       ].join(',');
       res.write(line + '\n');

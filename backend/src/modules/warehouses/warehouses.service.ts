@@ -1,6 +1,5 @@
 import { WarehouseModel, type IWarehouse } from '../../models/Warehouse';
-import { WarehouseStockModel, type IWarehouseStock } from '../../models/WarehouseStock';
-import { Product } from '../../models/Product';
+import { WarehouseStockModel } from '../../models/WarehouseStock';
 import { ApiError } from '../../utils/ApiError';
 import { redis } from '../../config/redis';
 import { deleteCache, getCache, setCache } from '../../config/redis';

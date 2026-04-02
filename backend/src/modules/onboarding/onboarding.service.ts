@@ -17,7 +17,7 @@ async function invalidateTenantCache(tenantId: string): Promise<void> {
   await redis.del(`tenant:settings:${tenantId}`);
 }
 
-export async function getOnboardingStatus(tenantId: string, _userId: string): Promise<{
+export async function getOnboardingStatus(tenantId: string): Promise<{
   onboardingComplete: boolean;
   currentStep: 1 | 2 | 3 | 4;
   completedSteps: number[];

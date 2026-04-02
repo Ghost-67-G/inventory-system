@@ -8,7 +8,7 @@ export const searchSyncWorker = new Worker(
   'search-sync',
   async (job) => {
     if (job.name === 'product:upsert') {
-      const { productId, tenantId } = job.data as { productId: string; tenantId: string };
+      const { productId } = job.data as { productId: string; tenantId: string };
       
       try {
         const product = await Product.findById(productId).select(
