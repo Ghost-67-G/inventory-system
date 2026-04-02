@@ -4,7 +4,7 @@ import * as onboardingService from './onboarding.service';
 import type { StepOneDto, StepThreeDto, StepTwoDto } from './onboarding.schema';
 
 export const getStatus = catchAsync(async (req: Request, res: Response) => {
-  const status = await onboardingService.getOnboardingStatus(req.tenantId!, req.user!.id);
+  const status = await onboardingService.getOnboardingStatus(req.tenantId!);
   res.status(200).json({ success: true, data: status });
 });
 
