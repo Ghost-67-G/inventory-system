@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  type ColumnVisibilityState,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type VisibilityState,
   type SortingState,
   type RowSelectionState
 } from '@tanstack/react-table';
@@ -51,7 +51,7 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const parentRef = useRef<HTMLDivElement>(null);
 
   const selectionColumn: ColumnDef<TData> = {
@@ -111,7 +111,7 @@ export function DataTable<TData>({
   });
 
   useEffect(() => {
-    const nextState: ColumnVisibilityState = {};
+    const nextState: VisibilityState = {};
     hiddenColumnIds.forEach((id) => {
       nextState[id] = false;
     });

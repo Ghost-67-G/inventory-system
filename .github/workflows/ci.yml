@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-checks:
+    name: Backend - test + lint + typecheck
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports: ['27017:27017']
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
+
+      - name: Test
+        working-directory: backend
+        run: npm test --if-present
+
+      - name: Build
+        working-directory: backend
+        run: npm run build
+
+  frontend-checks:
+    name: Frontend - test + lint + typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint --if-present
+
+      - name: Test
+        working-directory: frontend
+        run: npm test --if-present
+
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_API_URL: http://localhost/api
+          VITE_SOCKET_URL: http://localhost
+          VITE_DEPLOYMENT_MODE: saas
+        run: npm run build
+
+  docker-build:
+    name: Docker build check
+    runs-on: ubuntu-latest
+    needs: [backend-checks, frontend-checks]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t inventory-backend:ci ./backend
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            --build-arg VITE_API_URL=http://localhost/api \
+            --build-arg VITE_SOCKET_URL=http://localhost \
+            --build-arg VITE_DEPLOYMENT_MODE=saas \
+            -t inventory-frontend:ci ./frontend

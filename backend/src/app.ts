@@ -4,9 +4,12 @@ import cors from 'cors';
 import express, { type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import mongoose from 'mongoose';
 import mongoSanitize from 'express-mongo-sanitize';
 import xssClean from 'xss-clean';
 import { config } from './config';
+import { meiliClient } from './config/meilisearch';
+import { redis } from './config/redis';
 import { errorHandler } from './middleware/errorHandler';
 import { requestId } from './middleware/requestId';
 import alertsRoutes from './modules/alerts/alerts.routes';
@@ -40,8 +43,58 @@ app.use(express.json({ limit: '1mb' }));
 app.use(mongoSanitize() as express.RequestHandler);
 app.use(xssClean() as express.RequestHandler);
 
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({ success: true, data: { status: 'ok' } });
+app.get('/health', async (_req: Request, res: Response) => {
+  const checks: {
+    status: 'ok' | 'degraded' | 'error';
+    timestamp: string;
+    uptime: number;
+    services: {
+      mongodb: 'ok' | 'degraded' | 'error' | 'unknown';
+      redis: 'ok' | 'error' | 'unknown';
+      meilisearch: 'ok' | 'degraded' | 'unknown';
+    };
+  } = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    services: {
+      mongodb: 'unknown',
+      redis: 'unknown',
+      meilisearch: 'unknown'
+    }
+  };
+
+  try {
+    const mongoState = mongoose.connection.readyState;
+    checks.services.mongodb = mongoState === 1 ? 'ok' : 'degraded';
+  } catch {
+    checks.services.mongodb = 'error';
+  }
+
+  try {
+    await redis.ping();
+    checks.services.redis = 'ok';
+  } catch {
+    checks.services.redis = 'error';
+  }
+
+  try {
+    await meiliClient.health();
+    checks.services.meilisearch = 'ok';
+  } catch {
+    checks.services.meilisearch = 'degraded';
+  }
+
+  if (checks.services.mongodb !== 'ok' || checks.services.redis !== 'ok') {
+    checks.status = 'error';
+    return res.status(503).json(checks);
+  }
+
+  if (checks.services.meilisearch !== 'ok') {
+    checks.status = 'degraded';
+  }
+
+  return res.status(200).json(checks);
 });
 
 app.use('/api/auth', authRoutes);
