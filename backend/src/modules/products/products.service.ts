@@ -64,7 +64,10 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
           .lean();
 
         // Preserve MeiliSearch order
-        const productsMap = new Map(products.map((p: unknown) => [(p as any)._id.toString(), p]));
+        const productsMap = new Map(products.map((p: unknown) => {
+          const product = p as { _id: { toString(): string } };
+          return [product._id.toString(), p];
+        }));
         const orderedProducts = ids
           .map((id) => productsMap.get(id))
           .filter((p) => p !== undefined)
@@ -197,7 +200,7 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
 
   let nextCursor: string | null = null;
   if (hasMore && products.length > 0) {
-    const lastDoc = products[products.length - 1] as any;
+    const lastDoc = products[products.length - 1] as { _id: { toString(): string } };
     nextCursor = Buffer.from(lastDoc._id.toString()).toString('base64');
   }
 
@@ -272,15 +275,24 @@ export async function createProduct(
   }
 
   // Validate custom fields
-  if ((tenant as any).customFields?.length > 0 && data.customFields) {
+  if (tenant && 'customFields' in tenant && Array.isArray(tenant.customFields) && tenant.customFields.length > 0 && data.customFields) {
     const customFieldError = validateCustomFields(
       data.customFields as Record<string, unknown>,
-      (tenant as any).customFields
+      tenant.customFields as unknown as Array<{ name: string; type: string; required: boolean }>
     );
     if (customFieldError) {
       throw new ApiError(422, customFieldError);
     }
   }
+
+  const defaultLowStockThreshold = (
+    tenant && typeof tenant === 'object' && 'settings' in tenant && 
+    typeof (tenant as Record<string, unknown>).settings === 'object' &&
+    (tenant as Record<string, unknown>).settings !== null &&
+    'lowStockThreshold' in ((tenant as Record<string, unknown>).settings as object)
+      ? ((tenant as Record<string, unknown>).settings as Record<string, unknown>).lowStockThreshold
+      : 0
+  ) as number;
 
   const product = await Product.create({
     tenantId: tenantObjId,
@@ -291,7 +303,7 @@ export async function createProduct(
     unit: (data.unit as string).trim(),
     costPrice: Number(data.costPrice ?? 0),
     sellingPrice: Number(data.sellingPrice ?? 0),
-    lowStockThreshold: Number(data.lowStockThreshold ?? (tenant as any).settings?.lowStockThreshold ?? 0),
+    lowStockThreshold: Number(data.lowStockThreshold ?? defaultLowStockThreshold ?? 0),
     isActive: true,
     images: (data.images as string[]) ?? [],
     tags: ((data.tags as string[]) ?? []).map((t) => t.toLowerCase().trim()),
@@ -391,7 +403,7 @@ export async function updateProduct(
       await incrementProductCount(tenantId, newCategoryId.toString(), 1);
     }
 
-    product.categoryId = newCategoryId as any;
+    product.categoryId = newCategoryId as mongoose.Types.ObjectId | null;
   }
 
   // Validate custom fields if provided
@@ -400,10 +412,10 @@ export async function updateProduct(
       .select('customFields')
       .lean();
 
-    if ((tenant as any)?.customFields?.length > 0) {
+    if (tenant && typeof tenant === 'object' && 'customFields' in tenant && Array.isArray((tenant as Record<string, unknown>).customFields) && ((tenant as Record<string, unknown>).customFields as unknown[]).length > 0) {
       const customFieldError = validateCustomFields(
         data.customFields as Record<string, unknown>,
-        (tenant as any).customFields
+        (tenant as Record<string, unknown>).customFields as Array<{ name: string; type: string; required: boolean }>
       );
       if (customFieldError) {
         throw new ApiError(422, customFieldError);

@@ -43,6 +43,7 @@ export async function isMeiliHealthy(): Promise<boolean> {
     
     return await Promise.race([healthPromise, timeoutPromise]);
   } catch (error) {
+    logger.warn('meilisearch_health_check_failed', { error });
     return false;
   }
 }

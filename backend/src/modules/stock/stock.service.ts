@@ -886,17 +886,17 @@ export async function listMovements(tenantId: string, query: ListMovementsQuery)
     docs.pop();
   }
 
-  const movements = docs.map((movement: any) => ({
+  const movements = (docs as Array<Record<string, unknown>>).map((movement: Record<string, unknown>) => ({
     ...movement,
     product: movement.productId && typeof movement.productId === 'object' ? movement.productId : undefined,
     warehouse: movement.warehouseId && typeof movement.warehouseId === 'object' ? movement.warehouseId : undefined,
     performedByUser: movement.performedBy && typeof movement.performedBy === 'object' ? movement.performedBy : undefined,
-    productId: movement.productId?._id ?? movement.productId,
-    warehouseId: movement.warehouseId?._id ?? movement.warehouseId,
-    performedBy: movement.performedBy?._id ?? movement.performedBy
+    productId: (movement.productId as Record<string, unknown>)?._id ?? movement.productId,
+    warehouseId: (movement.warehouseId as Record<string, unknown>)?._id ?? movement.warehouseId,
+    performedBy: (movement.performedBy as Record<string, unknown>)?._id ?? movement.performedBy
   }));
 
-  const nextCursor = hasMore && docs.length > 0 ? encodeCursor((docs[docs.length - 1] as any)._id) : null;
+  const nextCursor = hasMore && docs.length > 0 ? encodeCursor((docs[docs.length - 1] as unknown as IStockMovement & Record<string, unknown>)._id) : null;
 
   return { movements, nextCursor, hasMore };
 }
@@ -917,9 +917,9 @@ export async function getMovement(tenantId: string, movementId: string) {
     product: movement.productId,
     warehouse: movement.warehouseId,
     performedByUser: movement.performedBy,
-    productId: (movement.productId as any)?._id ?? movement.productId,
-    warehouseId: (movement.warehouseId as any)?._id ?? movement.warehouseId,
-    performedBy: (movement.performedBy as any)?._id ?? movement.performedBy
+    productId: (typeof movement.productId === 'object' && movement.productId !== null && '_id' in movement.productId) ? (movement.productId as unknown as Record<string, unknown>)._id : movement.productId,
+    warehouseId: (typeof movement.warehouseId === 'object' && movement.warehouseId !== null && '_id' in movement.warehouseId) ? (movement.warehouseId as unknown as Record<string, unknown>)._id : movement.warehouseId,
+    performedBy: (typeof movement.performedBy === 'object' && movement.performedBy !== null && '_id' in movement.performedBy) ? (movement.performedBy as unknown as Record<string, unknown>)._id : movement.performedBy
   };
 
   if (movement.transferPairId) {
@@ -935,7 +935,7 @@ export async function getMovement(tenantId: string, movementId: string) {
       ? {
           ...pairedMovement,
           warehouse: pairedMovement.warehouseId,
-          warehouseId: (pairedMovement.warehouseId as any)?._id ?? pairedMovement.warehouseId
+          warehouseId: (typeof pairedMovement.warehouseId === 'object' && pairedMovement.warehouseId !== null && '_id' in pairedMovement.warehouseId) ? (pairedMovement.warehouseId as unknown as Record<string, unknown>)._id : pairedMovement.warehouseId
         }
       : null;
   }
@@ -953,17 +953,19 @@ export async function getProductStockByWarehouse(tenantId: string, productId: st
     .populate('warehouseId', 'name code isDefault isActive')
     .lean();
 
-  return warehouseStock
-    .map((entry: any) => ({
-      warehouse: entry.warehouseId,
+  return (warehouseStock as Array<Record<string, unknown>>)
+    .map((entry: Record<string, unknown>) => ({
+      warehouse: entry.warehouseId as Record<string, unknown> & { isActive?: boolean },
       quantity: entry.quantity,
       reservedQuantity: entry.reservedQuantity
     }))
     .filter((entry) => entry.warehouse?.isActive)
     .sort((a, b) => {
-      if (a.warehouse.isDefault && !b.warehouse.isDefault) return -1;
-      if (!a.warehouse.isDefault && b.warehouse.isDefault) return 1;
-      return a.warehouse.name.localeCompare(b.warehouse.name);
+      const aWarehouse = a.warehouse as Record<string, unknown> & { isDefault?: boolean; name?: string };
+      const bWarehouse = b.warehouse as Record<string, unknown> & { isDefault?: boolean; name?: string };
+      if (aWarehouse.isDefault && !bWarehouse.isDefault) return -1;
+      if (!aWarehouse.isDefault && bWarehouse.isDefault) return 1;
+      return (aWarehouse.name ?? '').localeCompare(bWarehouse.name ?? '');
     });
 }
 
@@ -993,15 +995,15 @@ export async function listAlerts(tenantId: string, query: ListAlertsQuery) {
     docs.pop();
   }
 
-  const alerts = docs.map((alert: any) => ({
+  const alerts = docs.map((alert: Record<string, unknown>) => ({
     ...alert,
     product: alert.productId,
     warehouse: alert.warehouseId,
-    productId: alert.productId?._id ?? alert.productId,
-    warehouseId: alert.warehouseId?._id ?? alert.warehouseId
+    productId: (alert.productId as Record<string, unknown>)?._id ?? alert.productId,
+    warehouseId: (alert.warehouseId as Record<string, unknown>)?._id ?? alert.warehouseId
   }));
 
-  const nextCursor = hasMore && docs.length > 0 ? encodeCursor((docs[docs.length - 1] as any)._id) : null;
+  const nextCursor = hasMore && docs.length > 0 ? encodeCursor((docs[docs.length - 1] as Record<string, unknown>)._id as mongoose.Types.ObjectId) : null;
 
   return { alerts, nextCursor, hasMore };
 }

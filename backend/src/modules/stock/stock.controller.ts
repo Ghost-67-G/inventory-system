@@ -78,7 +78,7 @@ export const listMovements = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(400, 'tenantId missing');
   }
 
-  const data = await service.listMovements(req.tenantId, req.query as any);
+  const data = await service.listMovements(req.tenantId, req.query as Record<string, string | string[]>);
   res.status(200).json({ success: true, data });
 });
 
@@ -105,7 +105,7 @@ export const listAlerts = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(400, 'tenantId missing');
   }
 
-  const data = await service.listAlerts(req.tenantId, req.query as any);
+  const data = await service.listAlerts(req.tenantId, req.query as Record<string, string | string[]>);
   res.status(200).json({ success: true, data });
 });
 

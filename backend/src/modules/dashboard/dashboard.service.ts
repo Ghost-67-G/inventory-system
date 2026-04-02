@@ -51,14 +51,14 @@ export async function getRecentActivity(tenantId: string): Promise<IStockMovemen
     .populate('performedBy', 'name')
     .lean();
 
-  const normalized = movements.map((movement: any) => ({
+  const normalized = movements.map((movement: Record<string, unknown>) => ({
     ...movement,
     product: movement.productId && typeof movement.productId === 'object' ? movement.productId : undefined,
     warehouse: movement.warehouseId && typeof movement.warehouseId === 'object' ? movement.warehouseId : undefined,
     performedByUser: movement.performedBy && typeof movement.performedBy === 'object' ? movement.performedBy : undefined,
-    productId: movement.productId?._id ?? movement.productId,
-    warehouseId: movement.warehouseId?._id ?? movement.warehouseId,
-    performedBy: movement.performedBy?._id ?? movement.performedBy
+    productId: (movement.productId as Record<string, unknown>)?._id ?? movement.productId,
+    warehouseId: (movement.warehouseId as Record<string, unknown>)?._id ?? movement.warehouseId,
+    performedBy: (movement.performedBy as Record<string, unknown>)?._id ?? movement.performedBy
   }));
 
   await redis.set(cacheKey, JSON.stringify(normalized), 'EX', 30);

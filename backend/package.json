@@ -7,7 +7,7 @@
     "dev": "env-cmd -f .env.development ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint .",
     "seed": "ts-node --project tsconfig.json scripts/seed.ts",
     "seed:fresh": "ts-node --project tsconfig.json scripts/seed.ts --fresh",
     "validate-seed": "ts-node --project tsconfig.json scripts/validate-seed.ts"
@@ -41,6 +41,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.7",
@@ -54,6 +55,7 @@
     "eslint": "^9.11.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.58.0"
   }
 }
