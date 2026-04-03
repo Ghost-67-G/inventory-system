@@ -1,5 +1,6 @@
 #!/bin/bash
 # scripts/backup.sh
+# Usage: ./scripts/backup.sh [label]
 
 set -euo pipefail
 
@@ -8,6 +9,7 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="./backups"
 BACKUP_FILE="${BACKUP_DIR}/inventory_${TIMESTAMP}_${LABEL}.gz"
 RETENTION_DAYS=30
+COMPOSE="docker-compose --env-file .env.production"
 
 if [ -f .env.production ]; then
   # shellcheck disable=SC1091
@@ -23,7 +25,7 @@ mkdir -p "$BACKUP_DIR"
 
 echo "Starting backup: $BACKUP_FILE"
 
-docker compose --env-file .env.production exec -T mongodb mongodump \
+$COMPOSE exec -T mongodb mongodump \
   --uri="mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD}@localhost:27017/inventory?authSource=admin" \
   --archive \
   --gzip \

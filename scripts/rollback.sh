@@ -3,6 +3,8 @@
 
 set -euo pipefail
 
+COMPOSE="docker-compose --env-file .env.production"
+
 if [ -f .env.production ]; then
   # shellcheck disable=SC1091
   source .env.production
@@ -19,7 +21,7 @@ fi
 
 echo "Rolling back to: $PREVIOUS_BACKEND"
 
-APP_VERSION=$PREVIOUS_BACKEND docker compose --env-file .env.production -f docker-compose.yml up -d --no-deps backend frontend
+APP_VERSION=$PREVIOUS_BACKEND $COMPOSE up -d --no-deps backend frontend
 
 sleep 10
 ./scripts/health-check.sh
