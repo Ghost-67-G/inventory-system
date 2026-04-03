@@ -11,6 +11,16 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$PROJECT_DIR"
 
+if [ -f .env.production ]; then
+  # shellcheck disable=SC1091
+  source .env.production
+fi
+
+if [ -z "${MONGO_ROOT_PASSWORD:-}" ]; then
+  echo "MONGO_ROOT_PASSWORD is required in .env.production"
+  exit 1
+fi
+
 SKIP_BACKUP=false
 SKIP_FRONTEND=false
 SKIP_BACKEND=false
@@ -67,6 +77,48 @@ $COMPOSE down --remove-orphans
 echo ""
 echo ">>> Step 5: Starting all services..."
 $COMPOSE up -d
+
+# ─── Step 5.1: Ensure Mongo replica set is initialized ──────────────────────
+echo ""
+echo ">>> Step 5.1: Ensuring Mongo replica set (rs0) is initialized..."
+
+$COMPOSE exec -T mongodb mongosh \
+  --username "${MONGO_ROOT_USERNAME:-admin}" \
+  --password "${MONGO_ROOT_PASSWORD}" \
+  --authenticationDatabase admin \
+  --eval '
+try {
+  const st = rs.status();
+  if (st.ok === 1) {
+    print("Replica set already initialized");
+  }
+} catch (e) {
+  rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "mongodb:27017" }] });
+  print("Replica set initiated");
+}
+'
+
+# Wait for primary election after initiate/restart
+for i in $(seq 1 12); do
+  IS_PRIMARY=$($COMPOSE exec -T mongodb mongosh \
+    --quiet \
+    --username "${MONGO_ROOT_USERNAME:-admin}" \
+    --password "${MONGO_ROOT_PASSWORD}" \
+    --authenticationDatabase admin \
+    --eval 'try { db.hello().isWritablePrimary ? "yes" : "no" } catch (e) { "no" }')
+
+  if [ "$IS_PRIMARY" = "yes" ]; then
+    echo "Mongo primary is ready"
+    break
+  fi
+
+  if [ "$i" = "12" ]; then
+    echo "Mongo replica set primary election timed out"
+    exit 1
+  fi
+
+  sleep 3
+done
 
 # ─── Step 6: Health Check ─────────────────────────────────────────────────────
 echo ""
