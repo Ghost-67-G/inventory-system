@@ -54,6 +54,11 @@ interface MeiliFilters {
   unit?: string;
 }
 
+interface MeiliSearchResult {
+  hits: Record<string, unknown>[];
+  estimatedTotalHits: number;
+}
+
 /**
  * Search products in MeiliSearch
  * Always filters by tenantId
@@ -85,16 +90,16 @@ export async function searchProducts(
     
     const filterString = filterParts.join(' AND ');
     
-    const results = await index.search(query, {
+    const results = await index.search<Record<string, unknown>>(query, {
       filter: filterString,
       limit,
       offset,
       attributesToRetrieve: ['_id']
-    });
+    }) as MeiliSearchResult;
     
     return {
       ids: results.hits.map((hit: Record<string, unknown>) => hit._id as string),
-      estimatedTotalHits: (results as any).estimatedTotalHits ?? results.hits.length
+      estimatedTotalHits: results.estimatedTotalHits ?? results.hits.length
     };
   } catch (error) {
     logger.warn('meilisearch_search_failed', { error });
