@@ -1,22 +1,4 @@
 services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "${NGINX_BIND_IP:-127.0.0.1}:${NGINX_HTTP_PORT:-18080}:80"
-    volumes:
-      - ./nginx/${NGINX_CONFIG:-nginx.vps.conf}:/etc/nginx/nginx.conf:ro
-      - ./nginx/proxy_params:/etc/nginx/proxy_params:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - nginx_logs:/var/log/nginx
-    depends_on:
-      backend:
-        condition: service_healthy
-      frontend:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - inventory_net
-
   backend:
     image: ghcr.io/${GHCR_NAMESPACE:-your-org}/inventory-backend:${APP_VERSION:-latest}
     build:
@@ -41,11 +23,14 @@ services:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 60s
     restart: unless-stopped
     networks:
-      - inventory_net
+      inventory_net:
+      shared_proxy:
+        aliases:
+          - inventory-backend
     volumes:
       - backend_tmp:/tmp
 
@@ -56,8 +41,8 @@ services:
       dockerfile: Dockerfile
       target: production
       args:
-        - VITE_API_URL=https://your-domain.com/api
-        - VITE_SOCKET_URL=https://your-domain.com
+        - VITE_API_URL=https://apistock.devsdesk.site
+        - VITE_SOCKET_URL=https://apistock.devsdesk.site
         - VITE_DEPLOYMENT_MODE=saas
     expose:
       - "80"
@@ -69,7 +54,10 @@ services:
       start_period: 10s
     restart: unless-stopped
     networks:
-      - inventory_net
+      inventory_net:
+      shared_proxy:
+        aliases:
+          - inventory-frontend
 
   mongodb:
     image: mongo:7
@@ -142,9 +130,10 @@ volumes:
   mongo_config:
   redis_data:
   meili_data:
-  nginx_logs:
   backend_tmp:
 
 networks:
   inventory_net:
     driver: bridge
+  shared_proxy:
+    external: true
