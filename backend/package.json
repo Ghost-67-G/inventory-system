@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "seed": "ts-node --project tsconfig.json scripts/seed.ts",
     "seed:fresh": "ts-node --project tsconfig.json scripts/seed.ts --fresh",
+    "seed:bulk": "node --max-old-space-size=8192 -r ts-node/register scripts/seed-bulk.ts",
     "validate-seed": "ts-node --project tsconfig.json scripts/validate-seed.ts"
   },
   "dependencies": {
