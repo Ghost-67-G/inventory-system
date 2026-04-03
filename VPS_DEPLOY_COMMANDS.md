@@ -155,6 +155,8 @@ dig +short apistock.devsdesk.site
 > DNS must be pointing to the VPS before this step.
 
 ```bash
+cd /root/repos
+
 docker exec certbot certbot certonly --webroot \
   -w /var/www/certbot \
   -d stock.devsdesk.site -d apistock.devsdesk.site \
@@ -169,6 +171,14 @@ Then reload nginx to pick up the real certs:
 
 ```bash
 docker exec reverse-proxy nginx -s reload
+```
+
+Verify SSL is working:
+
+```bash
+# Should return 200 (no -k flag = real cert validation)
+curl https://stock.devsdesk.site -o /dev/null -w "%{http_code}\n"
+curl https://apistock.devsdesk.site/health
 ```
 
 ---
