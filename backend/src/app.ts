@@ -28,6 +28,9 @@ import auditRoutes from './modules/audit/audit.routes';
 
 const app = express();
 
+// Trust first proxy (nginx reverse-proxy) for correct client IP in rate limiting
+app.set('trust proxy', 1);
+
 app.use(requestId);
 app.use(helmet());
 app.use(
