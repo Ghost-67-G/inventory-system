@@ -47,15 +47,27 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
     const meiliHealthy = await isMeiliHealthy();
 
     if (meiliHealthy) {
-      const ids = await searchProducts(tenantId, searchText, {
+      // Decode offset-based cursor for MeiliSearch pagination
+      let meiliOffset = 0;
+      if (query.cursor) {
+        const decoded = Buffer.from(query.cursor, 'base64').toString('utf8');
+        if (decoded.startsWith('meili:')) {
+          meiliOffset = parseInt(decoded.substring(6), 10) || 0;
+        }
+      }
+
+      const { ids } = await searchProducts(tenantId, searchText, {
         isActive: query.isActive === 'true' ? true : query.isActive === 'false' ? false : undefined,
         categoryId: query.categoryId,
         unit: query.unit
-      });
+      }, limit + 1, meiliOffset);
 
       if (ids.length > 0) {
+        const hasMore = ids.length > limit;
+        const pageIds = hasMore ? ids.slice(0, limit) : ids;
+
         // Fetch full products in MeiliSearch order
-        const products = await Product.find({ tenantId, _id: { $in: ids } })
+        const products = await Product.find({ tenantId, _id: { $in: pageIds } })
           .select(
             'tenantId sku name description categoryId unit costPrice sellingPrice ' +
             'totalStock lowStockThreshold isActive images tags customFields createdAt updatedAt createdBy updatedBy'
@@ -68,12 +80,15 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
           const product = p as { _id: { toString(): string } };
           return [product._id.toString(), p];
         }));
-        const orderedProducts = ids
+        const orderedProducts = pageIds
           .map((id) => productsMap.get(id))
-          .filter((p) => p !== undefined)
-          .slice(0, limit);
+          .filter((p) => p !== undefined);
 
-        return { products: orderedProducts, nextCursor: null, hasMore: false };
+        const nextCursor = hasMore
+          ? Buffer.from(`meili:${meiliOffset + limit}`).toString('base64')
+          : null;
+
+        return { products: orderedProducts, nextCursor, hasMore };
       }
     }
 
@@ -100,6 +115,15 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
       baseFilter.$expr = { $lte: ['$totalStock', '$lowStockThreshold'] };
     }
 
+    // Decode offset-based cursor for MongoDB fallback search
+    let mongoSearchOffset = 0;
+    if (query.cursor) {
+      const decoded = Buffer.from(query.cursor, 'base64').toString('utf8');
+      if (decoded.startsWith('search:')) {
+        mongoSearchOffset = parseInt(decoded.substring(7), 10) || 0;
+      }
+    }
+
     let products: unknown[] = [];
 
     try {
@@ -113,6 +137,7 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
         )
         .populate('categoryId', '_id name color')
         .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+        .skip(mongoSearchOffset)
         .limit(limit + 1)
         .lean();
     } catch {
@@ -128,6 +153,7 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
         )
         .populate('categoryId', '_id name color')
         .sort({ createdAt: -1 })
+        .skip(mongoSearchOffset)
         .limit(limit + 1)
         .lean();
     }
@@ -135,7 +161,11 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
     const hasMore = products.length > limit;
     if (hasMore) products.pop();
 
-    return { products, nextCursor: null, hasMore };
+    const nextCursor = hasMore
+      ? Buffer.from(`search:${mongoSearchOffset + limit}`).toString('base64')
+      : null;
+
+    return { products, nextCursor, hasMore };
   }
 
   // Browse mode with cursor pagination
@@ -163,27 +193,43 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
     filter.$expr = { $lte: ['$totalStock', '$lowStockThreshold'] };
   }
 
-  // Cursor filter (only for createdAt sort)
-  if (query.cursor && query.sortBy === 'createdAt') {
-    const decodedCursor = Buffer.from(query.cursor, 'base64').toString('utf8');
-    const cursorObjectId = new mongoose.Types.ObjectId(decodedCursor);
-    if (query.sortOrder === 'desc') {
-      filter._id = { $lt: cursorObjectId };
-    } else {
-      filter._id = { $gt: cursorObjectId };
-    }
-  }
-
   // Build sort
   const sortDirection: 1 | -1 = query.sortOrder === 'asc' ? 1 : -1;
   const sort: Record<string, 1 | -1> =
     query.sortBy === 'name'
-      ? { name: sortDirection }
+      ? { name: sortDirection, _id: sortDirection }
       : query.sortBy === 'sku'
-        ? { sku: sortDirection }
+        ? { sku: sortDirection, _id: sortDirection }
         : query.sortBy === 'totalStock'
-          ? { totalStock: sortDirection }
-          : { createdAt: sortDirection };
+          ? { totalStock: sortDirection, _id: sortDirection }
+          : { _id: sortDirection };
+
+  // Cursor filter — decode composite cursor and apply range filter
+  if (query.cursor) {
+    const decoded = Buffer.from(query.cursor, 'base64').toString('utf8');
+
+    if (query.sortBy === 'createdAt' || !query.sortBy) {
+      // For createdAt we use _id directly (ObjectId embeds timestamp)
+      const cursorObjectId = new mongoose.Types.ObjectId(decoded);
+      filter._id = sortDirection === -1 ? { $lt: cursorObjectId } : { $gt: cursorObjectId };
+    } else {
+      // Composite cursor: "sortValue::objectId"
+      const sepIdx = decoded.indexOf('::');
+      if (sepIdx !== -1) {
+        const sortValue = decoded.substring(0, sepIdx);
+        const cursorId = new mongoose.Types.ObjectId(decoded.substring(sepIdx + 2));
+        const sortField = query.sortBy as string;
+        const comp = sortDirection === -1 ? '$lt' : '$gt';
+
+        // Either the sort field is strictly past the cursor value,
+        // or it's the same value and _id is past the cursor id (tiebreaker)
+        filter.$or = [
+          { [sortField]: { [comp]: sortField === 'totalStock' ? Number(sortValue) : sortValue } },
+          { [sortField]: sortField === 'totalStock' ? Number(sortValue) : sortValue, _id: { [comp]: cursorId } }
+        ];
+      }
+    }
+  }
 
   const products = await Product.find(filter)
     .select(
@@ -200,8 +246,15 @@ export async function listProducts(tenantId: string, query: ListProductsQuery): 
 
   let nextCursor: string | null = null;
   if (hasMore && products.length > 0) {
-    const lastDoc = products[products.length - 1] as { _id: { toString(): string } };
-    nextCursor = Buffer.from(lastDoc._id.toString()).toString('base64');
+    const lastDoc = products[products.length - 1] as Record<string, unknown> & { _id: { toString(): string } };
+    if (query.sortBy === 'createdAt' || !query.sortBy) {
+      nextCursor = Buffer.from(lastDoc._id.toString()).toString('base64');
+    } else {
+      // Composite cursor: "sortValue::objectId"
+      const sortField = query.sortBy as string;
+      const sortVal = String(lastDoc[sortField] ?? '');
+      nextCursor = Buffer.from(`${sortVal}::${lastDoc._id.toString()}`).toString('base64');
+    }
   }
 
   return { products, nextCursor, hasMore };

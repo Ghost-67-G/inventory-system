@@ -64,8 +64,9 @@ export async function searchProducts(
   tenantId: string,
   query: string,
   filters?: MeiliFilters,
-  limit: number = 200
-): Promise<string[]> {
+  limit: number = 200,
+  offset: number = 0
+): Promise<{ ids: string[]; estimatedTotalHits: number }> {
   try {
     const index = meiliClient.index(MEILI_PRODUCTS_INDEX);
     
@@ -87,13 +88,17 @@ export async function searchProducts(
     const results = await index.search(query, {
       filter: filterString,
       limit,
+      offset,
       attributesToRetrieve: ['_id']
     });
     
-    return results.hits.map((hit: Record<string, unknown>) => hit._id as string);
+    return {
+      ids: results.hits.map((hit: Record<string, unknown>) => hit._id as string),
+      estimatedTotalHits: (results as any).estimatedTotalHits ?? results.hits.length
+    };
   } catch (error) {
     logger.warn('meilisearch_search_failed', { error });
-    return [];
+    return { ids: [], estimatedTotalHits: 0 };
   }
 }
 
