@@ -1,8 +1,8 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../utils/ApiError';
 import { logger } from '../utils/logger';
 
-export const errorHandler = (error: unknown, req: Request, res: Response): void => {
+export const errorHandler = (error: unknown, req: Request, res: Response, _next: NextFunction): void => {
   const normalized =
     error instanceof ApiError ? error : new ApiError(500, error instanceof Error ? error.message : 'Internal server error');
 
