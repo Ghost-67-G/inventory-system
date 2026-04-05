@@ -840,12 +840,28 @@ export async function recordTransfer(
   }
 }
 
-const decodeCursor = (cursor: string): mongoose.Types.ObjectId => {
+interface DecodedCursor {
+  createdAt: Date;
+  id: mongoose.Types.ObjectId;
+}
+
+const decodeCursor = (cursor: string): DecodedCursor => {
   const decoded = Buffer.from(cursor, 'base64').toString('utf8');
-  return new mongoose.Types.ObjectId(decoded);
+  const sepIdx = decoded.indexOf('::');
+  if (sepIdx !== -1) {
+    const ts = decoded.substring(0, sepIdx);
+    const id = decoded.substring(sepIdx + 2);
+    return { createdAt: new Date(ts), id: new mongoose.Types.ObjectId(id) };
+  }
+  // Backwards compat: old cursor is just an ObjectId
+  const oid = new mongoose.Types.ObjectId(decoded);
+  return { createdAt: oid.getTimestamp(), id: oid };
 };
 
-const encodeCursor = (id: mongoose.Types.ObjectId): string => Buffer.from(id.toString()).toString('base64');
+const encodeCursor = (doc: { _id: mongoose.Types.ObjectId; createdAt: Date | string }): string => {
+  const ts = typeof doc.createdAt === 'string' ? doc.createdAt : doc.createdAt.toISOString();
+  return Buffer.from(`${ts}::${doc._id.toString()}`).toString('base64');
+};
 
 export async function listMovements(tenantId: string, query: ListMovementsQuery) {
   const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
@@ -870,7 +886,15 @@ export async function listMovements(tenantId: string, query: ListMovementsQuery)
     };
   }
   if (query.cursor) {
-    filter._id = { $lt: decodeCursor(query.cursor) };
+    const cur = decodeCursor(query.cursor);
+    // Merge date range constraints into the $or cursor branches
+    const dateRange = filter.createdAt as Record<string, unknown> | undefined;
+    delete filter.createdAt;
+
+    const cursorBranch1: Record<string, unknown> = { createdAt: { $lt: cur.createdAt, ...dateRange } };
+    const cursorBranch2: Record<string, unknown> = { createdAt: { $eq: cur.createdAt, ...dateRange }, _id: { $lt: cur.id } };
+
+    filter.$or = [cursorBranch1, cursorBranch2];
   }
 
   const docs = await StockMovementModel.find(filter)
@@ -896,7 +920,8 @@ export async function listMovements(tenantId: string, query: ListMovementsQuery)
     performedBy: (movement.performedBy as Record<string, unknown>)?._id ?? movement.performedBy
   }));
 
-  const nextCursor = hasMore && docs.length > 0 ? encodeCursor((docs[docs.length - 1] as unknown as IStockMovement & Record<string, unknown>)._id) : null;
+  const lastDoc = docs[docs.length - 1] as unknown as { _id: mongoose.Types.ObjectId; createdAt: Date };
+  const nextCursor = hasMore && docs.length > 0 ? encodeCursor(lastDoc) : null;
 
   return { movements, nextCursor, hasMore };
 }
@@ -980,7 +1005,11 @@ export async function listAlerts(tenantId: string, query: ListAlertsQuery) {
     filter.productId = toObjectId(query.productId);
   }
   if (query.cursor) {
-    filter._id = { $lt: decodeCursor(query.cursor) };
+    const cur = decodeCursor(query.cursor);
+    filter.$or = [
+      { createdAt: { $lt: cur.createdAt } },
+      { createdAt: cur.createdAt, _id: { $lt: cur.id } }
+    ];
   }
 
   const docs = await StockAlertModel.find(filter)
@@ -1003,7 +1032,8 @@ export async function listAlerts(tenantId: string, query: ListAlertsQuery) {
     warehouseId: (alert.warehouseId as Record<string, unknown>)?._id ?? alert.warehouseId
   }));
 
-  const nextCursor = hasMore && docs.length > 0 ? encodeCursor((docs[docs.length - 1] as Record<string, unknown>)._id as mongoose.Types.ObjectId) : null;
+  const lastDoc = docs[docs.length - 1] as unknown as { _id: mongoose.Types.ObjectId; createdAt: Date };
+  const nextCursor = hasMore && docs.length > 0 ? encodeCursor(lastDoc) : null;
 
   return { alerts, nextCursor, hasMore };
 }
