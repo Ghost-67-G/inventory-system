@@ -20,21 +20,77 @@ const escapeCsv = (value: unknown): string => {
 };
 
 /**
- * Stock Valuation Report — JSON preview
- * Returns first 100 rows + summary for all products
+ * Stock Valuation Report — JSON with cursor-based pagination
+ * Returns paginated rows + summary for all products
+ *
+ * Optimized: summary runs a lightweight aggregate (no $lookup).
+ * Rows pipeline runs $sort + $skip + $limit BEFORE expensive $lookup stages.
+ * Summary is only computed on the first page (no cursor).
  */
 export async function getStockValuation(tenantId: string, query: StockValuationQuery) {
-  const pipeline: PipelineStage[] = [
-    // Stage 1: Match active products for tenant
-    {
-      $match: {
-        tenantId: new mongoose.Types.ObjectId(tenantId),
-        isActive: query.isActive !== 'false',
-        ...(query.categoryId ? { categoryId: new mongoose.Types.ObjectId(query.categoryId) } : {})
-      }
-    },
+  const tenantOid = new mongoose.Types.ObjectId(tenantId);
+  const limit = Math.min(Math.max(query.limit ?? 50, 1), 200);
 
-    // Stage 2: Lookup category
+  const sortField =
+    query.sortBy === 'stockValue' ? 'stockValue'
+      : query.sortBy === 'totalStock' ? 'totalStock'
+        : query.sortBy === 'name' ? 'name'
+          : 'sku';
+  const sortDir: 1 | -1 = query.sortOrder === 'asc' ? 1 : -1;
+
+  // Decode offset cursor
+  let offset = 0;
+  if (query.cursor) {
+    const decoded = Buffer.from(query.cursor, 'base64').toString('utf8');
+    offset = parseInt(decoded, 10) || 0;
+  }
+
+  const isFirstPage = offset === 0;
+
+  // When warehouseId is set, start from WarehouseStocks (indexed by tenant+warehouse)
+  // instead of scanning all 1M products with a per-row $lookup.
+  if (query.warehouseId) {
+    return getStockValuationByWarehouse(tenantOid, query, limit, offset, isFirstPage);
+  }
+
+  // ---- No warehouse filter: operate directly on Products ----
+  const matchFilter: Record<string, unknown> = {
+    tenantId: tenantOid,
+    isActive: query.isActive !== 'false',
+    ...(query.categoryId ? { categoryId: new mongoose.Types.ObjectId(query.categoryId) } : {})
+  };
+
+  const summaryPromise = isFirstPage
+    ? Product.aggregate([
+        { $match: matchFilter },
+        { $addFields: { effectiveStock: '$totalStock' } },
+        {
+          $group: {
+            _id: null,
+            totalProducts: { $sum: 1 },
+            totalUnits: { $sum: '$effectiveStock' },
+            totalStockValue: { $sum: { $multiply: ['$effectiveStock', '$costPrice'] } },
+            totalPotentialRevenue: { $sum: { $multiply: ['$effectiveStock', '$sellingPrice'] } },
+            avgMargin: {
+              $avg: {
+                $cond: [
+                  { $gt: ['$sellingPrice', 0] },
+                  { $multiply: [{ $divide: [{ $subtract: ['$sellingPrice', '$costPrice'] }, '$sellingPrice'] }, 100] },
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ])
+    : Promise.resolve([]);
+
+  const rowsPromise = Product.aggregate([
+    { $match: matchFilter },
+    { $addFields: { stockValue: { $multiply: ['$totalStock', '$costPrice'] } } },
+    { $sort: { [sortField]: sortDir } },
+    ...(offset > 0 ? [{ $skip: offset } as PipelineStage] : []),
+    { $limit: limit + 1 },
     {
       $lookup: {
         from: 'categories',
@@ -44,8 +100,6 @@ export async function getStockValuation(tenantId: string, query: StockValuationQ
       }
     },
     { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
-
-    // Stage 3: Lookup warehouse stock breakdown
     {
       $lookup: {
         from: 'warehousestocks',
@@ -56,10 +110,7 @@ export async function getStockValuation(tenantId: string, query: StockValuationQ
               $expr: {
                 $and: [
                   { $eq: ['$productId', '$$productId'] },
-                  { $eq: ['$tenantId', new mongoose.Types.ObjectId(tenantId)] },
-                  ...(query.warehouseId
-                    ? [{ $eq: ['$warehouseId', new mongoose.Types.ObjectId(query.warehouseId)] }]
-                    : [])
+                  { $eq: ['$tenantId', tenantOid] }
                 ]
               }
             }
@@ -84,95 +135,244 @@ export async function getStockValuation(tenantId: string, query: StockValuationQ
         as: 'warehouseBreakdown'
       }
     },
-
-    // Stage 4: Compute derived fields
     {
       $addFields: {
-        stockValue: { $multiply: ['$totalStock', '$costPrice'] },
         potentialRevenue: { $multiply: ['$totalStock', '$sellingPrice'] },
         margin: {
           $cond: [
             { $gt: ['$sellingPrice', 0] },
-            {
-              $multiply: [
-                {
-                  $divide: [
-                    { $subtract: ['$sellingPrice', '$costPrice'] },
-                    '$sellingPrice'
-                  ]
-                },
-                100
-              ]
-            },
+            { $multiply: [{ $divide: [{ $subtract: ['$sellingPrice', '$costPrice'] }, '$sellingPrice'] }, 100] },
             0
           ]
         },
-        effectiveStock: query.warehouseId
-          ? { $sum: '$warehouseBreakdown.quantity' }
-          : '$totalStock'
-      }
-    },
-
-    // Stage 5: Sort
-    {
-      $sort: {
-        [query.sortBy === 'stockValue'
-          ? 'stockValue'
-          : query.sortBy === 'totalStock'
-            ? 'effectiveStock'
-            : query.sortBy === 'name'
-              ? 'name'
-              : 'sku']: query.sortOrder === 'asc' ? 1 : -1
+        effectiveStock: '$totalStock'
       }
     }
-  ];
-
-  // Run two queries in parallel: preview (100 rows) + summary (all rows)
-  const [rows, summaryResult] = await Promise.all([
-    // Preview: first 100 rows
-    Product.aggregate([...pipeline, { $limit: 100 }]),
-
-    // Summary: totals across ALL rows
-    Product.aggregate([
-      ...pipeline,
-      {
-        $group: {
-          _id: null,
-          totalProducts: { $sum: 1 },
-          totalUnits: { $sum: '$effectiveStock' },
-          totalStockValue: { $sum: '$stockValue' },
-          totalPotentialRevenue: { $sum: '$potentialRevenue' },
-          avgMargin: { $avg: '$margin' }
-        }
-      }
-    ])
   ]);
 
-  // Format rows with proper rounding
-  const formattedRows = rows.map((r) => ({
-    ...r,
-    stockValue: Math.round(r.stockValue * 100) / 100,
-    potentialRevenue: Math.round(r.potentialRevenue * 100) / 100,
-    margin: Math.round((r.margin ?? 0) * 10) / 10
-  }));
+  return buildValuationResponse(summaryPromise, rowsPromise, limit, offset);
+}
 
-  const summary = summaryResult[0] ?? {
-    totalProducts: 0,
-    totalUnits: 0,
-    totalStockValue: 0,
-    totalPotentialRevenue: 0,
-    avgMargin: 0
+/**
+ * Warehouse-filtered stock valuation.
+ * Starts from WarehouseStocks (small set per warehouse) → joins Products.
+ * Avoids 1M per-product $lookup.
+ */
+async function getStockValuationByWarehouse(
+  tenantOid: mongoose.Types.ObjectId,
+  query: StockValuationQuery,
+  limit: number,
+  offset: number,
+  isFirstPage: boolean
+) {
+  const warehouseOid = new mongoose.Types.ObjectId(query.warehouseId!);
+  const sortField =
+    query.sortBy === 'stockValue' ? 'stockValue'
+      : query.sortBy === 'totalStock' ? 'effectiveStock'
+        : query.sortBy === 'name' ? 'product.name'
+          : 'product.sku';
+  const sortDir: 1 | -1 = query.sortOrder === 'asc' ? 1 : -1;
+
+  // Common match for warehousestocks
+  const wsMatch: Record<string, unknown> = {
+    tenantId: tenantOid,
+    warehouseId: warehouseOid,
+    quantity: { $gt: 0 }
   };
+
+  // Summary: WarehouseStocks → join Product for prices, group
+  const summaryPromise = isFirstPage
+    ? WarehouseStockModel.aggregate([
+        { $match: wsMatch },
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'productId',
+            foreignField: '_id',
+            as: 'product'
+          }
+        },
+        { $unwind: '$product' },
+        {
+          $match: {
+            'product.isActive': query.isActive !== 'false',
+            ...(query.categoryId
+              ? { 'product.categoryId': new mongoose.Types.ObjectId(query.categoryId) }
+              : {})
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalProducts: { $sum: 1 },
+            totalUnits: { $sum: '$quantity' },
+            totalStockValue: { $sum: { $multiply: ['$quantity', '$product.costPrice'] } },
+            totalPotentialRevenue: { $sum: { $multiply: ['$quantity', '$product.sellingPrice'] } },
+            avgMargin: {
+              $avg: {
+                $cond: [
+                  { $gt: ['$product.sellingPrice', 0] },
+                  {
+                    $multiply: [
+                      { $divide: [{ $subtract: ['$product.sellingPrice', '$product.costPrice'] }, '$product.sellingPrice'] },
+                      100
+                    ]
+                  },
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ])
+    : Promise.resolve([]);
+
+  // Rows: WarehouseStocks → join Product → sort → skip → limit → join category + all warehouse breakdown
+  const rowsPromise = WarehouseStockModel.aggregate([
+    { $match: wsMatch },
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'productId',
+        foreignField: '_id',
+        as: 'product'
+      }
+    },
+    { $unwind: '$product' },
+    {
+      $match: {
+        'product.isActive': query.isActive !== 'false',
+        ...(query.categoryId
+          ? { 'product.categoryId': new mongoose.Types.ObjectId(query.categoryId) }
+          : {})
+      }
+    },
+    // Compute sort fields
+    {
+      $addFields: {
+        effectiveStock: '$quantity',
+        stockValue: { $multiply: ['$quantity', '$product.costPrice'] }
+      }
+    },
+    { $sort: { [sortField]: sortDir } },
+    ...(offset > 0 ? [{ $skip: offset } as PipelineStage] : []),
+    { $limit: limit + 1 },
+    // Lookups only on the page
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'product.categoryId',
+        foreignField: '_id',
+        as: 'category'
+      }
+    },
+    { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+    // Get all warehouse breakdown for these products
+    {
+      $lookup: {
+        from: 'warehousestocks',
+        let: { productId: '$productId' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$productId', '$$productId'] },
+                  { $eq: ['$tenantId', tenantOid] }
+                ]
+              }
+            }
+          },
+          {
+            $lookup: {
+              from: 'warehouses',
+              localField: 'warehouseId',
+              foreignField: '_id',
+              as: 'warehouse'
+            }
+          },
+          { $unwind: '$warehouse' },
+          {
+            $project: {
+              warehouseName: '$warehouse.name',
+              warehouseCode: '$warehouse.code',
+              quantity: 1
+            }
+          }
+        ],
+        as: 'warehouseBreakdown'
+      }
+    },
+    // Reshape to match the non-warehouse response shape
+    {
+      $addFields: {
+        _id: '$product._id',
+        sku: '$product.sku',
+        name: '$product.name',
+        unit: '$product.unit',
+        costPrice: '$product.costPrice',
+        sellingPrice: '$product.sellingPrice',
+        totalStock: '$product.totalStock',
+        potentialRevenue: { $multiply: ['$quantity', '$product.sellingPrice'] },
+        margin: {
+          $cond: [
+            { $gt: ['$product.sellingPrice', 0] },
+            { $multiply: [{ $divide: [{ $subtract: ['$product.sellingPrice', '$product.costPrice'] }, '$product.sellingPrice'] }, 100] },
+            0
+          ]
+        }
+      }
+    }
+  ]);
+
+  return buildValuationResponse(summaryPromise, rowsPromise, limit, offset);
+}
+
+/**
+ * Shared response builder for stock valuation
+ */
+async function buildValuationResponse(
+  summaryPromise: Promise<Array<Record<string, number>>>,
+  rowsPromise: mongoose.Aggregate<Array<Record<string, unknown>>>,
+  limit: number,
+  offset: number
+) {
+  const [summaryResult, rows] = await Promise.all([summaryPromise, rowsPromise]);
+
+  const hasMore = rows.length > limit;
+  if (hasMore) rows.pop();
+
+  const nextCursor = hasMore
+    ? Buffer.from(String(offset + limit)).toString('base64')
+    : null;
+
+  const formattedRows = rows.map((r) => {
+    const row = r as Record<string, number>;
+    return {
+      ...r,
+      stockValue: Math.round((Number(row.stockValue) || 0) * 100) / 100,
+      potentialRevenue: Math.round((Number(row.potentialRevenue) || 0) * 100) / 100,
+      margin: Math.round((Number(row.margin) || 0) * 10) / 10
+    };
+  });
+
+  const summary = summaryResult[0] ?? null;
 
   return {
     rows: formattedRows,
-    summary: {
-      totalProducts: summary.totalProducts,
-      totalUnits: summary.totalUnits,
-      totalStockValue: Math.round(summary.totalStockValue * 100) / 100,
-      totalPotentialRevenue: Math.round(summary.totalPotentialRevenue * 100) / 100,
-      avgMargin: Math.round((summary.avgMargin ?? 0) * 10) / 10
-    },
+    nextCursor,
+    hasMore,
+    ...(summary
+      ? {
+          summary: {
+            totalProducts: summary.totalProducts,
+            totalUnits: summary.totalUnits,
+            totalStockValue: Math.round(summary.totalStockValue * 100) / 100,
+            totalPotentialRevenue: Math.round(summary.totalPotentialRevenue * 100) / 100,
+            avgMargin: Math.round((summary.avgMargin ?? 0) * 10) / 10
+          }
+        }
+      : {}),
     generatedAt: new Date().toISOString()
   };
 }
@@ -190,98 +390,104 @@ export async function streamStockValuationCSV(
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.write('\uFEFF'); // UTF-8 BOM
 
-  // Build aggregation pipeline (same as JSON version, no $limit)
-  const pipeline: PipelineStage[] = [
-    {
-      $match: {
-        tenantId: new mongoose.Types.ObjectId(tenantId),
-        isActive: query.isActive !== 'false',
-        ...(query.categoryId ? { categoryId: new mongoose.Types.ObjectId(query.categoryId) } : {})
-      }
-    },
-    {
-      $lookup: {
-        from: 'categories',
-        localField: 'categoryId',
-        foreignField: '_id',
-        as: 'category'
-      }
-    },
-    { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: 'warehousestocks',
-        let: { productId: '$_id' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ['$productId', '$$productId'] },
-                  { $eq: ['$tenantId', new mongoose.Types.ObjectId(tenantId)] },
-                  ...(query.warehouseId
-                    ? [{ $eq: ['$warehouseId', new mongoose.Types.ObjectId(query.warehouseId)] }]
-                    : [])
-                ]
-              }
-            }
-          },
-          {
-            $lookup: {
-              from: 'warehouses',
-              localField: 'warehouseId',
-              foreignField: '_id',
-              as: 'warehouse'
-            }
-          },
-          { $unwind: '$warehouse' },
-          {
-            $project: {
-              warehouseCode: '$warehouse.code',
-              warehouseName: '$warehouse.name',
-              quantity: 1
-            }
+  const tenantOid = new mongoose.Types.ObjectId(tenantId);
+  const sortField =
+    query.sortBy === 'stockValue' ? 'stockValue'
+      : query.sortBy === 'totalStock' ? 'effectiveStock'
+        : query.sortBy === 'name' ? (query.warehouseId ? 'product.name' : 'name')
+          : (query.warehouseId ? 'product.sku' : 'sku');
+  const sortDir: 1 | -1 = query.sortOrder === 'asc' ? 1 : -1;
+
+  let pipeline: PipelineStage[];
+
+  if (query.warehouseId) {
+    // Start from WarehouseStocks → join Product (fast path for warehouse filter)
+    const warehouseOid = new mongoose.Types.ObjectId(query.warehouseId);
+    pipeline = [
+      { $match: { tenantId: tenantOid, warehouseId: warehouseOid, quantity: { $gt: 0 } } },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
+        $match: {
+          'product.isActive': query.isActive !== 'false',
+          ...(query.categoryId
+            ? { 'product.categoryId': new mongoose.Types.ObjectId(query.categoryId) }
+            : {})
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'product.categoryId',
+          foreignField: '_id',
+          as: 'category'
+        }
+      },
+      { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          sku: '$product.sku',
+          name: '$product.name',
+          unit: '$product.unit',
+          costPrice: '$product.costPrice',
+          sellingPrice: '$product.sellingPrice',
+          effectiveStock: '$quantity',
+          stockValue: { $multiply: ['$quantity', '$product.costPrice'] },
+          potentialRevenue: { $multiply: ['$quantity', '$product.sellingPrice'] },
+          margin: {
+            $cond: [
+              { $gt: ['$product.sellingPrice', 0] },
+              { $multiply: [{ $divide: [{ $subtract: ['$product.sellingPrice', '$product.costPrice'] }, '$product.sellingPrice'] }, 100] },
+              0
+            ]
           }
-        ],
-        as: 'warehouseBreakdown'
-      }
-    },
-    {
-      $addFields: {
-        stockValue: { $multiply: ['$totalStock', '$costPrice'] },
-        potentialRevenue: { $multiply: ['$totalStock', '$sellingPrice'] },
-        margin: {
-          $cond: [
-            { $gt: ['$sellingPrice', 0] },
-            {
-              $multiply: [
-                {
-                  $divide: [
-                    { $subtract: ['$sellingPrice', '$costPrice'] },
-                    '$sellingPrice'
-                  ]
-                },
-                100
-              ]
-            },
-            0
-          ]
-        },
-        effectiveStock: query.warehouseId ? { $sum: '$warehouseBreakdown.quantity' } : '$totalStock'
-      }
-    },
-    {
-      $sort: {
-        [query.sortBy === 'stockValue'
-          ? 'stockValue'
-          : query.sortBy === 'totalStock'
-            ? 'effectiveStock'
-            : query.sortBy === 'name'
-              ? 'name'
-              : 'sku']: query.sortOrder === 'asc' ? 1 : -1
-      }
-    }
-  ];
+        }
+      },
+      { $sort: { [sortField]: sortDir } }
+    ];
+  } else {
+    // Start from Products (no warehouse filter)
+    pipeline = [
+      {
+        $match: {
+          tenantId: tenantOid,
+          isActive: query.isActive !== 'false',
+          ...(query.categoryId ? { categoryId: new mongoose.Types.ObjectId(query.categoryId) } : {})
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categoryId',
+          foreignField: '_id',
+          as: 'category'
+        }
+      },
+      { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          effectiveStock: '$totalStock',
+          stockValue: { $multiply: ['$totalStock', '$costPrice'] },
+          potentialRevenue: { $multiply: ['$totalStock', '$sellingPrice'] },
+          margin: {
+            $cond: [
+              { $gt: ['$sellingPrice', 0] },
+              { $multiply: [{ $divide: [{ $subtract: ['$sellingPrice', '$costPrice'] }, '$sellingPrice'] }, 100] },
+              0
+            ]
+          }
+        }
+      },
+      { $sort: { [sortField]: sortDir } }
+    ];
+  }
 
   const headers = [
     'SKU',
@@ -297,7 +503,8 @@ export async function streamStockValuationCSV(
   ].join(',');
   res.write(headers + '\n');
 
-  const cursor = Product.aggregate(pipeline).cursor();
+  const model = query.warehouseId ? WarehouseStockModel : Product;
+  const cursor = model.aggregate(pipeline).cursor();
 
   try {
     for await (const row of cursor) {
@@ -306,9 +513,9 @@ export async function streamStockValuationCSV(
         escapeCsv(row.name),
         escapeCsv(row.category?.name ?? 'Uncategorized'),
         escapeCsv(row.unit),
-        row.costPrice.toFixed(2),
-        row.sellingPrice.toFixed(2),
-        row.margin.toFixed(1),
+        Number(row.costPrice).toFixed(2),
+        Number(row.sellingPrice).toFixed(2),
+        Number(row.margin).toFixed(1),
         row.effectiveStock,
         (Math.round(row.stockValue * 100) / 100).toFixed(2),
         (Math.round(row.potentialRevenue * 100) / 100).toFixed(2)
@@ -317,8 +524,6 @@ export async function streamStockValuationCSV(
     }
     res.end();
   } catch (error) {
-    // Headers already sent — can't set 500 status
-    // Just end the stream
     console.error('Error streaming stock valuation CSV:', error);
     res.end();
   }

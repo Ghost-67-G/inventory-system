@@ -6,7 +6,7 @@ import { useTenantStore } from '@/store/tenantStore';
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true, // Critical: sends httpOnly refresh-token cookie
-  timeout: 10000
+  timeout: 60000
 });
 
 // ─── Request Interceptor ──────────────────────────────────────────────────────

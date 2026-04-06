@@ -757,6 +757,8 @@ export interface StockValuationParams {
   isActive?: 'true' | 'false';
   sortBy?: 'name' | 'sku' | 'totalStock' | 'stockValue';
   sortOrder?: 'asc' | 'desc';
+  cursor?: string;
+  limit?: number;
 }
 
 export interface LowStockRow {
