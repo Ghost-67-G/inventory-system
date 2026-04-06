@@ -9,7 +9,7 @@ export const stockValuation = catchAsync(async (req: Request, res: Response) => 
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const data = await service.getStockValuation(req.tenantId, req.query as StockValuationQuery);
+  const data = await service.getStockValuation(req.tenantId, req.query as unknown as StockValuationQuery);
   res.status(200).json({ success: true, data });
 });
 
@@ -19,7 +19,7 @@ export const stockValuationExport = catchAsync(async (req: Request, res: Respons
   }
 
   // Streaming endpoint — service writes directly to res
-  await service.streamStockValuationCSV(req.tenantId, req.query as StockValuationQuery, res);
+  await service.streamStockValuationCSV(req.tenantId, req.query as unknown as StockValuationQuery, res);
 });
 
 export const movements = catchAsync(async (req: Request, res: Response) => {
@@ -27,7 +27,7 @@ export const movements = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const data = await service.getMovementsReport(req.tenantId, req.query as MovementsQuery);
+  const data = await service.getMovementsReport(req.tenantId, req.query as unknown as MovementsQuery);
   res.status(200).json({ success: true, data });
 });
 
@@ -37,7 +37,7 @@ export const movementsExport = catchAsync(async (req: Request, res: Response) =>
   }
 
   // Streaming endpoint — service writes directly to res
-  await service.streamMovementsCSV(req.tenantId, req.query as MovementsQuery, res);
+  await service.streamMovementsCSV(req.tenantId, req.query as unknown as MovementsQuery, res);
 });
 
 export const lowStock = catchAsync(async (req: Request, res: Response) => {
@@ -45,7 +45,7 @@ export const lowStock = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const data = await service.getLowStockReport(req.tenantId, req.query as LowStockQuery);
+  const data = await service.getLowStockReport(req.tenantId, req.query as unknown as LowStockQuery);
   res.status(200).json({ success: true, data });
 });
 
@@ -55,7 +55,7 @@ export const lowStockExport = catchAsync(async (req: Request, res: Response) => 
   }
 
   // Streaming endpoint — service writes directly to res
-  await service.streamLowStockCSV(req.tenantId, req.query as LowStockQuery, res);
+  await service.streamLowStockCSV(req.tenantId, req.query as unknown as LowStockQuery, res);
 });
 
 export const wasteAdjustments = catchAsync(async (req: Request, res: Response) => {
@@ -63,7 +63,7 @@ export const wasteAdjustments = catchAsync(async (req: Request, res: Response) =
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const data = await service.getWasteAdjustmentsReport(req.tenantId, req.query as WasteAdjustmentsQuery);
+  const data = await service.getWasteAdjustmentsReport(req.tenantId, req.query as unknown as WasteAdjustmentsQuery);
   res.status(200).json({ success: true, data });
 });
 
@@ -73,5 +73,5 @@ export const wasteAdjustmentsExport = catchAsync(async (req: Request, res: Respo
   }
 
   // Streaming endpoint — service writes directly to res
-  await service.streamWasteAdjustmentsCSV(req.tenantId, req.query as WasteAdjustmentsQuery, res);
+  await service.streamWasteAdjustmentsCSV(req.tenantId, req.query as unknown as WasteAdjustmentsQuery, res);
 });
