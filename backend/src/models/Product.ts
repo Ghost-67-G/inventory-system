@@ -95,6 +95,8 @@ productSchema.index({ tenantId: 1, categoryId: 1 });
 productSchema.index({ tenantId: 1, isActive: 1, createdAt: -1 });
 productSchema.index({ tenantId: 1, createdAt: -1 });
 productSchema.index({ tenantId: 1, totalStock: 1 });
+// Dashboard aggregation: covers product stats + stock value + category chart
+productSchema.index({ tenantId: 1, isActive: 1, totalStock: 1, costPrice: 1, lowStockThreshold: 1, categoryId: 1 });
 productSchema.index(
   { tenantId: 1, name: 'text', sku: 'text', description: 'text', tags: 'text' },
   { default_language: 'english' }

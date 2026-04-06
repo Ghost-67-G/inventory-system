@@ -28,7 +28,7 @@ export function useDashboardActivity() {
       const payload = res.data as ApiEnvelope<{ movements: IStockMovement[] }>;
       return payload.data.movements;
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
     refetchInterval: 60_000
   });
 }
