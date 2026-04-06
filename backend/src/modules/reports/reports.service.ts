@@ -566,15 +566,34 @@ function buildMovementsFilter(tenantId: string, query: MovementsQuery): FilterQu
 export async function getMovementsReport(tenantId: string, query: MovementsQuery) {
   const filter = buildMovementsFilter(tenantId, query);
   const limit = Math.min(Number(query.limit ?? 100), 500);
+  const hasCursor = !!query.cursor;
 
-  // Decode cursor if provided
+  // Decode compound cursor (createdAt::_id)
   if (query.cursor) {
     const decoded = Buffer.from(query.cursor, 'base64').toString('utf8');
-    filter._id = { $lt: new mongoose.Types.ObjectId(decoded) };
+    const sepIdx = decoded.indexOf('::');
+    let curCreatedAt: Date;
+    let curId: mongoose.Types.ObjectId;
+    if (sepIdx !== -1) {
+      curCreatedAt = new Date(decoded.substring(0, sepIdx));
+      curId = new mongoose.Types.ObjectId(decoded.substring(sepIdx + 2));
+    } else {
+      // Backwards compat: old cursor is just an ObjectId
+      curId = new mongoose.Types.ObjectId(decoded);
+      curCreatedAt = curId.getTimestamp();
+    }
+
+    const dateRange = filter.createdAt as Record<string, unknown> | undefined;
+    delete filter.createdAt;
+
+    filter.$or = [
+      { createdAt: { $lt: curCreatedAt, ...dateRange } },
+      { createdAt: { $eq: curCreatedAt, ...dateRange }, _id: { $lt: curId } }
+    ];
   }
 
   const movements = await StockMovementModel.find(filter)
-    .sort({ createdAt: -1 })
+    .sort({ createdAt: -1, _id: -1 })
     .limit(limit + 1)
     .populate('productId', 'name sku unit')
     .populate('warehouseId', 'name code')
@@ -584,29 +603,32 @@ export async function getMovementsReport(tenantId: string, query: MovementsQuery
   const hasMore = movements.length > limit;
   if (hasMore) movements.pop();
 
-  const nextCursor = hasMore
-    ? Buffer.from(((movements[movements.length - 1] as unknown as IStockMovement)?._id?.toString()) ?? '').toString('base64')
+  const lastDoc = movements[movements.length - 1] as unknown as { _id: mongoose.Types.ObjectId; createdAt: Date };
+  const nextCursor = hasMore && lastDoc
+    ? Buffer.from(`${new Date(lastDoc.createdAt).toISOString()}::${lastDoc._id.toString()}`).toString('base64')
     : null;
 
-  // Summary for full filtered dataset
-  const summaryPipeline: PipelineStage[] = [
-    { $match: { ...filter, _id: { $exists: true } } },
-    {
-      $group: {
-        _id: '$type',
-        count: { $sum: 1 },
-        totalQuantity: { $sum: '$quantity' }
+  // Only compute summary on first page (no cursor) — it doesn't change between pages
+  let summary: { _id: string; count: number; totalQuantity: number }[] | undefined;
+  if (!hasCursor) {
+    const summaryFilter = buildMovementsFilter(tenantId, query);
+    summary = await StockMovementModel.aggregate([
+      { $match: summaryFilter },
+      {
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          totalQuantity: { $sum: '$quantity' }
+        }
       }
-    }
-  ];
-
-  const summary = await StockMovementModel.aggregate(summaryPipeline);
+    ]);
+  }
 
   return {
     movements,
     nextCursor,
     hasMore,
-    summary,
+    ...(summary !== undefined ? { summary } : {}),
     generatedAt: new Date().toISOString()
   };
 }
@@ -951,34 +973,54 @@ export async function streamLowStockCSV(tenantId: string, query: LowStockQuery, 
  * Waste & Adjustments Report — JSON preview with cursor pagination
  */
 export async function getWasteAdjustmentsReport(tenantId: string, query: WasteAdjustmentsQuery) {
-  const filter: FilterQuery<IStockMovement> = {
-    tenantId: new mongoose.Types.ObjectId(tenantId),
-    type: query.type ? query.type : { $in: ['WASTE', 'ADJUSTMENT'] }
+  const buildFilter = () => {
+    const f: FilterQuery<IStockMovement> = {
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      type: query.type ? query.type : { $in: ['WASTE', 'ADJUSTMENT'] }
+    };
+    if (query.dateFrom || query.dateTo) {
+      f.createdAt = {};
+      if (query.dateFrom) f.createdAt.$gte = new Date(query.dateFrom);
+      if (query.dateTo) {
+        const end = new Date(query.dateTo);
+        end.setHours(23, 59, 59, 999);
+        f.createdAt.$lte = end;
+      }
+    }
+    if (query.productId) f.productId = new mongoose.Types.ObjectId(query.productId);
+    if (query.warehouseId) f.warehouseId = new mongoose.Types.ObjectId(query.warehouseId);
+    return f;
   };
 
-  if (query.dateFrom || query.dateTo) {
-    filter.createdAt = {};
-    if (query.dateFrom) filter.createdAt.$gte = new Date(query.dateFrom);
-    if (query.dateTo) {
-      const end = new Date(query.dateTo);
-      end.setHours(23, 59, 59, 999);
-      filter.createdAt.$lte = end;
-    }
-  }
-
-  if (query.productId) filter.productId = new mongoose.Types.ObjectId(query.productId);
-  if (query.warehouseId) filter.warehouseId = new mongoose.Types.ObjectId(query.warehouseId);
-
+  const filter = buildFilter();
   const limit = Math.min(Number(query.limit ?? 100), 500);
+  const hasCursor = !!query.cursor;
 
-  // Decode cursor
+  // Decode compound cursor (createdAt::_id)
   if (query.cursor) {
     const decoded = Buffer.from(query.cursor, 'base64').toString('utf8');
-    filter._id = { $lt: new mongoose.Types.ObjectId(decoded) };
+    const sepIdx = decoded.indexOf('::');
+    let curCreatedAt: Date;
+    let curId: mongoose.Types.ObjectId;
+    if (sepIdx !== -1) {
+      curCreatedAt = new Date(decoded.substring(0, sepIdx));
+      curId = new mongoose.Types.ObjectId(decoded.substring(sepIdx + 2));
+    } else {
+      curId = new mongoose.Types.ObjectId(decoded);
+      curCreatedAt = curId.getTimestamp();
+    }
+
+    const dateRange = filter.createdAt as Record<string, unknown> | undefined;
+    delete filter.createdAt;
+
+    filter.$or = [
+      { createdAt: { $lt: curCreatedAt, ...dateRange } },
+      { createdAt: { $eq: curCreatedAt, ...dateRange }, _id: { $lt: curId } }
+    ];
   }
 
   const movements = await StockMovementModel.find(filter)
-    .sort({ createdAt: -1 })
+    .sort({ createdAt: -1, _id: -1 })
     .limit(limit + 1)
     .populate('productId', 'name sku unit costPrice')
     .populate('warehouseId', 'name code')
@@ -988,32 +1030,12 @@ export async function getWasteAdjustmentsReport(tenantId: string, query: WasteAd
   const hasMore = movements.length > limit;
   if (hasMore) movements.pop();
 
-  const nextCursor = hasMore
-    ? Buffer.from(((movements[movements.length - 1] as unknown as IStockMovement)?._id?.toString()) ?? '').toString('base64')
+  const lastDoc = movements[movements.length - 1] as unknown as { _id: mongoose.Types.ObjectId; createdAt: Date };
+  const nextCursor = hasMore && lastDoc
+    ? Buffer.from(`${new Date(lastDoc.createdAt).toISOString()}::${lastDoc._id.toString()}`).toString('base64')
     : null;
 
-  // Summary with value calculation
-  const summaryPipeline: PipelineStage[] = [
-    { $match: { ...filter, _id: { $exists: true } } },
-    {
-      $lookup: {
-        from: 'products',
-        localField: 'productId',
-        foreignField: '_id',
-        as: 'product'
-      }
-    },
-    { $unwind: '$product' },
-    {
-      $group: {
-        _id: '$type',
-        count: { $sum: 1 },
-        totalQuantity: { $sum: '$quantity' },
-        totalValue: { $sum: { $multiply: ['$quantity', '$product.costPrice'] } }
-      }
-    }
-  ];
-
+  // Only compute summary on first page — it doesn't change between pages
   interface SummaryCount {
     _id: string;
     count: number;
@@ -1021,26 +1043,51 @@ export async function getWasteAdjustmentsReport(tenantId: string, query: WasteAd
     totalValue: number;
   }
 
-  const summaryCounts = await StockMovementModel.aggregate(summaryPipeline);
+  let summary: { waste: SummaryCount; adjustment: SummaryCount } | undefined;
+  if (!hasCursor) {
+    const summaryFilter = buildFilter();
+    const summaryCounts: SummaryCount[] = await StockMovementModel.aggregate([
+      { $match: summaryFilter },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          totalQuantity: { $sum: '$quantity' },
+          totalValue: { $sum: { $multiply: ['$quantity', '$product.costPrice'] } }
+        }
+      }
+    ]);
 
-  const summary = {
-    waste: (summaryCounts as SummaryCount[]).find((s: SummaryCount) => s._id === 'WASTE') ?? {
-      count: 0,
-      totalQuantity: 0,
-      totalValue: 0
-    },
-    adjustment: (summaryCounts as SummaryCount[]).find((s: SummaryCount) => s._id === 'ADJUSTMENT') ?? {
-      count: 0,
-      totalQuantity: 0,
-      totalValue: 0
-    }
-  };
+    summary = {
+      waste: summaryCounts.find((s) => s._id === 'WASTE') ?? {
+        _id: 'WASTE',
+        count: 0,
+        totalQuantity: 0,
+        totalValue: 0
+      },
+      adjustment: summaryCounts.find((s) => s._id === 'ADJUSTMENT') ?? {
+        _id: 'ADJUSTMENT',
+        count: 0,
+        totalQuantity: 0,
+        totalValue: 0
+      }
+    };
+  }
 
   return {
     movements,
     nextCursor,
     hasMore,
-    summary,
+    ...(summary !== undefined ? { summary } : {}),
     generatedAt: new Date().toISOString()
   };
 }
