@@ -14,21 +14,29 @@ interface ApiEnvelope<T> {
 }
 
 /**
- * Stock Valuation Report hook
- * Cached for 2 minutes — reports are expensive aggregations
+ * Stock Valuation Report hook — cursor-based infinite query
+ * Cached for 2 minutes
  */
-export function useStockValuation(params?: StockValuationParams) {
+export function useStockValuation(params?: Omit<StockValuationParams, 'cursor'>) {
   const { canDo } = usePermission();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['reports', 'stock-valuation', params],
-    queryFn: async () => {
-      const res = await reportsApi.getStockValuation(params);
-      const payload = res.data as ApiEnvelope<any>;
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
+      const res = await reportsApi.getStockValuation({ ...params, cursor: pageParam });
+      const payload = res.data as ApiEnvelope<{
+        rows: any[];
+        nextCursor: string | null;
+        hasMore: boolean;
+        summary?: any;
+        generatedAt: string;
+      }>;
       return payload.data;
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes (cacheTime)
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    initialPageParam: undefined,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
     enabled: canDo('report.view')
   });
 }

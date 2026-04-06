@@ -13,7 +13,9 @@ export const stockValuationQuerySchema = z.object({
     warehouseId: mongoId.optional(),
     isActive: z.enum(['true', 'false']).optional().default('true'),
     sortBy: z.enum(['name', 'sku', 'totalStock', 'stockValue']).optional().default('stockValue'),
-    sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
+    sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+    cursor: z.string().optional(),
+    limit: z.coerce.number().int().min(1).max(200).optional().default(50)
   })
 });
 

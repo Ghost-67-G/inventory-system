@@ -31,7 +31,7 @@ export function StockValuationReport() {
     sortOrder: (searchParams.get('sortOrder') || 'desc') as any
   };
 
-  const { data, isLoading } = useStockValuation(params);
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useStockValuation(params);
   const { data: categories } = useCategoriesDropdown();
   const { data: warehouses } = useWarehousesDropdown();
 
@@ -146,8 +146,12 @@ export function StockValuationReport() {
     [expandedWarehouseId]
   );
 
-  const rows = data?.rows ?? [];
-  const summary = data?.summary;
+  const rows = useMemo(
+    () => (data?.pages.flatMap((p) => p.rows) ?? []) as StockValuationRow[],
+    [data]
+  );
+  // Summary is only returned on the first page
+  const summary = data?.pages[0]?.summary;
 
   return (
     <div className="space-y-6">
@@ -247,9 +251,9 @@ export function StockValuationReport() {
       {/* Export Button */}
       <div className="flex justify-between items-center">
         <div>
-          {rows.length >= 100 && (
+          {summary && rows.length < (summary.totalProducts ?? 0) && (
             <p className="text-sm text-muted-foreground">
-              Preview shows first 100 rows. Export includes all {summary?.totalProducts} products.
+              Showing {rows.length.toLocaleString()} of {summary.totalProducts.toLocaleString()} products. Scroll down to load more. Export includes all products.
             </p>
           )}
         </div>
@@ -265,8 +269,12 @@ export function StockValuationReport() {
           columns={columns as any}
           data={rows}
           isLoading={isLoading}
+          isFetchingNextPage={isFetchingNextPage}
+          hasNextPage={hasNextPage}
+          onFetchNextPage={() => void fetchNextPage()}
           hiddenColumnIds={isMobile ? ['category', 'unit', 'costPrice', 'sellingPrice', 'margin', 'warehouseBreakdown'] : []}
           emptyMessage="No products found"
+          getRowId={(row) => row._id}
         />
       </div>
     </div>

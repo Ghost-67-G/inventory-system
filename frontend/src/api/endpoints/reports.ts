@@ -66,13 +66,15 @@ const buildQueryString = (params?: Record<string, unknown>): string => {
 };
 
 export const reportsApi = {
-  // Stock Valuation Report — JSON preview
+  // Stock Valuation Report — JSON with pagination
   getStockValuation: (params?: StockValuationParams) =>
     client.get<{
       success: boolean;
       data: {
         rows: StockValuationRow[];
-        summary: StockValuationSummary;
+        nextCursor: string | null;
+        hasMore: boolean;
+        summary?: StockValuationSummary;
         generatedAt: string;
       };
     }>('/reports/stock-valuation', { params }),
