@@ -158,7 +158,7 @@ export function SettingsPage() {
             </div>
 
             <div className="mt-4 space-y-3">
-              <div className="rounded-lg border border-slate-200 p-3">
+              <div className="rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">Low stock alerts</p>
@@ -175,7 +175,7 @@ export function SettingsPage() {
                     aria-pressed={Boolean(draft?.lowStockAlerts)}
                   >
                     <span
-                      className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
+                      className={`absolute top-1 h-5 w-5 rounded-full bg-card transition ${
                         draft?.lowStockAlerts ? 'left-6' : 'left-1'
                       }`}
                     />
@@ -183,7 +183,7 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-200 p-3">
+              <div className="rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">Daily inventory summary</p>
@@ -200,7 +200,7 @@ export function SettingsPage() {
                     aria-pressed={Boolean(draft?.dailySummary)}
                   >
                     <span
-                      className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
+                      className={`absolute top-1 h-5 w-5 rounded-full bg-card transition ${
                         draft?.dailySummary ? 'left-6' : 'left-1'
                       }`}
                     />
@@ -208,7 +208,7 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-200 p-3">
+              <div className="rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">Import notifications</p>
@@ -224,7 +224,7 @@ export function SettingsPage() {
                     aria-pressed={Boolean(draft?.importCompletion)}
                   >
                     <span
-                      className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
+                      className={`absolute top-1 h-5 w-5 rounded-full bg-card transition ${
                         draft?.importCompletion ? 'left-6' : 'left-1'
                       }`}
                     />
@@ -240,7 +240,7 @@ export function SettingsPage() {
       {activeTab === 'account' ? <AccountTab /> : null}
 
       <PermissionGuard permission="settings.manage">
-        <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+        <section className="mt-6 rounded-lg border border-border bg-card p-4">
           <h3 className="text-base font-semibold text-foreground">Setup wizard</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             Run through the initial setup wizard again to review or update your business configuration.

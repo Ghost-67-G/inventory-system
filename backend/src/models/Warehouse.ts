@@ -62,6 +62,7 @@ const warehouseSchema = new Schema(
 warehouseSchema.index({ tenantId: 1, code: 1 }, { unique: true });
 warehouseSchema.index({ tenantId: 1, isActive: 1 });
 warehouseSchema.index({ tenantId: 1, isDefault: 1 });
+warehouseSchema.index({ tenantId: 1, createdAt: -1 });
 
 // Pre-save hook: normalize code to uppercase and trim name
 warehouseSchema.pre('save', function (next) {

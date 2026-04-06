@@ -8,6 +8,8 @@ import { ApiError } from '../../utils/ApiError';
 import { incrementProductCount } from '../categories/categories.service';
 import type { StepOneDto, StepThreeDto, StepTwoDto } from './onboarding.schema';
 
+const ONBOARDING_STATUS_TTL_SECONDS = 30;
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -15,6 +17,10 @@ function escapeRegex(value: string): string {
 async function invalidateTenantCache(tenantId: string): Promise<void> {
   await redis.del(`tenant:${tenantId}`);
   await redis.del(`tenant:settings:${tenantId}`);
+}
+
+async function invalidateOnboardingStatusCache(tenantId: string): Promise<void> {
+  await redis.del(`onboarding:status:${tenantId}`);
 }
 
 export async function getOnboardingStatus(tenantId: string): Promise<{
@@ -33,6 +39,27 @@ export async function getOnboardingStatus(tenantId: string): Promise<{
   warehouseName: string | null;
   productName: string | null;
 }> {
+  const cacheKey = `onboarding:status:${tenantId}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached) as {
+      onboardingComplete: boolean;
+      currentStep: 1 | 2 | 3 | 4;
+      completedSteps: number[];
+      tenant: {
+        name: string;
+        currency: string;
+        timezone: string;
+        lowStockThreshold: number;
+      };
+      hasWarehouse: boolean;
+      hasCategory: boolean;
+      hasProduct: boolean;
+      warehouseName: string | null;
+      productName: string | null;
+    };
+  }
+
   const tenant = await TenantModel.findById(tenantId)
     .select('name settings onboardingComplete')
     .lean();
@@ -41,15 +68,20 @@ export async function getOnboardingStatus(tenantId: string): Promise<{
     throw new ApiError(404, 'Tenant not found');
   }
 
-  const [warehouse, category, product] = await Promise.all([
-    WarehouseModel.findOne({ tenantId }).sort({ createdAt: 1 }).select('name').lean(),
-    CategoryModel.findOne({ tenantId }).select('_id').lean(),
-    Product.findOne({ tenantId }).sort({ createdAt: 1 }).select('name').lean()
+  const [warehouseExists, categoryExists, productExists] = await Promise.all([
+    WarehouseModel.exists({ tenantId }),
+    CategoryModel.exists({ tenantId }),
+    Product.exists({ tenantId })
   ]);
 
-  const hasWarehouse = Boolean(warehouse);
-  const hasCategory = Boolean(category);
-  const hasProduct = Boolean(product);
+  const hasWarehouse = Boolean(warehouseExists);
+  const hasCategory = Boolean(categoryExists);
+  const hasProduct = Boolean(productExists);
+
+  const [warehouse, product] = await Promise.all([
+    hasWarehouse ? WarehouseModel.findOne({ tenantId }).select('name').lean() : Promise.resolve(null),
+    hasProduct ? Product.findOne({ tenantId }).select('name').lean() : Promise.resolve(null)
+  ]);
 
   let currentStep: 1 | 2 | 3 | 4 = 1;
   if (tenant.onboardingComplete) {
@@ -73,7 +105,7 @@ export async function getOnboardingStatus(tenantId: string): Promise<{
     completedSteps.push(4);
   }
 
-  return {
+  const response = {
     onboardingComplete: tenant.onboardingComplete,
     currentStep,
     completedSteps,
@@ -89,6 +121,9 @@ export async function getOnboardingStatus(tenantId: string): Promise<{
     warehouseName: warehouse?.name ?? null,
     productName: product?.name ?? null
   };
+
+  await redis.set(cacheKey, JSON.stringify(response), 'EX', ONBOARDING_STATUS_TTL_SECONDS);
+  return response;
 }
 
 export async function completeStepOne(tenantId: string, data: StepOneDto) {
@@ -104,6 +139,7 @@ export async function completeStepOne(tenantId: string, data: StepOneDto) {
 
   await tenant.save();
   await invalidateTenantCache(tenantId);
+  await invalidateOnboardingStatusCache(tenantId);
 
   return {
     name: tenant.name,
@@ -134,6 +170,7 @@ export async function completeStepTwo(tenantId: string, userId: string, data: St
     createdBy: userId
   });
 
+  await invalidateOnboardingStatusCache(tenantId);
   return warehouse;
 }
 
@@ -187,6 +224,7 @@ export async function completeStepThree(tenantId: string, userId: string, data: 
   await incrementProductCount(tenantId, String(category._id), 1);
   void enqueueProductUpsert(String(product._id), tenantId).catch(() => undefined);
 
+  await invalidateOnboardingStatusCache(tenantId);
   return { category, product };
 }
 
@@ -197,6 +235,7 @@ export async function completeOnboarding(tenantId: string): Promise<{ onboarding
   }
 
   await invalidateTenantCache(tenantId);
+  await invalidateOnboardingStatusCache(tenantId);
   return { onboardingComplete: true };
 }
 
@@ -211,5 +250,6 @@ export async function resetOnboarding(tenantId: string): Promise<{ onboardingCom
   }
 
   await invalidateTenantCache(tenantId);
+  await invalidateOnboardingStatusCache(tenantId);
   return { onboardingComplete: false };
 }

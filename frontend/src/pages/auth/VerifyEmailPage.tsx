@@ -50,8 +50,8 @@ export function VerifyEmailPage() {
   if (status === 'loading') {
     return (
       <div className="flex flex-col items-center gap-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
-        <p className="text-sm text-slate-600">Verifying your email…</p>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+        <p className="text-sm text-muted-foreground">Verifying your email…</p>
       </div>
     );
   }
@@ -60,8 +60,8 @@ export function VerifyEmailPage() {
     return (
       <div className="text-center">
         <div className="mb-4 text-4xl">✅</div>
-        <h1 className="mb-2 text-2xl font-semibold text-slate-900">Email verified!</h1>
-        <p className="mb-6 text-sm text-slate-600">Your email is verified. You can now sign in.</p>
+        <h1 className="mb-2 text-2xl font-semibold text-foreground">Email verified!</h1>
+        <p className="mb-6 text-sm text-muted-foreground">Your email is verified. You can now sign in.</p>
         <Link to="/login">
           <Button>Go to sign in</Button>
         </Link>
@@ -72,11 +72,11 @@ export function VerifyEmailPage() {
   return (
     <div className="text-center">
       <div className="mb-4 text-4xl">❌</div>
-      <h1 className="mb-2 text-2xl font-semibold text-slate-900">Verification failed</h1>
+      <h1 className="mb-2 text-2xl font-semibold text-foreground">Verification failed</h1>
       <p className="mb-6 text-sm text-red-600">{errorMessage}</p>
 
       {resent ? (
-        <p className="text-sm text-slate-600">A new verification email has been sent.</p>
+        <p className="text-sm text-muted-foreground">A new verification email has been sent.</p>
       ) : (
         <Button onClick={() => void handleResend()} disabled={resending}>
           {resending ? 'Sending…' : 'Resend verification email'}
@@ -84,7 +84,7 @@ export function VerifyEmailPage() {
       )}
 
       <p className="mt-4 text-sm">
-        <Link to="/login" className="text-slate-600 hover:underline">
+        <Link to="/login" className="text-muted-foreground hover:text-foreground hover:underline">
           Back to sign in
         </Link>
       </p>

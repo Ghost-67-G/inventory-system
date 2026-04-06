@@ -95,8 +95,8 @@ export function AcceptInvitePage() {
   if (status === 'verifying') {
     return (
       <div className="flex flex-col items-center gap-3">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
-        <p className="text-sm text-slate-600">Verifying invite link...</p>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+        <p className="text-sm text-muted-foreground">Verifying invite link...</p>
       </div>
     );
   }
@@ -104,9 +104,9 @@ export function AcceptInvitePage() {
   if (status === 'error') {
     return (
       <div className="text-center">
-        <h1 className="text-2xl font-semibold text-slate-900">Invite invalid</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Invite invalid</h1>
         <p className="mt-2 text-sm text-red-600">{error}</p>
-        <Link className="mt-4 inline-block text-sm text-slate-600 underline" to="/login">
+        <Link className="mt-4 inline-block text-sm text-muted-foreground underline" to="/login">
           Back to login
         </Link>
       </div>
@@ -115,30 +115,30 @@ export function AcceptInvitePage() {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-semibold text-slate-900">Set your password</h1>
-      <p className="mb-5 text-sm text-slate-600">Finish setting up your invited account.</p>
+      <h1 className="mb-2 text-2xl font-semibold text-foreground">Set your password</h1>
+      <p className="mb-5 text-sm text-muted-foreground">Finish setting up your invited account.</p>
 
-      {error ? <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+      {error ? <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{error}</div> : null}
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
               placeholder="Create a strong password"
               {...register('password')}
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
               onClick={() => setShowPassword((prev) => !prev)}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
+          <div className="mt-2 h-2 w-full rounded-full bg-muted">
             <div
               className={`h-2 rounded-full transition-all ${
                 passwordScore <= 2 ? 'bg-red-500' : passwordScore <= 3 ? 'bg-amber-500' : 'bg-emerald-500'
@@ -150,10 +150,10 @@ export function AcceptInvitePage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Confirm password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Confirm password</label>
           <input
             type={showPassword ? 'text' : 'password'}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="Re-enter your password"
             {...register('confirmPassword')}
           />

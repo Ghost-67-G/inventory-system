@@ -60,27 +60,27 @@ export function ResetPasswordPage() {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-semibold text-slate-900">Set new password</h1>
-      <p className="mb-6 text-sm text-slate-600">Choose a strong password for your account.</p>
+      <h1 className="mb-2 text-2xl font-semibold text-foreground">Set new password</h1>
+      <p className="mb-6 text-sm text-muted-foreground">Choose a strong password for your account.</p>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{error}</div>
       )}
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">New password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">New password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
               placeholder="••••••••"
               {...register('password')}
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword((v) => !v)}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -90,11 +90,11 @@ export function ResetPasswordPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Confirm password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Confirm password</label>
           <input
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="••••••••"
             {...register('confirmPassword')}
           />

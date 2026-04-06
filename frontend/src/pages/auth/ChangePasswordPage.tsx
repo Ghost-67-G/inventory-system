@@ -58,7 +58,7 @@ export function ChangePasswordPage() {
 
   if (success) {
     return (
-      <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">
+      <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-400">
         Password changed successfully. Signing you out in 2 seconds…
       </div>
     );
@@ -66,25 +66,25 @@ export function ChangePasswordPage() {
 
   return (
     <div className="max-w-md">
-      <h2 className="mb-6 text-xl font-semibold text-slate-900">Change password</h2>
+      <h2 className="mb-6 text-xl font-semibold text-foreground">Change password</h2>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{error}</div>
       )}
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Current password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Current password</label>
           <div className="relative">
             <input
               type={showCurrent ? 'text' : 'password'}
               autoComplete="current-password"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus:border-ring focus:outline-none"
               {...register('currentPassword')}
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
               onClick={() => setShowCurrent((v) => !v)}
             >
               {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -94,17 +94,17 @@ export function ChangePasswordPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">New password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">New password</label>
           <div className="relative">
             <input
               type={showNew ? 'text' : 'password'}
               autoComplete="new-password"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus:border-ring focus:outline-none"
               {...register('newPassword')}
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
               onClick={() => setShowNew((v) => !v)}
             >
               {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -114,11 +114,11 @@ export function ChangePasswordPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Confirm new password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Confirm new password</label>
           <input
             type={showNew ? 'text' : 'password'}
             autoComplete="new-password"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
             {...register('confirmPassword')}
           />
           {errors.confirmPassword && <p className="mt-1 text-xs text-red-600">{errors.confirmPassword.message}</p>}
