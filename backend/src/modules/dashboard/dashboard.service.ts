@@ -44,7 +44,7 @@ export async function getRecentActivity(tenantId: string): Promise<IStockMovemen
   }
 
   const movements = await StockMovementModel.find({ tenantId })
-    .sort({ createdAt: -1 })
+    .sort({ createdAt: -1, _id: -1 })
     .limit(10)
     .populate('productId', 'name sku unit')
     .populate('warehouseId', 'name code')
@@ -61,7 +61,7 @@ export async function getRecentActivity(tenantId: string): Promise<IStockMovemen
     performedBy: (movement.performedBy as Record<string, unknown>)?._id ?? movement.performedBy
   }));
 
-  await redis.set(cacheKey, JSON.stringify(normalized), 'EX', 30);
+  await redis.set(cacheKey, JSON.stringify(normalized), 'EX', 60);
 
   return normalized as unknown as IStockMovement[];
 }
