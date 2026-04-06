@@ -41,21 +41,21 @@ export function LoginPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Sign in</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">Sign in</h1>
 
       {errorMessage && (
-        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
           {errorMessage}
         </div>
       )}
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
           <input
             type="email"
             autoComplete="email"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm placeholder-slate-400 focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="you@example.com"
             {...register('email')}
           />
@@ -63,18 +63,18 @@ export function LoginPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm placeholder-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
               placeholder="••••••••"
               {...register('password')}
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword((v) => !v)}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -84,7 +84,7 @@ export function LoginPage() {
         </div>
 
         <div className="flex items-center justify-end">
-          <Link to="/forgot-password" className="text-sm text-slate-600 hover:underline">
+          <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
             Forgot password?
           </Link>
         </div>

@@ -93,6 +93,7 @@ const productSchema = new Schema(
 productSchema.index({ tenantId: 1, sku: 1 }, { unique: true });
 productSchema.index({ tenantId: 1, categoryId: 1 });
 productSchema.index({ tenantId: 1, isActive: 1, createdAt: -1 });
+productSchema.index({ tenantId: 1, createdAt: -1 });
 productSchema.index({ tenantId: 1, totalStock: 1 });
 productSchema.index(
   { tenantId: 1, name: 'text', sku: 'text', description: 'text', tags: 'text' },

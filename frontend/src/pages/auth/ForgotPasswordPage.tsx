@@ -39,11 +39,11 @@ export function ForgotPasswordPage() {
   if (submitted) {
     return (
       <div className="text-center">
-        <h1 className="mb-3 text-2xl font-semibold text-slate-900">Check your email</h1>
-        <p className="mb-6 text-sm text-slate-600">
+        <h1 className="mb-3 text-2xl font-semibold text-foreground">Check your email</h1>
+        <p className="mb-6 text-sm text-muted-foreground">
           If that email address is registered, we sent a password reset link to it.
         </p>
-        <Link to="/login" className="text-sm text-slate-600 hover:underline">
+        <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
           Back to sign in
         </Link>
       </div>
@@ -52,20 +52,20 @@ export function ForgotPasswordPage() {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-semibold text-slate-900">Forgot password?</h1>
-      <p className="mb-6 text-sm text-slate-600">Enter your email and we'll send a reset link.</p>
+      <h1 className="mb-2 text-2xl font-semibold text-foreground">Forgot password?</h1>
+      <p className="mb-6 text-sm text-muted-foreground">Enter your email and we'll send a reset link.</p>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{error}</div>
       )}
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
           <input
             type="email"
             autoComplete="email"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm placeholder-slate-400 focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="you@example.com"
             {...register('email')}
           />
@@ -77,7 +77,7 @@ export function ForgotPasswordPage() {
         </Button>
 
         <p className="text-center text-sm">
-          <Link to="/login" className="text-slate-600 hover:underline">
+          <Link to="/login" className="text-muted-foreground hover:text-foreground hover:underline">
             Back to sign in
           </Link>
         </p>

@@ -67,17 +67,17 @@ export function RegisterPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Create your account</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">Create your account</h1>
 
       {errorMessage && (
-        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div>
+        <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{errorMessage}</div>
       )}
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Business name</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Business name</label>
           <input
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="Acme Corp"
             {...reg('tenantName')}
           />
@@ -85,9 +85,9 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Full name</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Full name</label>
           <input
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="Jane Doe"
             {...reg('name')}
           />
@@ -95,11 +95,11 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
           <input
             type="email"
             autoComplete="email"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="you@example.com"
             {...reg('email')}
           />
@@ -107,18 +107,18 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
               placeholder="••••••••"
               {...reg('password')}
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword((v) => !v)}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -126,22 +126,22 @@ export function RegisterPage() {
           </div>
           {passwordValue && (
             <div className="mt-2 space-y-1">
-              <div className="h-1.5 w-full rounded-full bg-slate-200">
+              <div className="h-1.5 w-full rounded-full bg-muted">
                 <div
                   className={`h-full rounded-full transition-all ${strength.color}`}
                   style={{ width: strength.label === 'Weak' ? '33%' : strength.label === 'Medium' ? '66%' : '100%' }}
                 />
               </div>
-              <p className="text-xs text-slate-500">Strength: {strength.label}</p>
+              <p className="text-xs text-muted-foreground">Strength: {strength.label}</p>
             </div>
           )}
           {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
         </div>
 
         <div className="flex items-start gap-2">
-          <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-slate-300" {...reg('terms')} />
-          <label className="text-sm text-slate-600">
-            I agree to the <span className="text-slate-900 underline">Terms of Service</span>
+          <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-input" {...reg('terms')} />
+          <label className="text-sm text-muted-foreground">
+            I agree to the <span className="text-foreground underline">Terms of Service</span>
           </label>
         </div>
         {errors.terms && <p className="text-xs text-red-600">{errors.terms.message}</p>}
