@@ -788,6 +788,8 @@ export interface LowStockParams {
   warehouseId?: string;
   sortBy?: 'shortage' | 'name' | 'currentStock';
   sortOrder?: 'asc' | 'desc';
+  cursor?: string;
+  limit?: number;
 }
 
 export interface MovementsReportParams {
