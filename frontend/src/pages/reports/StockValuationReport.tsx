@@ -38,12 +38,23 @@ export function StockValuationReport() {
   // Update URL when filters change
   const updateParams = (newParams: Partial<StockValuationParams>) => {
     const updated = { ...params, ...newParams };
-    const search = new URLSearchParams();
+    const search = new URLSearchParams(searchParams);
+
     if (updated.categoryId) search.set('categoryId', updated.categoryId as string);
+    else search.delete('categoryId');
+
     if (updated.warehouseId) search.set('warehouseId', updated.warehouseId as string);
+    else search.delete('warehouseId');
+
     if (updated.isActive !== 'true') search.set('isActive', String(updated.isActive));
+    else search.delete('isActive');
+
     if (updated.sortBy !== 'stockValue') search.set('sortBy', String(updated.sortBy));
+    else search.delete('sortBy');
+
     if (updated.sortOrder !== 'desc') search.set('sortOrder', String(updated.sortOrder));
+    else search.delete('sortOrder');
+
     setSearchParams(search);
   };
 
