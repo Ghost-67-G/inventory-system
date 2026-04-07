@@ -14,9 +14,12 @@ import { WasteAdjustmentsReport } from './WasteAdjustmentsReport';
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isMobile } = useWindowSize();
-  const activeTab = searchParams.get('tab') || 'stock-valuation';
+  const tabFromUrl = searchParams.get('tab') || 'stock-valuation';
+  const validTabs = ['stock-valuation', 'movement-history', 'low-stock', 'waste-adjustments'];
+  const activeTab = validTabs.includes(tabFromUrl) ? tabFromUrl : 'stock-valuation';
 
   const handleTabChange = (tab: string) => {
+    if (!validTabs.includes(tab)) return;
     const params = new URLSearchParams(searchParams);
     params.set('tab', tab);
     setSearchParams(params);

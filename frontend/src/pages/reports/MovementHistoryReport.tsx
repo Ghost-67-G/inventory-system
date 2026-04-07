@@ -79,13 +79,26 @@ export function MovementHistoryReport() {
 
   const updateParams = (newParams: Partial<MovementsReportParams>) => {
     const updated = { ...params, ...newParams };
-    const search = new URLSearchParams();
+    const search = new URLSearchParams(searchParams);
+
     if (updated.dateFrom) search.set('dateFrom', updated.dateFrom);
+    else search.delete('dateFrom');
+
     if (updated.dateTo) search.set('dateTo', updated.dateTo);
+    else search.delete('dateTo');
+
     if (updated.productId) search.set('productId', updated.productId);
+    else search.delete('productId');
+
     if (updated.warehouseId) search.set('warehouseId', updated.warehouseId);
+    else search.delete('warehouseId');
+
     if (updated.type) search.set('type', updated.type);
+    else search.delete('type');
+
     if (updated.performedBy) search.set('performedBy', updated.performedBy);
+    else search.delete('performedBy');
+
     setSearchParams(search);
   };
 
