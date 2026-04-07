@@ -13,6 +13,6 @@ export async function enqueueCsvImport(jobData: CsvImportJobData): Promise<void>
     attempts: 1,
     removeOnComplete: { count: 50 },
     removeOnFail: { count: 50 },
-    jobId: `import:${jobData.jobId}`
+    jobId: `import-${jobData.jobId}`
   });
 }
