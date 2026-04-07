@@ -105,7 +105,8 @@ async function getOrCreateWarehouseStock(
   session: ClientSession,
   tenantId: string,
   warehouseId: string,
-  productId: string
+  productId: string,
+  lowStockThreshold?: number
 ): Promise<IWarehouseStock> {
   const ws = await WarehouseStockModel.findOneAndUpdate(
     { tenantId, warehouseId, productId },
@@ -115,6 +116,7 @@ async function getOrCreateWarehouseStock(
         warehouseId,
         productId,
         quantity: 0,
+        lowStockThreshold: lowStockThreshold ?? 0,
         reservedQuantity: 0
       }
     },
@@ -201,7 +203,7 @@ export async function recordIn(
     session.startTransaction();
 
     const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
-    const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId);
+    const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId, product.lowStockThreshold);
 
     const quantityBefore = warehouseStock.quantity;
     const quantityAfter = quantityBefore + data.quantity;
@@ -328,7 +330,7 @@ export async function recordOut(
     session.startTransaction();
 
     const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
-    const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId);
+    const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId, product.lowStockThreshold);
 
     if (warehouseStock.quantity < data.quantity) {
       throw new ApiError(400, `Insufficient stock. Available: ${warehouseStock.quantity} ${product.unit}, requested: ${data.quantity}`);
@@ -434,7 +436,7 @@ export async function recordAdjustment(
     session.startTransaction();
 
     const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
-    const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId);
+    const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId, product.lowStockThreshold);
 
     if (data.quantity < 0 && warehouseStock.quantity + data.quantity < 0) {
       throw new ApiError(
@@ -557,7 +559,7 @@ export async function recordWaste(
     session.startTransaction();
 
     const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
-    const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId);
+    const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId, product.lowStockThreshold);
 
     if (warehouseStock.quantity < data.quantity) {
       throw new ApiError(400, 'Insufficient stock to record waste.');
@@ -700,8 +702,8 @@ export async function recordTransfer(
       throw new ApiError(404, 'Destination warehouse not found');
     }
 
-    const sourceStock = await getOrCreateWarehouseStock(session, tenantId, data.sourceWarehouseId, data.productId);
-    const destinationStock = await getOrCreateWarehouseStock(session, tenantId, data.destinationWarehouseId, data.productId);
+    const sourceStock = await getOrCreateWarehouseStock(session, tenantId, data.sourceWarehouseId, data.productId, product.lowStockThreshold);
+    const destinationStock = await getOrCreateWarehouseStock(session, tenantId, data.destinationWarehouseId, data.productId, product.lowStockThreshold);
 
     if (sourceStock.quantity < data.quantity) {
       throw new ApiError(400, 'Insufficient stock in source warehouse');

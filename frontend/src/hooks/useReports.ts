@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { reportsApi } from '../api/endpoints/reports';
 import { usePermission } from './usePermission';
 import type {
@@ -67,16 +67,18 @@ export function useMovementsReport(params?: MovementsReportParams) {
  * Low Stock Report hook
  * Cached for 2 minutes
  */
-export function useLowStockReport(params?: LowStockParams) {
+export function useLowStockReport(params?: Omit<LowStockParams, 'cursor'>) {
   const { canDo } = usePermission();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['reports', 'low-stock', params],
-    queryFn: async () => {
-      const res = await reportsApi.getLowStock(params);
+    queryFn: async ({ pageParam = null }) => {
+      const res = await reportsApi.getLowStock({ ...params, cursor: pageParam ?? undefined });
       const payload = res.data as ApiEnvelope<any>;
       return payload.data;
     },
+    getNextPageParam: (lastPage: any) => lastPage?.nextCursor,
+    initialPageParam: null,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     enabled: canDo('report.view')

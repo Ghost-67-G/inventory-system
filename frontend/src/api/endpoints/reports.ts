@@ -108,13 +108,15 @@ export const reportsApi = {
     return triggerDownload(url, token);
   },
 
-  // Low Stock Report — JSON (all rows, no pagination)
+  // Low Stock Report — JSON with cursor pagination
   getLowStock: (params?: LowStockParams) =>
     client.get<{
       success: boolean;
       data: {
         rows: LowStockRow[];
-        summary: LowStockSummary;
+        nextCursor: string | null;
+        hasMore: boolean;
+        summary?: LowStockSummary;
         generatedAt: string;
       };
     }>('/reports/low-stock', { params }),

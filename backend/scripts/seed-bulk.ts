@@ -302,7 +302,7 @@ const insertWarehouseStock = async (
   const wh2 = warehouseMap['WH-002'];
 
   let processed = 0;
-  const cursor = Product.find({ tenantId }).select('_id totalStock').lean().cursor({ batchSize: 5000 });
+  const cursor = Product.find({ tenantId }).select('_id totalStock lowStockThreshold').lean().cursor({ batchSize: 5000 });
 
   let stockBatch: Array<Record<string, unknown>> = [];
 
@@ -314,6 +314,7 @@ const insertWarehouseStock = async (
 
   for await (const product of cursor) {
     const total = (product as any).totalStock ?? 0;
+    const threshold = (product as any).lowStockThreshold ?? 0;
     // Split ~60/40 between warehouses
     const wh1Qty = Math.ceil(total * 0.6);
     const wh2Qty = total - wh1Qty;
@@ -323,6 +324,7 @@ const insertWarehouseStock = async (
       warehouseId: wh1,
       productId: product._id,
       quantity: wh1Qty,
+      lowStockThreshold: threshold,
       reservedQuantity: 0,
       updatedAt: new Date(),
     });
@@ -333,6 +335,7 @@ const insertWarehouseStock = async (
         warehouseId: wh2,
         productId: product._id,
         quantity: wh2Qty,
+        lowStockThreshold: threshold,
         reservedQuantity: 0,
         updatedAt: new Date(),
       });

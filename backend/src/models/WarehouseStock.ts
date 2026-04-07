@@ -22,6 +22,11 @@ const warehouseStockSchema = new Schema(
       default: 0,
       min: 0
     },
+    lowStockThreshold: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     reservedQuantity: {
       type: Number,
       default: 0,
@@ -40,12 +45,17 @@ warehouseStockSchema.index({ tenantId: 1, warehouseId: 1, productId: 1 }, { uniq
 warehouseStockSchema.index({ tenantId: 1, productId: 1 });
 warehouseStockSchema.index({ tenantId: 1, warehouseId: 1 });
 warehouseStockSchema.index({ quantity: 1 });
+// Low-stock report: filter by tenant + threshold > 0 + quantity <= threshold
+warehouseStockSchema.index({ tenantId: 1, lowStockThreshold: 1, quantity: 1 });
+// Low-stock report with warehouse filter
+warehouseStockSchema.index({ tenantId: 1, warehouseId: 1, lowStockThreshold: 1, quantity: 1 });
 
 export interface IWarehouseStock extends Document {
   tenantId: mongoose.Types.ObjectId;
   warehouseId: mongoose.Types.ObjectId;
   productId: mongoose.Types.ObjectId;
   quantity: number;
+  lowStockThreshold: number;
   reservedQuantity: number;
   updatedAt: Date;
 }

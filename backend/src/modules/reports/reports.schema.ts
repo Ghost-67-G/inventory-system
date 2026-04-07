@@ -54,7 +54,9 @@ export const lowStockQuerySchema = z.object({
     categoryId: mongoId.optional(),
     warehouseId: mongoId.optional(),
     sortBy: z.enum(['shortage', 'name', 'currentStock']).optional().default('shortage'),
-    sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
+    sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+    cursor: z.string().optional(),
+    limit: z.coerce.number().int().min(1).max(200).optional().default(100)
   })
 });
 

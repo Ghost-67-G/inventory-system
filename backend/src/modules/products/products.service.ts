@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { TenantModel } from '../../models/Tenant';
 import { CategoryModel } from '../../models/Category';
 import { Product } from '../../models/Product';
+import { WarehouseStockModel } from '../../models/WarehouseStock';
 import { incrementProductCount } from '../categories/categories.service';
 import { ApiError } from '../../utils/ApiError';
 import { getCache, setCache, deleteCache } from '../../config/redis';
@@ -495,6 +496,14 @@ export async function updateProduct(
   product.updatedBy = userObjId;
   await product.save();
 
+  // Sync denormalized lowStockThreshold to WarehouseStocks
+  if (data.lowStockThreshold !== undefined) {
+    WarehouseStockModel.updateMany(
+      { tenantId: tenantObjId, productId: productObjId },
+      { $set: { lowStockThreshold: product.lowStockThreshold } }
+    ).catch(() => {});
+  }
+
   // Enqueue MeiliSearch sync (fire and forget)
   enqueueProductUpsert(product._id.toString(), tenantId).catch(() => {});
 
@@ -627,13 +636,23 @@ export async function bulkUpdate(
   if (updates.isActive !== undefined) $set.isActive = updates.isActive;
   if (updates.lowStockThreshold !== undefined) $set.lowStockThreshold = updates.lowStockThreshold;
 
+  const productOids = productIds.map((id) => new mongoose.Types.ObjectId(id));
+
   await Product.updateMany(
     {
       tenantId: tenantObjId,
-      _id: { $in: productIds.map((id) => new mongoose.Types.ObjectId(id)) }
+      _id: { $in: productOids }
     },
     { $set }
   );
+
+  // Sync denormalized lowStockThreshold to WarehouseStocks
+  if (updates.lowStockThreshold !== undefined) {
+    WarehouseStockModel.updateMany(
+      { tenantId: tenantObjId, productId: { $in: productOids } },
+      { $set: { lowStockThreshold: updates.lowStockThreshold } }
+    ).catch(() => {});
+  }
 
   createAuditLog({
     tenantId,

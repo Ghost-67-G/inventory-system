@@ -738,116 +738,145 @@ interface LowStockRow {
 
 export async function getLowStockReport(tenantId: string, query: LowStockQuery) {
   const tenantOid = new mongoose.Types.ObjectId(tenantId);
-  const sortField =
-    query.sortBy === 'name' ? 'name'
-      : query.sortBy === 'currentStock' ? 'ws.quantity'
-        : 'shortage';
-  const sortDir: 1 | -1 = query.sortOrder === 'asc' ? 1 : -1;
+  const limit = Math.min(Number(query.limit ?? 100), 200);
+  const offset = query.cursor ? Number(Buffer.from(query.cursor, 'base64').toString('utf8')) : 0;
+  const hasCursor = !!query.cursor;
 
-  const pipeline: PipelineStage[] = [
-    // Start from Products that actually have a threshold (only these can be "low stock")
+  // Single-collection match using denormalized lowStockThreshold on WarehouseStock
+  // Uses index { tenantId, lowStockThreshold, quantity } or { tenantId, warehouseId, lowStockThreshold, quantity }
+  const wsMatch: Record<string, unknown> = {
+    tenantId: tenantOid,
+    lowStockThreshold: { $gt: 0 },
+    $expr: { $lte: ['$quantity', '$lowStockThreshold'] },
+    ...(query.warehouseId ? { warehouseId: new mongoose.Types.ObjectId(query.warehouseId) } : {})
+  };
+
+  const basePipeline: PipelineStage[] = [
+    { $match: wsMatch },
+
+    // Join Product (only for active + category filter + display fields)
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'productId',
+        foreignField: '_id',
+        as: 'product'
+      }
+    },
+    { $unwind: '$product' },
+
+    // Filter by active + optional category
     {
       $match: {
-        tenantId: tenantOid,
-        isActive: true,
-        lowStockThreshold: { $gt: 0 },
+        'product.isActive': true,
         ...(query.categoryId
-          ? { categoryId: new mongoose.Types.ObjectId(query.categoryId) }
+          ? { 'product.categoryId': new mongoose.Types.ObjectId(query.categoryId) }
           : {})
       }
     },
 
-    // Lookup only WarehouseStocks that are at or below threshold
+    // Compute shortage and reorder
     {
-      $lookup: {
-        from: 'warehousestocks',
-        let: { pid: '$_id', threshold: '$lowStockThreshold' },
-        pipeline: [
-          {
-            $match: {
-              tenantId: tenantOid,
-              ...(query.warehouseId
-                ? { warehouseId: new mongoose.Types.ObjectId(query.warehouseId) }
-                : {}),
-              $expr: {
-                $and: [
-                  { $eq: ['$productId', '$$pid'] },
-                  { $lte: ['$quantity', '$$threshold'] }
-                ]
-              }
-            }
-          }
-        ],
-        as: 'ws'
+      $addFields: {
+        shortage: { $subtract: ['$lowStockThreshold', '$quantity'] },
+        reorderSuggestion: { $multiply: ['$lowStockThreshold', 3] }
       }
-    },
+    }
+  ];
 
-    // Drop products with no low-stock warehouses
-    { $unwind: '$ws' },
+  const sortField =
+    query.sortBy === 'name' ? 'product.name'
+      : query.sortBy === 'currentStock' ? 'quantity'
+        : 'shortage';
+  const sortDir: 1 | -1 = query.sortOrder === 'asc' ? 1 : -1;
 
-    // Join Warehouse
+  // Summary: compute in MongoDB on first page only
+  let summary: { totalItems: number; outOfStock: number; criticalItems: number; totalRestockCost: number } | undefined;
+  if (!hasCursor) {
+    const summaryResult = await WarehouseStockModel.aggregate<{
+      totalItems: number;
+      outOfStock: number;
+      criticalItems: number;
+      totalRestockCost: number;
+    }>([
+      ...basePipeline,
+      {
+        $group: {
+          _id: null,
+          totalItems: { $sum: 1 },
+          outOfStock: { $sum: { $cond: [{ $eq: ['$quantity', 0] }, 1, 0] } },
+          criticalItems: {
+            $sum: {
+              $cond: [{ $lte: ['$quantity', { $multiply: ['$lowStockThreshold', 0.25] }] }, 1, 0]
+            }
+          },
+          totalRestockCost: { $sum: { $multiply: ['$reorderSuggestion', '$product.costPrice'] } }
+        }
+      }
+    ]);
+    summary = summaryResult[0] ?? { totalItems: 0, outOfStock: 0, criticalItems: 0, totalRestockCost: 0 };
+    summary.totalRestockCost = Math.round(summary.totalRestockCost * 100) / 100;
+  }
+
+  // Paginated rows
+  const rows = await WarehouseStockModel.aggregate<LowStockRow>([
+    ...basePipeline,
+    { $sort: { [sortField]: sortDir } },
+    { $skip: offset },
+    { $limit: limit + 1 },
+
+    // Join Warehouse + Category only for the page
     {
       $lookup: {
         from: 'warehouses',
-        localField: 'ws.warehouseId',
+        localField: 'warehouseId',
         foreignField: '_id',
         as: 'warehouse'
       }
     },
     { $unwind: '$warehouse' },
-
-    // Join Category
     {
       $lookup: {
         from: 'categories',
-        localField: 'categoryId',
+        localField: 'product.categoryId',
         foreignField: '_id',
         as: 'category'
       }
     },
     { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
-
-    // Compute shortage and reorder suggestion
-    {
-      $addFields: {
-        shortage: { $subtract: ['$lowStockThreshold', '$ws.quantity'] },
-        reorderSuggestion: { $multiply: ['$lowStockThreshold', 3] }
-      }
-    },
-
-    // Sort
-    { $sort: { [sortField]: sortDir } },
-
-    // Project final shape
     {
       $project: {
-        sku: 1,
-        productName: '$name',
+        sku: '$product.sku',
+        productName: '$product.name',
         categoryName: { $ifNull: ['$category.name', 'Uncategorized'] },
         categoryColor: { $ifNull: ['$category.color', '#888780'] },
         warehouseName: '$warehouse.name',
         warehouseCode: '$warehouse.code',
-        unit: 1,
-        currentStock: '$ws.quantity',
+        unit: '$product.unit',
+        currentStock: '$quantity',
         threshold: '$lowStockThreshold',
         shortage: 1,
         reorderSuggestion: 1,
-        costPrice: 1,
-        restockCost: { $multiply: ['$reorderSuggestion', '$costPrice'] }
+        costPrice: '$product.costPrice',
+        restockCost: { $multiply: ['$reorderSuggestion', '$product.costPrice'] }
       }
     }
-  ];
+  ]);
 
-  const rows = await Product.aggregate<LowStockRow>(pipeline);
+  const hasMore = rows.length > limit;
+  if (hasMore) rows.pop();
 
-  const summary = {
-    totalItems: rows.length,
-    outOfStock: rows.filter((r: LowStockRow) => r.currentStock === 0).length,
-    criticalItems: rows.filter((r: LowStockRow) => r.currentStock <= Math.floor(r.threshold * 0.25)).length,
-    totalRestockCost: Math.round(rows.reduce((sum: number, r: LowStockRow) => sum + (r.restockCost ?? 0), 0) * 100) / 100
+  const nextCursor = hasMore
+    ? Buffer.from(String(offset + limit)).toString('base64')
+    : null;
+
+  return {
+    rows,
+    nextCursor,
+    hasMore,
+    ...(summary !== undefined ? { summary } : {}),
+    generatedAt: new Date().toISOString()
   };
-
-  return { rows, summary, generatedAt: new Date().toISOString() };
 }
 
 /**
@@ -875,8 +904,8 @@ export async function streamLowStockCSV(tenantId: string, query: LowStockQuery, 
 
   const tenantOid = new mongoose.Types.ObjectId(tenantId);
   const sortField =
-    query.sortBy === 'name' ? 'name'
-      : query.sortBy === 'currentStock' ? 'ws.quantity'
+    query.sortBy === 'name' ? 'product.name'
+      : query.sortBy === 'currentStock' ? 'quantity'
         : 'shortage';
   const sortDir: 1 | -1 = query.sortOrder === 'asc' ? 1 : -1;
 
@@ -884,41 +913,32 @@ export async function streamLowStockCSV(tenantId: string, query: LowStockQuery, 
     {
       $match: {
         tenantId: tenantOid,
-        isActive: true,
         lowStockThreshold: { $gt: 0 },
+        $expr: { $lte: ['$quantity', '$lowStockThreshold'] },
+        ...(query.warehouseId ? { warehouseId: new mongoose.Types.ObjectId(query.warehouseId) } : {})
+      }
+    },
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'productId',
+        foreignField: '_id',
+        as: 'product'
+      }
+    },
+    { $unwind: '$product' },
+    {
+      $match: {
+        'product.isActive': true,
         ...(query.categoryId
-          ? { categoryId: new mongoose.Types.ObjectId(query.categoryId) }
+          ? { 'product.categoryId': new mongoose.Types.ObjectId(query.categoryId) }
           : {})
       }
     },
     {
       $lookup: {
-        from: 'warehousestocks',
-        let: { pid: '$_id', threshold: '$lowStockThreshold' },
-        pipeline: [
-          {
-            $match: {
-              tenantId: tenantOid,
-              ...(query.warehouseId
-                ? { warehouseId: new mongoose.Types.ObjectId(query.warehouseId) }
-                : {}),
-              $expr: {
-                $and: [
-                  { $eq: ['$productId', '$$pid'] },
-                  { $lte: ['$quantity', '$$threshold'] }
-                ]
-              }
-            }
-          }
-        ],
-        as: 'ws'
-      }
-    },
-    { $unwind: '$ws' },
-    {
-      $lookup: {
         from: 'warehouses',
-        localField: 'ws.warehouseId',
+        localField: 'warehouseId',
         foreignField: '_id',
         as: 'warehouse'
       }
@@ -927,7 +947,7 @@ export async function streamLowStockCSV(tenantId: string, query: LowStockQuery, 
     {
       $lookup: {
         from: 'categories',
-        localField: 'categoryId',
+        localField: 'product.categoryId',
         foreignField: '_id',
         as: 'category'
       }
@@ -935,30 +955,30 @@ export async function streamLowStockCSV(tenantId: string, query: LowStockQuery, 
     { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
     {
       $addFields: {
-        shortage: { $subtract: ['$lowStockThreshold', '$ws.quantity'] },
+        shortage: { $subtract: ['$lowStockThreshold', '$quantity'] },
         reorderSuggestion: { $multiply: ['$lowStockThreshold', 3] }
       }
     },
     { $sort: { [sortField]: sortDir } },
     {
       $project: {
-        sku: 1,
-        productName: '$name',
+        sku: '$product.sku',
+        productName: '$product.name',
         categoryName: { $ifNull: ['$category.name', 'Uncategorized'] },
         warehouseName: '$warehouse.name',
         warehouseCode: '$warehouse.code',
-        unit: 1,
-        currentStock: '$ws.quantity',
+        unit: '$product.unit',
+        currentStock: '$quantity',
         threshold: '$lowStockThreshold',
         shortage: 1,
         reorderSuggestion: 1,
-        costPrice: 1,
-        restockCost: { $multiply: ['$reorderSuggestion', '$costPrice'] }
+        costPrice: '$product.costPrice',
+        restockCost: { $multiply: ['$reorderSuggestion', '$product.costPrice'] }
       }
     }
   ];
 
-  const cursor = Product.aggregate(pipeline).cursor();
+  const cursor = WarehouseStockModel.aggregate(pipeline).cursor();
 
   try {
     for await (const row of cursor) {

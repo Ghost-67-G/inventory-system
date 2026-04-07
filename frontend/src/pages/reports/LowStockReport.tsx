@@ -28,7 +28,7 @@ export function LowStockReport() {
     sortOrder: (searchParams.get('sortOrder') || 'desc') as any
   };
 
-  const { data, isLoading } = useLowStockReport(params);
+  const { data: infiniteData, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useLowStockReport(params);
   const { data: categories } = useCategoriesDropdown();
   const { data: warehouses } = useWarehousesDropdown();
 
@@ -119,8 +119,11 @@ export function LowStockReport() {
     []
   );
 
-  const rows = data?.rows ?? [];
-  const summary = data?.summary;
+  const rows = useMemo(
+    () => infiniteData?.pages.flatMap((page) => page?.rows ?? []) ?? [],
+    [infiniteData]
+  );
+  const summary = infiniteData?.pages[0]?.summary;
 
   // Empty state — positive styling
   if (!isLoading && rows.length === 0) {
@@ -231,6 +234,9 @@ export function LowStockReport() {
           data={rows}
           isLoading={isLoading}
           emptyMessage="No low stock items"
+          hasNextPage={hasNextPage}
+          onFetchNextPage={fetchNextPage}
+          isFetchingNextPage={isFetchingNextPage}
         />
       </div>
     </div>
