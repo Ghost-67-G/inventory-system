@@ -36,7 +36,7 @@ export function ReportsPage() {
         <select
           value={activeTab}
           onChange={(event) => handleTabChange(event.target.value)}
-          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="stock-valuation">Stock Valuation</option>
           <option value="movement-history">Movement History</option>

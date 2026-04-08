@@ -17,7 +17,7 @@ export function AlertsPage() {
       <PageHeader title="Stock Alerts" subtitle="Low stock warning queue" />
       <div className="space-y-2">
         {(data ?? []).map((alert) => (
-          <div key={alert._id} className="rounded border bg-white p-3">
+          <div key={alert._id} className="rounded border border-border bg-card p-3">
             <AlertBadge status={alert.status} />
           </div>
         ))}

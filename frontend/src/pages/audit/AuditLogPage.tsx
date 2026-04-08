@@ -67,7 +67,7 @@ export function AuditLogPage() {
 
       <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-6">
         <select
-          className="h-11 rounded-lg border border-input px-2 text-sm md:h-9"
+          className="h-11 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
           value={entityType}
           onChange={(event) => {
             const next = event.target.value as '' | AuditEntityType;
@@ -81,7 +81,7 @@ export function AuditLogPage() {
         </select>
 
         <select
-          className="h-11 rounded-lg border border-input px-2 text-sm md:h-9"
+          className="h-11 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
           value={action}
           onChange={(event) => setAction(event.target.value as '' | AuditAction)}
         >
@@ -92,7 +92,7 @@ export function AuditLogPage() {
         </select>
 
         <select
-          className="h-11 rounded-lg border border-input px-2 text-sm md:h-9"
+          className="h-11 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
           value={performedBy}
           onChange={(event) => setPerformedBy(event.target.value)}
         >

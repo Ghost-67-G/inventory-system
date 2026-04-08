@@ -229,7 +229,10 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Category</label>
-                <select {...register('categoryId')} className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9">
+                <select
+                  {...register('categoryId')}
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
+                >
                   <option value="">No category</option>
                   {categories?.map((cat) => (
                     <option key={cat._id} value={cat._id}>

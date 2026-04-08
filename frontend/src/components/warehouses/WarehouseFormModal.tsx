@@ -140,13 +140,13 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
             {/* Section 1: Identity */}
             <div className="space-y-4">
               <div className="space-y-1">
-                <label htmlFor="warehouse-name" className="text-sm font-medium text-gray-700">Name *</label>
+                <label htmlFor="warehouse-name" className="text-sm font-medium text-foreground">Name *</label>
                 <Input id="warehouse-name" placeholder="e.g. Main Warehouse" {...register('name')} />
                 {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="warehouse-code" className="text-sm font-medium text-gray-700">Code</label>
+                <label htmlFor="warehouse-code" className="text-sm font-medium text-foreground">Code</label>
                 <Input
                   id="warehouse-code"
                   placeholder="e.g. WH-001, NORTH, MAIN"
@@ -156,17 +156,17 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
                     setValue('code', value, { shouldValidate: true });
                   }}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Leave blank to auto-generate. Uppercase letters, numbers, and dashes only.
                 </p>
                 {errors.code && <p className="text-xs text-red-600">{errors.code.message}</p>}
               </div>
 
-              <div className="space-y-2 rounded-lg border p-3">
+              <div className="space-y-2 rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Default warehouse</p>
-                    <p className="text-xs text-gray-500">Pre-selected when recording stock movements</p>
+                    <p className="text-sm font-medium text-foreground">Default warehouse</p>
+                    <p className="text-xs text-muted-foreground">Pre-selected when recording stock movements</p>
                   </div>
                   <input
                     type="checkbox"
@@ -177,7 +177,7 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
                 </div>
               </div>
               {mode === 'edit' && warehouse?.isDefault && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   To change default, set another warehouse as default first.
                 </p>
               )}
@@ -185,7 +185,7 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
 
             {/* Section 2: Details */}
             <div className="space-y-1">
-              <label htmlFor="warehouse-description" className="text-sm font-medium text-gray-700">Description</label>
+              <label htmlFor="warehouse-description" className="text-sm font-medium text-foreground">Description</label>
               <Textarea id="warehouse-description" placeholder="Add notes about this warehouse..." rows={3} {...register('description')} />
               {errors.description && <p className="text-xs text-red-600">{errors.description.message}</p>}
             </div>
@@ -207,28 +207,28 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
               {isAddressExpanded && (
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label htmlFor="warehouse-street" className="text-sm font-medium text-gray-700">Street</label>
+                    <label htmlFor="warehouse-street" className="text-sm font-medium text-foreground">Street</label>
                     <Input id="warehouse-street" placeholder="123 Main St" {...register('address.street')} />
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <label htmlFor="warehouse-city" className="text-sm font-medium text-gray-700">City</label>
+                      <label htmlFor="warehouse-city" className="text-sm font-medium text-foreground">City</label>
                       <Input id="warehouse-city" placeholder="City" {...register('address.city')} />
                     </div>
                     <div className="space-y-1">
-                      <label htmlFor="warehouse-state" className="text-sm font-medium text-gray-700">State</label>
+                      <label htmlFor="warehouse-state" className="text-sm font-medium text-foreground">State</label>
                       <Input id="warehouse-state" placeholder="State" {...register('address.state')} />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <label htmlFor="warehouse-country" className="text-sm font-medium text-gray-700">Country</label>
+                      <label htmlFor="warehouse-country" className="text-sm font-medium text-foreground">Country</label>
                       <Input id="warehouse-country" placeholder="Country" {...register('address.country')} />
                     </div>
                     <div className="space-y-1">
-                      <label htmlFor="warehouse-postal" className="text-sm font-medium text-gray-700">Postal code</label>
+                      <label htmlFor="warehouse-postal" className="text-sm font-medium text-foreground">Postal code</label>
                       <Input id="warehouse-postal" placeholder="Postal code" {...register('address.postalCode')} />
                     </div>
                   </div>
