@@ -226,7 +226,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
               {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description.message}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-sm font-medium">Category</label>
                 <select
@@ -308,7 +308,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
           <div className="space-y-4">
             <h3 className="text-sm font-semibold">Pricing</h3>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-sm font-medium">Cost Price</label>
                 <Input
@@ -402,7 +402,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                 Add
               </Button>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {watchImages.map((url, idx) => (
                 <div key={idx} className="relative group">
                   <img

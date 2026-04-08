@@ -120,7 +120,7 @@ export function OnboardingPage() {
             <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${stepLineProgress}%` }} />
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {STEP_LABELS.map((label, index) => {
               const stepNumber = index + 1;
               const isDone = completedSteps.has(stepNumber) || currentStep > stepNumber;

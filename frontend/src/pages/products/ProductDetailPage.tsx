@@ -126,7 +126,7 @@ export function ProductDetailPage() {
           {/* Pricing */}
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="mb-4 text-sm font-semibold text-foreground">Pricing</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
                 <div className="text-xs text-muted-foreground">Cost Price</div>
                 <div className="text-lg font-semibold text-foreground">{formatMoney(product.costPrice)}</div>
@@ -154,7 +154,7 @@ export function ProductDetailPage() {
           {tenant?.customFields && tenant.customFields.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <h3 className="mb-4 text-sm font-semibold text-foreground">Custom Fields</h3>
-              <dl className="grid grid-cols-2 gap-4">
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {tenant.customFields.map((field) => {
                   const value = product.customFields?.[field.key];
                   return (
@@ -206,7 +206,7 @@ export function ProductDetailPage() {
                 Alert at {product.lowStockThreshold} {product.unit}
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2">
+              <div className="grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
                 <PermissionGuard permission="stock.adjust">
                   <Button
                     size="sm"
@@ -276,33 +276,34 @@ export function ProductDetailPage() {
             {isStockLoading ? (
               <div className="space-y-2 text-sm text-muted-foreground">Loading warehouse stock...</div>
             ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2 text-xs font-semibold uppercase text-muted-foreground">
-                  <span>Warehouse</span>
-                  <span>In stock</span>
-                  <span>Reserved</span>
-                  <span>Available</span>
-                </div>
-                {stockByWarehouse.map((entry) => (
-                  <div key={entry.warehouse._id} className="grid grid-cols-4 gap-2 border-t border-border py-2 text-sm text-foreground">
-                    <WarehouseBadge
-                      code={entry.warehouse.code}
-                      name={entry.warehouse.name}
-                      isDefault={entry.warehouse.isDefault}
-                      size="sm"
-                    />
-                    <span>{entry.quantity}</span>
-                    <span>{entry.reservedQuantity}</span>
-                    <span>{entry.quantity - entry.reservedQuantity}</span>
+              <div className="overflow-x-auto">
+                <div className="min-w-120 space-y-2">
+                  <div className="grid grid-cols-4 gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                    <span>Warehouse</span>
+                    <span>In stock</span>
+                    <span>Reserved</span>
+                    <span>Available</span>
                   </div>
-                ))}
-                <div className="grid grid-cols-4 gap-2 border-t border-border pt-2 text-sm font-semibold text-foreground">
-                  <span>Total</span>
-                  <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.quantity, 0)}</span>
-                  <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.reservedQuantity, 0)}</span>
-                  <span>
-                    {stockByWarehouse.reduce((sum, entry) => sum + (entry.quantity - entry.reservedQuantity), 0)}
-                  </span>
+                  {stockByWarehouse.map((entry) => (
+                    <div key={entry.warehouse._id} className="grid grid-cols-4 gap-2 border-t border-border py-2 text-sm text-foreground">
+                      <WarehouseBadge
+                        code={entry.warehouse.code}
+                        name={entry.warehouse.name}
+                        isDefault={entry.warehouse.isDefault}
+                        size="sm"
+                      />
+                      <span>{entry.quantity}</span>
+                      <span>{entry.reservedQuantity}</span>
+                      <span>{entry.quantity - entry.reservedQuantity}</span>
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-4 gap-2 border-t border-border pt-2 text-sm font-semibold text-foreground">
+                    <span>Total</span>
+                    <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.quantity, 0)}</span>
+                    <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.reservedQuantity, 0)}</span>
+                    <span>
+                      {stockByWarehouse.reduce((sum, entry) => sum + (entry.quantity - entry.reservedQuantity), 0)}
+                    </span>
                 </div>
               </div>
             )}
