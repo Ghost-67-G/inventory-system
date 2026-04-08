@@ -89,12 +89,12 @@ function triggerErrorDownload(errors: ImportError[]): void {
 
 function statusBadge(job: IImportJob) {
   if (job.status === 'PENDING') {
-    return <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Queued</span>;
+    return <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Queued</span>;
   }
 
   if (job.status === 'PROCESSING') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
         <Loader2 className="h-3 w-3 animate-spin" />
         Processing...
       </span>
@@ -102,14 +102,14 @@ function statusBadge(job: IImportJob) {
   }
 
   if (job.status === 'COMPLETED') {
-    return <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Completed</span>;
+    return <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">Completed</span>;
   }
 
   if (job.status === 'PARTIAL') {
-    return <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Partial</span>;
+    return <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Partial</span>;
   }
 
-  return <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Failed</span>;
+  return <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">Failed</span>;
 }
 
 export function ImportPage() {
@@ -230,7 +230,7 @@ export function ImportPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-4">
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <h2 className="text-base font-semibold text-foreground">1. Download the template</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Use our CSV template to ensure your data is formatted correctly.
@@ -241,7 +241,7 @@ export function ImportPage() {
             </Button>
           </section>
 
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <h2 className="text-base font-semibold text-foreground">2. Prepare your data</h2>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               <li>- Required columns: sku, name, unit</li>
@@ -255,9 +255,9 @@ export function ImportPage() {
               <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground">
                 {'View all column descriptions ->'}
               </summary>
-              <div className="overflow-x-auto border-t">
+              <div className="overflow-x-auto border-t border-border">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="px-4 py-2">Column</th>
                       <th className="px-4 py-2">Type</th>
@@ -266,7 +266,7 @@ export function ImportPage() {
                   </thead>
                   <tbody>
                     {COLUMN_INFO.map((column) => (
-                      <tr key={column.name} className="border-t">
+                      <tr key={column.name} className="border-t border-border">
                         <td className="px-4 py-2 font-mono text-xs text-foreground">{column.name}</td>
                         <td className="px-4 py-2 text-muted-foreground">{column.required}</td>
                         <td className="px-4 py-2 text-muted-foreground">{column.description}</td>
@@ -278,7 +278,7 @@ export function ImportPage() {
             </details>
           </section>
 
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <h2 className="text-base font-semibold text-foreground">3. Upload your file</h2>
 
             {!isUploading && !currentJob?.status && (
@@ -346,7 +346,7 @@ export function ImportPage() {
                       Import {estimateRowCount(selectedFile).toLocaleString()} rows
                     </Button>
                     <button
-                      className="mt-2 w-full text-sm text-slate-500 hover:text-slate-700"
+                      className="mt-2 w-full text-sm text-muted-foreground hover:text-foreground"
                       onClick={() => setSelectedFile(null)}
                       type="button"
                     >
@@ -359,8 +359,8 @@ export function ImportPage() {
 
             {isUploading ? (
               <div className="mt-4 space-y-2">
-                <p className="text-sm font-medium text-slate-700">Uploading... {uploadProgress}%</p>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                <p className="text-sm font-medium text-foreground">Uploading... {uploadProgress}%</p>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div className="h-full bg-blue-600 transition-all" style={{ width: `${uploadProgress}%` }} />
                 </div>
               </div>
@@ -368,30 +368,30 @@ export function ImportPage() {
 
             {currentJob && (currentJob.status === 'PENDING' || currentJob.status === 'PROCESSING') ? (
               <div className="mt-4 space-y-2">
-                <p className="text-sm font-medium text-slate-800">Processing your import...</p>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                <p className="text-sm font-medium text-foreground">Processing your import...</p>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div className="h-full bg-blue-600 transition-all" style={{ width: `${processingPct}%` }} />
                 </div>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-muted-foreground">
                   {currentJob.processedRows.toLocaleString()} of {currentJob.totalRows.toLocaleString()} rows processed
                 </p>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-muted-foreground">
                   {currentJob.successCount.toLocaleString()} added - {currentJob.errorCount.toLocaleString()} errors
                 </p>
               </div>
             ) : null}
 
             {terminalStatus === 'COMPLETED' ? (
-              <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
-                <p className="flex items-center gap-2 text-sm font-semibold text-green-700">
+              <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900/50 dark:bg-green-900/20">
+                <p className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400">
                   <CheckCircle2 className="h-5 w-5" />
                   Import complete
                 </p>
-                <p className="mt-1 text-sm text-green-700">
+                <p className="mt-1 text-sm text-green-700 dark:text-green-400">
                   {finishedJob?.successCount.toLocaleString()} products added successfully
                 </p>
                 {(finishedJob?.errorCount ?? 0) > 0 ? (
-                  <p className="mt-1 text-sm text-green-700">
+                  <p className="mt-1 text-sm text-green-700 dark:text-green-400">
                     {finishedJob?.errorCount.toLocaleString()} rows had errors - see below
                   </p>
                 ) : null}
@@ -402,12 +402,12 @@ export function ImportPage() {
             ) : null}
 
             {terminalStatus === 'FAILED' ? (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
-                <p className="flex items-center gap-2 text-sm font-semibold text-red-700">
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-900/20">
+                <p className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">
                   <XCircle className="h-5 w-5" />
                   Import failed
                 </p>
-                <p className="mt-1 text-sm text-red-700">All rows had errors - no products were added</p>
+                <p className="mt-1 text-sm text-red-700 dark:text-red-400">All rows had errors - no products were added</p>
                 <Button className="mt-3" variant="outline" onClick={resetUploader}>
                   Import another file
                 </Button>
@@ -415,12 +415,12 @@ export function ImportPage() {
             ) : null}
 
             {terminalStatus === 'PARTIAL' ? (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <p className="flex items-center gap-2 text-sm font-semibold text-amber-700">
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-900/20">
+                <p className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="h-5 w-5" />
                   Import finished with errors
                 </p>
-                <p className="mt-1 text-sm text-amber-700">
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
                   {finishedJob?.successCount.toLocaleString()} products added, {finishedJob?.errorCount.toLocaleString()} rows skipped
                 </p>
                 <Button className="mt-3" variant="outline" onClick={resetUploader}>
@@ -431,11 +431,11 @@ export function ImportPage() {
           </section>
 
           {currentJob && currentJob.errorCount > 0 ? (
-            <section className="rounded-xl border bg-white p-5 shadow-sm">
+            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">Error report</h2>
-                  <p className="text-sm text-slate-600">These rows were not imported. Fix the issues and re-upload.</p>
+                  <h2 className="text-base font-semibold text-foreground">Error report</h2>
+                  <p className="text-sm text-muted-foreground">These rows were not imported. Fix the issues and re-upload.</p>
                 </div>
                 <Button variant="outline" onClick={() => triggerErrorDownload(displayedErrors)}>
                   Download error report
@@ -450,7 +450,7 @@ export function ImportPage() {
 
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2">Row #</th>
                       <th className="px-3 py-2">SKU</th>
@@ -460,11 +460,11 @@ export function ImportPage() {
                   </thead>
                   <tbody>
                     {displayedErrors.map((error, index) => (
-                      <tr className="border-t" key={`${error.row}-${error.field}-${index}`}>
-                        <td className="px-3 py-2 text-slate-700">{error.row === -1 ? '-' : error.row}</td>
-                        <td className="px-3 py-2 font-mono text-xs text-slate-600">{error.sku || '-'}</td>
-                        <td className="px-3 py-2 text-slate-700">{error.field}</td>
-                        <td className="px-3 py-2 text-slate-700">{error.message}</td>
+                      <tr className="border-t border-border" key={`${error.row}-${error.field}-${index}`}>
+                        <td className="px-3 py-2 text-foreground">{error.row === -1 ? '-' : error.row}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{error.sku || '-'}</td>
+                        <td className="px-3 py-2 text-foreground">{error.field}</td>
+                        <td className="px-3 py-2 text-foreground">{error.message}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -474,20 +474,20 @@ export function ImportPage() {
           ) : null}
         </div>
 
-        <aside className="rounded-xl border bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900">Import history</h2>
+        <aside className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-foreground">Import history</h2>
 
           {historyQuery.isLoading && historyJobs.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">Loading...</p>
+            <p className="mt-3 text-sm text-muted-foreground">Loading...</p>
           ) : null}
 
           {!historyQuery.isLoading && historyJobs.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">No imports yet</p>
+            <p className="mt-3 text-sm text-muted-foreground">No imports yet</p>
           ) : null}
 
           <div className="mt-4 space-y-3">
             {(isMobile ? historyJobs.slice(0, 5) : historyJobs).map((job) => (
-              <div className="rounded-lg border p-3" key={job._id}>
+              <div className="rounded-lg border border-border p-3" key={job._id}>
                 <button
                   className="w-full text-left"
                   onClick={() => setExpandedJobId((previous) => (previous === job._id ? null : job._id))}
@@ -495,20 +495,20 @@ export function ImportPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="line-clamp-1 text-sm font-medium text-slate-900">{job.fileName}</p>
-                      <p className="text-xs text-slate-500">{formatRelativeTime(job.createdAt)}</p>
+                      <p className="line-clamp-1 text-sm font-medium text-foreground">{job.fileName}</p>
+                      <p className="text-xs text-muted-foreground">{formatRelativeTime(job.createdAt)}</p>
                     </div>
                     {statusBadge(job)}
                   </div>
-                  <p className="mt-2 text-xs text-slate-600">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     {job.successCount.toLocaleString()}/{job.totalRows.toLocaleString()} rows imported
                   </p>
                 </button>
 
                 {expandedJobId === job._id && job.errors.length > 0 ? (
-                  <div className="mt-3 max-h-40 overflow-y-auto rounded border bg-slate-50 p-2">
+                  <div className="mt-3 max-h-40 overflow-y-auto rounded border border-border bg-muted/50 p-2">
                     {sortErrors(job.errors).map((error, index) => (
-                      <p className="text-xs text-slate-700" key={`${error.row}-${error.field}-${index}`}>
+                      <p className="text-xs text-muted-foreground" key={`${error.row}-${error.field}-${index}`}>
                         Row {error.row === -1 ? '-' : error.row}: {error.message}
                       </p>
                     ))}
