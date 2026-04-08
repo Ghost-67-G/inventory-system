@@ -124,7 +124,7 @@ export function StepOne({ status, onNext }: StepOneProps) {
 
       <div>
         <label className="mb-1 block text-sm font-medium text-foreground">Currency</label>
-        <select className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:h-9" {...register('currency')}>
+        <select className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9" {...register('currency')}>
           {CURRENCY_OPTIONS.map((currency) => (
             <option key={currency.code} value={currency.code}>
               {toFlag(currency.flag)} {currency.label} ({currency.code}) {currency.symbol}
@@ -136,7 +136,7 @@ export function StepOne({ status, onNext }: StepOneProps) {
 
       <div>
         <label className="mb-1 block text-sm font-medium text-foreground">Timezone</label>
-        <select className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:h-9" {...register('timezone')}>
+        <select className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9" {...register('timezone')}>
           {Object.entries(TIMEZONE_GROUPS).map(([group, options]) => (
             <optgroup key={group} label={group}>
               {options.map((timezone) => (

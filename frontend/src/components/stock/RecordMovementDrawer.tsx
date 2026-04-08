@@ -255,7 +255,7 @@ export function RecordMovementDrawer({
           <div className="space-y-1">
             <label className="text-sm font-medium">Product</label>
             <select
-              className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
+              className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
               value={form.watch('productId')}
               disabled={Boolean(prefilledProductId)}
               onChange={(e) => form.setValue('productId', e.target.value)}
@@ -273,7 +273,7 @@ export function RecordMovementDrawer({
             <div className="space-y-1">
               <label className="text-sm font-medium">Warehouse</label>
               <select
-                className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
+                className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                 value={form.watch('warehouseId')}
                 onChange={(e) => form.setValue('warehouseId', e.target.value)}
               >
@@ -290,7 +290,7 @@ export function RecordMovementDrawer({
               <div className="space-y-1">
                 <label className="text-sm font-medium">Source warehouse</label>
                 <select
-                  className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                   value={form.watch('sourceWarehouseId')}
                   onChange={(e) => form.setValue('sourceWarehouseId', e.target.value)}
                 >
@@ -305,7 +305,7 @@ export function RecordMovementDrawer({
               <div className="space-y-1">
                 <label className="text-sm font-medium">Destination warehouse</label>
                 <select
-                  className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                   value={form.watch('destinationWarehouseId')}
                   onChange={(e) => form.setValue('destinationWarehouseId', e.target.value)}
                 >
@@ -341,7 +341,7 @@ export function RecordMovementDrawer({
             <div className="space-y-1">
               <label className="text-sm font-medium">Reference (optional)</label>
               <select
-                className="h-11 w-full rounded-md border px-3 py-2 text-sm md:h-9"
+                className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                 value={form.watch('referenceType') ?? 'MANUAL'}
                 onChange={(e) => form.setValue('referenceType', e.target.value as 'MANUAL' | 'PURCHASE' | 'SALE')}
               >

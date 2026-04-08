@@ -171,7 +171,7 @@ export function StockValuationReport() {
         <select 
           value={params.categoryId || ''} 
           onChange={(e) => updateParams({ categoryId: e.target.value || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All categories</option>
           {categories?.map((c) => (
@@ -182,7 +182,7 @@ export function StockValuationReport() {
         <select 
           value={params.warehouseId || ''} 
           onChange={(e) => updateParams({ warehouseId: e.target.value || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All warehouses</option>
           {warehouses?.map((w) => (
@@ -193,7 +193,7 @@ export function StockValuationReport() {
         <select 
           value={params.isActive} 
           onChange={(e) => updateParams({ isActive: e.target.value as 'true' | 'false' })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="true">Active</option>
           <option value="false">Inactive</option>
@@ -202,7 +202,7 @@ export function StockValuationReport() {
         <select 
           value={params.sortBy} 
           onChange={(e) => updateParams({ sortBy: e.target.value as any })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="stockValue">Stock Value</option>
           <option value="totalStock">Total Stock</option>

@@ -292,7 +292,7 @@ export function MovementHistoryReport() {
         <select 
           value={params.type || ''} 
           onChange={(e) => updateParams({ type: e.target.value as any || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           {MOVEMENT_TYPES.map((mt) => (
             <option key={mt.value} value={mt.value}>{mt.label}</option>
@@ -302,7 +302,7 @@ export function MovementHistoryReport() {
         <select 
           value={params.productId || ''} 
           onChange={(e) => updateParams({ productId: e.target.value || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All products</option>
           {products?.map((p) => (
@@ -313,7 +313,7 @@ export function MovementHistoryReport() {
         <select 
           value={params.warehouseId || ''} 
           onChange={(e) => updateParams({ warehouseId: e.target.value || undefined })}
-          className="px-3 py-2 border rounded-md text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All warehouses</option>
           {warehouses?.map((w) => (
