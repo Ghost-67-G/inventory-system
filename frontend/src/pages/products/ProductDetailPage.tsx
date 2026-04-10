@@ -349,7 +349,7 @@ export function ProductDetailPage() {
                     <div key={link._id} className="rounded border border-border p-2 text-sm">
                       <p className="font-medium">{supplier?.name ?? 'Supplier'}</p>
                       <p className="text-xs text-muted-foreground">
-                        {supplier?.code ?? '-'} | {formatMoney(link.unitCost, link.currency)}
+                        {supplier?.code ?? '-'} | {formatMoney(link.unitCost)}
                         {link.isPreferred ? ' | Preferred' : ''}
                       </p>
                     </div>

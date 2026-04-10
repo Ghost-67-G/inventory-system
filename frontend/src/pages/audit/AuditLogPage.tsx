@@ -24,7 +24,9 @@ const ACTIONS_BY_ENTITY: Record<AuditEntityType, AuditAction[]> = {
   warehouse: ['warehouse.created', 'warehouse.updated', 'warehouse.deactivated', 'warehouse.reactivated'],
   user: ['user.invited', 'user.role_changed', 'user.deactivated', 'user.reactivated'],
   stock: ['stock.adjusted'],
-  settings: ['settings.updated']
+  settings: ['settings.updated'],
+  supplier: ['supplier.created', 'supplier.updated', 'supplier.deactivated'],
+  purchase_order: ['po.created', 'po.updated', 'po.sent', 'po.received', 'po.partial_received', 'po.cancelled']
 };
 
 function toActionLabel(action: AuditAction): string {
