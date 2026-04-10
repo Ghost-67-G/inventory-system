@@ -25,6 +25,8 @@ import warehousesRoutes from './modules/warehouses/warehouses.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import importRoutes from './modules/import/import.routes';
 import auditRoutes from './modules/audit/audit.routes';
+import suppliersRoutes from './modules/suppliers/suppliers.routes';
+import purchaseOrdersRoutes from './modules/purchase-orders/po.routes';
 
 const app = express();
 
@@ -113,6 +115,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/suppliers', suppliersRoutes);
+app.use('/api/purchase-orders', purchaseOrdersRoutes);
 
 app.use(errorHandler);
 

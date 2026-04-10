@@ -26,7 +26,13 @@ export const PERMISSIONS = [
   'settings.view',
   'settings.manage',
   'audit.view',
-  'dashboard.view'
+  'dashboard.view',
+  'supplier.view',
+  'supplier.manage',
+  'po.view',
+  'po.create',
+  'po.update',
+  'po.receive'
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -55,7 +61,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'settings.view',
     'settings.manage',
     'audit.view',
-    'dashboard.view'
+    'dashboard.view',
+    'supplier.view',
+    'supplier.manage',
+    'po.view',
+    'po.create',
+    'po.update',
+    'po.receive'
   ],
   manager: [
     'product.view',
@@ -72,7 +84,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'alert.acknowledge',
     'report.view',
     'settings.view',
-    'dashboard.view'
+    'dashboard.view',
+    'supplier.view',
+    'supplier.manage',
+    'po.view',
+    'po.create',
+    'po.update',
+    'po.receive'
   ],
   staff: [
     'product.view',
@@ -82,14 +100,19 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'warehouse.view',
     'category.view',
     'alert.view',
-    'alert.acknowledge'
+    'alert.acknowledge',
+    'supplier.view',
+    'po.view',
+    'po.receive'
   ],
   viewer: [
     'product.view',
     'stock.view',
     'warehouse.view',
     'category.view',
-    'alert.view'
+    'alert.view',
+    'supplier.view',
+    'po.view'
   ]
 };
 

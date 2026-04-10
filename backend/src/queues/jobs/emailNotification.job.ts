@@ -50,3 +50,19 @@ export async function enqueueImportCompletionEmail(tenantId: string, importJobId
     }
   );
 }
+
+export async function enqueuePOEmail(tenantId: string, poId: string): Promise<void> {
+  await emailNotificationQueue.add(
+    'po-sent',
+    { tenantId, poId },
+    {
+      jobId: `email:po:${poId}`,
+      delay: 0,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 5000
+      }
+    }
+  );
+}

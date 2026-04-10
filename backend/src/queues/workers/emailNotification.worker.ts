@@ -5,6 +5,7 @@ import { config } from '../../config';
 import { redis } from '../../config/redis';
 import { ImportJob } from '../../models/ImportJob';
 import { Product } from '../../models/Product';
+import { PurchaseOrderModel } from '../../models/PurchaseOrder';
 import { StockAlertModel } from '../../models/StockAlert';
 import { StockMovementModel } from '../../models/StockMovement';
 import { TenantModel } from '../../models/Tenant';
@@ -12,7 +13,8 @@ import { UserModel } from '../../models/User';
 import {
   sendDailySummaryEmail,
   sendImportCompletionEmail,
-  sendLowStockAlertEmail
+  sendLowStockAlertEmail,
+  sendPurchaseOrderEmail
 } from '../../utils/email';
 import { logger } from '../../utils/logger';
 import { enqueueDailySummaryEmail } from '../jobs/emailNotification.job';
@@ -20,6 +22,7 @@ import { enqueueDailySummaryEmail } from '../jobs/emailNotification.job';
 type LowStockAlertJobData = { tenantId: string; alertId: string };
 type DailySummaryJobData = { tenantId: string };
 type ImportCompletionJobData = { tenantId: string; importJobId: string; userId: string };
+type POSentJobData = { tenantId: string; poId: string };
 
 function formatDisplayDate(isoDate: string): string {
   const date = DateTime.fromISO(isoDate);
@@ -210,6 +213,52 @@ async function handleImportCompletion(data: ImportCompletionJobData): Promise<vo
   });
 }
 
+async function handlePOSent(data: POSentJobData): Promise<void> {
+  const [tenant, order, owners] = await Promise.all([
+    TenantModel.findById(data.tenantId).select('name').lean(),
+    PurchaseOrderModel.findOne({ _id: data.poId, tenantId: data.tenantId })
+      .populate('supplierId', 'name email')
+      .lean(),
+    UserModel.find({ tenantId: data.tenantId, role: 'owner', isActive: true }).select('email').lean()
+  ]);
+
+  if (!tenant || !order) {
+    return;
+  }
+
+  const supplier = order.supplierId as unknown as { name?: string; email?: string };
+  const supplierEmail = supplier?.email;
+  const ownerEmail = owners[0]?.email;
+
+  if (!supplierEmail || !ownerEmail) {
+    return;
+  }
+
+  await sendPurchaseOrderEmail(supplierEmail, ownerEmail, {
+    tenantName: tenant.name,
+    poNumber: order.poNumber,
+    supplierName: order.supplierName,
+    orderDate: DateTime.fromJSDate(order.orderDate).toFormat('yyyy-LL-dd'),
+    expectedDeliveryDate: order.expectedDeliveryDate
+      ? DateTime.fromJSDate(order.expectedDeliveryDate).toFormat('yyyy-LL-dd')
+      : null,
+    currency: order.currency,
+    subtotal: order.subtotal,
+    taxRate: order.taxRate,
+    taxAmount: order.taxAmount,
+    shippingCost: order.shippingCost,
+    totalAmount: order.totalAmount,
+    notes: order.notes,
+    lineItems: order.lineItems.map((lineItem) => ({
+      productName: lineItem.productName,
+      productSku: lineItem.productSku,
+      orderedQty: lineItem.orderedQty,
+      unitCost: lineItem.unitCost,
+      totalCost: lineItem.totalCost
+    }))
+  });
+}
+
 export function startEmailNotificationWorker(): Worker {
   const worker = new Worker(
     'email-notifications',
@@ -226,6 +275,11 @@ export function startEmailNotificationWorker(): Worker {
 
       if (job.name === 'import-completion') {
         await handleImportCompletion(job.data as ImportCompletionJobData);
+        return;
+      }
+
+      if (job.name === 'po-sent') {
+        await handlePOSent(job.data as POSentJobData);
       }
     },
     {

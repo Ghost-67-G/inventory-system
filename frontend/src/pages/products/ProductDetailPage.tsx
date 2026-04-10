@@ -14,6 +14,7 @@ import { useTenantStore } from '@/store/tenantStore';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
 import { RecordMovementDrawer } from '@/components/stock/RecordMovementDrawer';
 import { EntityHistoryDrawer } from '@/components/audit/EntityHistoryDrawer';
+import { useProductSuppliers } from '@/hooks/useSuppliers';
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +30,7 @@ export function ProductDetailPage() {
 
   const { data: product, isLoading } = useProduct(id ?? '');
   const { data: stockByWarehouse = [], isLoading: isStockLoading } = useProductStock(id ?? null);
+  const suppliersQuery = useProductSuppliers(id ?? '');
 
   if (isLoading) {
     return (
@@ -304,6 +306,7 @@ export function ProductDetailPage() {
                     <span>
                       {stockByWarehouse.reduce((sum, entry) => sum + (entry.quantity - entry.reservedQuantity), 0)}
                     </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -332,6 +335,47 @@ export function ProductDetailPage() {
                 Change history
               </Button>
             </PermissionGuard>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">Suppliers</h3>
+            <div className="space-y-2">
+              {(suppliersQuery.data ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No supplier links for this product</p>
+              ) : (
+                (suppliersQuery.data ?? []).map((link) => {
+                  const supplier = typeof link.supplierId === 'string' ? null : link.supplierId;
+                  return (
+                    <div key={link._id} className="rounded border border-border p-2 text-sm">
+                      <p className="font-medium">{supplier?.name ?? 'Supplier'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {supplier?.code ?? '-'} | {formatMoney(link.unitCost, link.currency)}
+                        {link.isPreferred ? ' | Preferred' : ''}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+              <div className="flex gap-3 pt-1">
+                <button className="text-xs text-blue-600 hover:underline" onClick={() => navigate('/suppliers')}>
+                  Manage suppliers
+                </button>
+                <button
+                  className="text-xs text-blue-600 hover:underline"
+                  onClick={() => navigate(`/purchase-orders?productId=${product._id}`)}
+                >
+                  Create PO
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">Purchase order history</h3>
+            <p className="text-sm text-muted-foreground">View purchase orders containing this product.</p>
+            <button className="mt-2 text-xs text-blue-600 hover:underline" onClick={() => navigate('/purchase-orders')}>
+              View all purchase orders
+            </button>
           </div>
         </div>
       </div>

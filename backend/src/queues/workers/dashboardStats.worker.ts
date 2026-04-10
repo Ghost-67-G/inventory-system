@@ -4,6 +4,7 @@ import { config } from '../../config';
 import { redis } from '../../config/redis';
 import { getIO } from '../../config/socket';
 import { Product } from '../../models/Product';
+import { PurchaseOrderModel } from '../../models/PurchaseOrder';
 import { StockAlertModel } from '../../models/StockAlert';
 import { StockMovementModel } from '../../models/StockMovement';
 import { WarehouseModel } from '../../models/Warehouse';
@@ -16,6 +17,7 @@ export interface DashboardOverview {
   totalStockValue: number;
   lowStockProducts: number;
   pendingAlerts: number;
+  pendingPOs: number;
   activeWarehouses: number;
   totalWarehouses: number;
 }
@@ -60,7 +62,7 @@ export async function computeAndCacheDashboardStats(tenantId: string): Promise<D
 
   // Single aggregation: product count, total units, stock value, low-stock count, and category breakdown
   // Uses the covered compound index: { tenantId, isActive, totalStock, costPrice, lowStockThreshold, categoryId }
-  const [productCombined, pendingAlertCount, warehouseStats, movementChart, warehouseChart] = await Promise.all([
+  const [productCombined, pendingAlertCount, poCount, warehouseStats, movementChart, warehouseChart] = await Promise.all([
     Product.aggregate([
       { $match: { tenantId: objectId, isActive: true } },
       {
@@ -76,6 +78,10 @@ export async function computeAndCacheDashboardStats(tenantId: string): Promise<D
       }
     ]),
     StockAlertModel.countDocuments({ tenantId: objectId, status: 'PENDING' }),
+    PurchaseOrderModel.countDocuments({
+      tenantId: objectId,
+      status: { $in: ['DRAFT', 'SENT', 'PARTIAL'] }
+    }),
     WarehouseModel.aggregate([
       { $match: { tenantId: objectId } },
       {
@@ -213,6 +219,7 @@ export async function computeAndCacheDashboardStats(tenantId: string): Promise<D
       totalStockValue: roundTo2(totalStockValue),
       lowStockProducts: lowStockCount,
       pendingAlerts: pendingAlertCount,
+      pendingPOs: poCount,
       activeWarehouses: (warehouseStats as Array<{ active: number }>)[0]?.active ?? 0,
       totalWarehouses: (warehouseStats as Array<{ total: number }>)[0]?.total ?? 0
     },

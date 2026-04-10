@@ -16,9 +16,18 @@ export type AuditAction =
   | 'user.deactivated'
   | 'user.reactivated'
   | 'stock.adjusted'
-  | 'settings.updated';
+  | 'settings.updated'
+  | 'supplier.created'
+  | 'supplier.updated'
+  | 'supplier.deactivated'
+  | 'po.created'
+  | 'po.updated'
+  | 'po.sent'
+  | 'po.received'
+  | 'po.partial_received'
+  | 'po.cancelled';
 
-export type AuditEntityType = 'product' | 'category' | 'warehouse' | 'user' | 'stock' | 'settings';
+export type AuditEntityType = 'product' | 'category' | 'warehouse' | 'user' | 'stock' | 'settings' | 'supplier' | 'purchase_order';
 
 export interface IAuditChange {
   field: string;
@@ -75,13 +84,22 @@ const auditLogSchema = new Schema<IAuditLog>(
         'user.deactivated',
         'user.reactivated',
         'stock.adjusted',
-        'settings.updated'
+        'settings.updated',
+        'supplier.created',
+        'supplier.updated',
+        'supplier.deactivated',
+        'po.created',
+        'po.updated',
+        'po.sent',
+        'po.received',
+        'po.partial_received',
+        'po.cancelled'
       ],
       required: true
     },
     entityType: {
       type: String,
-      enum: ['product', 'category', 'warehouse', 'user', 'stock', 'settings'],
+      enum: ['product', 'category', 'warehouse', 'user', 'stock', 'settings', 'supplier', 'purchase_order'],
       required: true
     },
     entityId: { type: Schema.Types.ObjectId, default: null },
