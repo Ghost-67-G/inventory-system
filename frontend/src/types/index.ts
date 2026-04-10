@@ -24,7 +24,13 @@ export const PERMISSIONS = [
   'settings.view',
   'settings.manage',
   'audit.view',
-  'dashboard.view'
+  'dashboard.view',
+  'supplier.view',
+  'supplier.manage',
+  'po.view',
+  'po.create',
+  'po.update',
+  'po.receive'
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -53,7 +59,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'settings.view',
     'settings.manage',
     'audit.view',
-    'dashboard.view'
+    'dashboard.view',
+    'supplier.view',
+    'supplier.manage',
+    'po.view',
+    'po.create',
+    'po.update',
+    'po.receive'
   ],
   manager: [
     'product.view',
@@ -70,7 +82,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'alert.acknowledge',
     'report.view',
     'settings.view',
-    'dashboard.view'
+    'dashboard.view',
+    'supplier.view',
+    'supplier.manage',
+    'po.view',
+    'po.create',
+    'po.update',
+    'po.receive'
   ],
   staff: [
     'product.view',
@@ -80,9 +98,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'warehouse.view',
     'category.view',
     'alert.view',
-    'alert.acknowledge'
+    'alert.acknowledge',
+    'supplier.view',
+    'po.view',
+    'po.receive'
   ],
-  viewer: ['product.view', 'stock.view', 'warehouse.view', 'category.view', 'alert.view']
+  viewer: ['product.view', 'stock.view', 'warehouse.view', 'category.view', 'alert.view', 'supplier.view', 'po.view']
 };
 
 export const hasPermission = (role: Role, permission: Permission): boolean => {
@@ -318,9 +339,18 @@ export type AuditAction =
   | 'user.deactivated'
   | 'user.reactivated'
   | 'stock.adjusted'
-  | 'settings.updated';
+  | 'settings.updated'
+  | 'supplier.created'
+  | 'supplier.updated'
+  | 'supplier.deactivated'
+  | 'po.created'
+  | 'po.updated'
+  | 'po.sent'
+  | 'po.received'
+  | 'po.partial_received'
+  | 'po.cancelled';
 
-export type AuditEntityType = 'product' | 'category' | 'warehouse' | 'user' | 'stock' | 'settings';
+export type AuditEntityType = 'product' | 'category' | 'warehouse' | 'user' | 'stock' | 'settings' | 'supplier' | 'purchase_order';
 
 export interface AuditChange {
   field: string;
@@ -689,8 +719,186 @@ export interface DashboardOverview {
   totalStockValue: number;
   lowStockProducts: number;
   pendingAlerts: number;
+  pendingPOs: number;
   activeWarehouses: number;
   totalWarehouses: number;
+}
+
+export type POStatus = 'DRAFT' | 'SENT' | 'PARTIAL' | 'RECEIVED' | 'CANCELLED';
+export type PaymentTerms = 'immediate' | 'net15' | 'net30' | 'net45' | 'net60' | 'custom';
+
+export interface ISupplier {
+  _id: string;
+  tenantId: string;
+  name: string;
+  code: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: { street: string; city: string; state: string; country: string; postalCode: string };
+  paymentTerms: PaymentTerms;
+  paymentTermsDays: number;
+  currency: string;
+  leadTimeDays: number;
+  minimumOrderValue: number;
+  notes: string;
+  isActive: boolean;
+  totalOrders: number;
+  totalOrderValue: number;
+  lastOrderDate: string | null;
+  onTimeDeliveryRate: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ISupplierDropdownItem {
+  _id: string;
+  name: string;
+  code: string;
+  currency: string;
+  leadTimeDays: number;
+  paymentTerms: PaymentTerms;
+}
+
+export interface ISupplierProduct {
+  _id: string;
+  supplierId: string | { _id: string; name: string; code: string; email: string; leadTimeDays: number; currency: string };
+  productId: string;
+  supplierSku: string;
+  unitCost: number;
+  currency: string;
+  minimumOrderQty: number;
+  leadTimeDays: number;
+  isPreferred: boolean;
+  notes: string;
+}
+
+export interface IPOLineItem {
+  productId: string;
+  productName: string;
+  productSku: string;
+  unit: string;
+  orderedQty: number;
+  receivedQty: number;
+  unitCost: number;
+  totalCost: number;
+  notes: string;
+}
+
+export interface IPurchaseOrder {
+  _id: string;
+  tenantId: string;
+  poNumber: string;
+  supplierId: string;
+  supplier?: ISupplier;
+  supplierName: string;
+  warehouseId: string;
+  warehouse?: { _id: string; name: string; code: string };
+  warehouseName: string;
+  status: POStatus;
+  lineItems: IPOLineItem[];
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  shippingCost: number;
+  totalAmount: number;
+  currency: string;
+  orderDate: string;
+  expectedDeliveryDate: string | null;
+  receivedDate: string | null;
+  notes: string;
+  supplierReference: string;
+  attachmentUrls: string[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface POStats {
+  totalDraft: number;
+  totalSent: number;
+  totalPartial: number;
+  totalReceived: number;
+  totalPending: number;
+  pendingValue: number;
+  thisMonthValue: number;
+}
+
+export interface CreateSupplierDto {
+  name: string;
+  code?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  address?: { street?: string; city?: string; state?: string; country?: string; postalCode?: string };
+  paymentTerms?: PaymentTerms;
+  paymentTermsDays?: number;
+  currency?: string;
+  leadTimeDays?: number;
+  minimumOrderValue?: number;
+  notes?: string;
+}
+
+export type UpdateSupplierDto = Partial<CreateSupplierDto>;
+
+export interface LinkSupplierProductDto {
+  productId: string;
+  supplierSku?: string;
+  unitCost: number;
+  currency?: string;
+  minimumOrderQty?: number;
+  leadTimeDays?: number;
+  isPreferred?: boolean;
+  notes?: string;
+}
+
+export type UpdateSupplierProductDto = Partial<LinkSupplierProductDto>;
+
+export interface ListSuppliersParams {
+  search?: string;
+  isActive?: 'true' | 'false';
+  cursor?: string;
+  limit?: number;
+}
+
+export interface CreatePODto {
+  supplierId: string;
+  warehouseId: string;
+  expectedDeliveryDate?: string;
+  taxRate?: number;
+  shippingCost?: number;
+  notes?: string;
+  supplierReference?: string;
+  lineItems: Array<{
+    productId: string;
+    orderedQty: number;
+    unitCost: number;
+    notes?: string;
+  }>;
+}
+
+export type UpdatePODto = Partial<CreatePODto>;
+
+export interface ReceiveItemsDto {
+  lineItems: Array<{
+    productId: string;
+    receivedQty: number;
+    notes?: string;
+  }>;
+  receivedDate?: string;
+}
+
+export interface ListPOParams {
+  cursor?: string;
+  limit?: number;
+  status?: POStatus | 'OPEN';
+  supplierId?: string;
+  warehouseId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
 }
 
 export interface MovementChartData {

@@ -8,6 +8,7 @@ import {
   Minus,
   Package,
   Plus,
+  ShoppingCart,
   TrendingUp,
   Warehouse
 } from 'lucide-react';
@@ -35,8 +36,8 @@ function formatMoney(value: number, currency: string): string {
 
 function DashboardStatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-      {Array.from({ length: 6 }).map((_, index) => (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+      {Array.from({ length: 7 }).map((_, index) => (
         <div key={index} className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <Skeleton className="mb-3 h-4 w-2/3" />
           <Skeleton className="mb-2 h-8 w-1/2" />
@@ -92,7 +93,7 @@ export function DashboardPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
           <StatCard
             label="Total products"
             value={stats?.overview.totalProducts.toLocaleString() ?? 0}
@@ -141,6 +142,15 @@ export function DashboardPage() {
             icon={Boxes}
             accentColor="purple"
             helperText="Units in stock"
+          />
+
+          <StatCard
+            label="Pending orders"
+            value={stats?.overview.pendingPOs ?? 0}
+            icon={ShoppingCart}
+            accentColor={(stats?.overview.pendingPOs ?? 0) > 0 ? 'amber' : 'green'}
+            helperText="Pending POs"
+            onClick={() => navigate('/purchase-orders?status=OPEN')}
           />
         </div>
       )}

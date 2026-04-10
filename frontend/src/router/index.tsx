@@ -24,6 +24,10 @@ import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { UsersPage } from '@/pages/settings/UsersPage';
 import { ReportsPage } from '@/pages/reports/ReportsPage';
 import { AuditLogPage } from '@/pages/audit/AuditLogPage';
+import { SuppliersPage } from '@/pages/suppliers/SuppliersPage';
+import { SupplierDetailPage } from '@/pages/suppliers/SupplierDetailPage';
+import { PurchaseOrdersPage } from '@/pages/purchase-orders/PurchaseOrdersPage';
+import { PurchaseOrderDetailPage } from '@/pages/purchase-orders/PurchaseOrderDetailPage';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
 import { useAuthStore } from '@/store/authStore';
 import { useTenantStore } from '@/store/tenantStore';
@@ -146,6 +150,38 @@ export const router = createBrowserRouter([
                     element: (
                       <PermissionGuard permission="alert.view" fallback={<Navigate to="/" replace />}>
                         <AlertsPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/suppliers',
+                    element: (
+                      <PermissionGuard permission="supplier.view" fallback={<Navigate to="/" replace />}>
+                        <SuppliersPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/suppliers/:id',
+                    element: (
+                      <PermissionGuard permission="supplier.view" fallback={<Navigate to="/" replace />}>
+                        <SupplierDetailPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/purchase-orders',
+                    element: (
+                      <PermissionGuard permission="po.view" fallback={<Navigate to="/" replace />}>
+                        <PurchaseOrdersPage />
+                      </PermissionGuard>
+                    )
+                  },
+                  {
+                    path: '/purchase-orders/:id',
+                    element: (
+                      <PermissionGuard permission="po.view" fallback={<Navigate to="/" replace />}>
+                        <PurchaseOrderDetailPage />
                       </PermissionGuard>
                     )
                   },

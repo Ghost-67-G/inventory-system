@@ -8,7 +8,7 @@ if (config.RESEND_API_KEY) {
   resendClient = new Resend(config.RESEND_API_KEY);
 }
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+async function sendEmail(to: string, subject: string, html: string, replyTo?: string): Promise<void> {
   if (!resendClient) {
     if (config.NODE_ENV === 'development') {
       logger.info('email_dev_fallback', { to, subject, html });
@@ -22,12 +22,97 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
     from: config.EMAIL_FROM,
     to,
     subject,
-    html
+    html,
+    ...(replyTo ? { replyTo } : {})
   });
 
   if (result.error) {
     logger.error('email_send_failed', { to, subject, error: result.error });
   }
+}
+
+interface POEmailLineItem {
+  productName: string;
+  productSku: string;
+  orderedQty: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+interface POEmailData {
+  tenantName: string;
+  poNumber: string;
+  supplierName: string;
+  orderDate: string;
+  expectedDeliveryDate?: string | null;
+  currency: string;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  shippingCost: number;
+  totalAmount: number;
+  notes?: string;
+  lineItems: POEmailLineItem[];
+}
+
+export async function sendPurchaseOrderEmail(
+  supplierEmail: string,
+  ownerEmail: string,
+  data: POEmailData
+): Promise<void> {
+  const subject = `Purchase Order ${data.poNumber} from ${data.tenantName}`;
+
+  const rows = data.lineItems
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding:8px;border:1px solid #e2e8f0;">${item.productName}</td>
+          <td style="padding:8px;border:1px solid #e2e8f0;">${item.productSku}</td>
+          <td style="padding:8px;border:1px solid #e2e8f0;text-align:right;">${item.orderedQty}</td>
+          <td style="padding:8px;border:1px solid #e2e8f0;text-align:right;">${formatCurrency(item.unitCost, data.currency)}</td>
+          <td style="padding:8px;border:1px solid #e2e8f0;text-align:right;">${formatCurrency(item.totalCost, data.currency)}</td>
+        </tr>
+      `
+    )
+    .join('');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;background:#f8fafc;padding:20px;color:#0f172a;">
+      <div style="max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+        <div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;">
+          <h2 style="margin:0 0 8px;">Purchase Order ${data.poNumber}</h2>
+          <p style="margin:0;color:#475569;">From ${data.tenantName} to ${data.supplierName}</p>
+        </div>
+        <div style="padding:20px 24px;">
+          <p style="margin:0 0 8px;"><strong>Order date:</strong> ${data.orderDate}</p>
+          <p style="margin:0 0 8px;"><strong>Expected delivery:</strong> ${data.expectedDeliveryDate ?? 'Not set'}</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th style="padding:8px;border:1px solid #e2e8f0;text-align:left;">Product</th>
+                <th style="padding:8px;border:1px solid #e2e8f0;text-align:left;">SKU</th>
+                <th style="padding:8px;border:1px solid #e2e8f0;text-align:right;">Qty</th>
+                <th style="padding:8px;border:1px solid #e2e8f0;text-align:right;">Unit Cost</th>
+                <th style="padding:8px;border:1px solid #e2e8f0;text-align:right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <p style="margin:4px 0;"><strong>Subtotal:</strong> ${formatCurrency(data.subtotal, data.currency)}</p>
+          <p style="margin:4px 0;"><strong>Tax (${data.taxRate}%):</strong> ${formatCurrency(data.taxAmount, data.currency)}</p>
+          <p style="margin:4px 0;"><strong>Shipping:</strong> ${formatCurrency(data.shippingCost, data.currency)}</p>
+          <p style="margin:8px 0 0;font-size:16px;"><strong>Total:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
+          ${data.notes ? `<p style="margin:16px 0 0;"><strong>Notes:</strong> ${data.notes}</p>` : ''}
+          <p style="margin:16px 0 0;color:#334155;">Please confirm receipt of this order and expected dispatch schedule.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await Promise.allSettled([
+    sendEmail(supplierEmail, subject, html, ownerEmail),
+    sendEmail(ownerEmail, `[Copy] ${subject}`, html)
+  ]);
 }
 
 export async function sendVerificationEmail(to: string, name: string, token: string): Promise<void> {

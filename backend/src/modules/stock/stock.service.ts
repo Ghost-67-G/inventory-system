@@ -186,9 +186,11 @@ export async function recordIn(
   tenantId: string,
   userId: string,
   data: RecordInInput,
-  auditCtx: AuditContext
+  auditCtx: AuditContext,
+  options?: { session?: ClientSession }
 ): Promise<IStockMovement> {
-  const session = await mongoose.startSession();
+  const externalSession = options?.session;
+  const session = externalSession ?? (await mongoose.startSession());
   let movement: IStockMovement | null = null;
   let auditSnapshot:
     | {
@@ -200,7 +202,9 @@ export async function recordIn(
     | undefined;
 
   try {
-    session.startTransaction();
+    if (!externalSession) {
+      session.startTransaction();
+    }
 
     const { product, warehouse } = await verifyProductAndWarehouse(session, tenantId, data.productId, data.warehouseId);
     const warehouseStock = await getOrCreateWarehouseStock(session, tenantId, data.warehouseId, data.productId, product.lowStockThreshold);
@@ -248,26 +252,28 @@ export async function recordIn(
 
     await Product.findByIdAndUpdate(data.productId, { $inc: { totalStock: data.quantity } }, { session });
 
-    await session.commitTransaction();
+    if (!externalSession) {
+      await session.commitTransaction();
 
-    await runPostCommitSideEffects([
-      enqueueAlertCheck(tenantId, data.productId, data.warehouseId),
-      invalidateWarehouseCache(tenantId),
-      triggerStatsRefresh(tenantId),
-      invalidateDashboardActivityCache(tenantId),
-      enqueueProductUpsert(data.productId, tenantId),
-      Promise.resolve(
-        emitStockEvent(tenantId, 'stock:updated', {
-          productId: data.productId,
-          warehouseId: data.warehouseId,
-          type: 'IN',
-          quantityAfter,
-          totalStockAfter
-        })
-      )
-    ]);
+      await runPostCommitSideEffects([
+        enqueueAlertCheck(tenantId, data.productId, data.warehouseId),
+        invalidateWarehouseCache(tenantId),
+        triggerStatsRefresh(tenantId),
+        invalidateDashboardActivityCache(tenantId),
+        enqueueProductUpsert(data.productId, tenantId),
+        Promise.resolve(
+          emitStockEvent(tenantId, 'stock:updated', {
+            productId: data.productId,
+            warehouseId: data.warehouseId,
+            type: 'IN',
+            quantityAfter,
+            totalStockAfter
+          })
+        )
+      ]);
+    }
 
-    if (auditSnapshot) {
+    if (!externalSession && auditSnapshot) {
       logStockMutationAudit({
         tenantId,
         userId,
@@ -288,10 +294,14 @@ export async function recordIn(
 
     return movement;
   } catch (error) {
-    await safeAbortTransaction(session);
+    if (!externalSession) {
+      await safeAbortTransaction(session);
+    }
     throw error;
   } finally {
-    await session.endSession();
+    if (!externalSession) {
+      await session.endSession();
+    }
   }
 }
 
