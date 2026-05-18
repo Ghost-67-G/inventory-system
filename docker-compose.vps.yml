@@ -1,22 +1,7 @@
 services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "127.0.0.1:${INVENTORY_HTTP_PORT:-18080}:80"
-    volumes:
-      - ./nginx/nginx.vps.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/proxy_params:/etc/nginx/proxy_params:ro
-    depends_on:
-      backend:
-        condition: service_healthy
-      frontend:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - inventory_net
-
   backend:
     image: ghcr.io/${GHCR_NAMESPACE:-your-org}/inventory-backend:${APP_VERSION:-latest}
+    container_name: inventory-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -29,8 +14,6 @@ services:
       - NODE_ENV=production
       - DEPLOYMENT_MODE=saas
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
       meilisearch:
@@ -43,19 +26,22 @@ services:
       start_period: 60s
     restart: unless-stopped
     networks:
+      - shared_db
+      - shared_proxy
       - inventory_net
     volumes:
       - backend_tmp:/tmp
 
   frontend:
     image: ghcr.io/${GHCR_NAMESPACE:-your-org}/inventory-frontend:${APP_VERSION:-latest}
+    container_name: inventory-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
       args:
-        - VITE_API_URL=${VITE_API_URL:-https://apistock.example.com/api}
-        - VITE_SOCKET_URL=${VITE_SOCKET_URL:-https://apistock.example.com}
+        - VITE_API_URL=${VITE_API_URL:-https://apistock.devsdesk.site/api}
+        - VITE_SOCKET_URL=${VITE_SOCKET_URL:-https://apistock.devsdesk.site}
         - VITE_DEPLOYMENT_MODE=saas
     expose:
       - "80"
@@ -67,37 +53,7 @@ services:
       start_period: 10s
     restart: unless-stopped
     networks:
-      - inventory_net
-
-  mongodb:
-    image: mongo:7
-    expose:
-      - "27017"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
-      - MONGO_INITDB_DATABASE=inventory
-      - MONGO_APP_USERNAME=${MONGO_APP_USERNAME}
-      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
-    volumes:
-      - mongo_data:/data/db
-      - mongo_config:/data/configdb
-      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    command: >
-      sh -c "if [ ! -f /data/configdb/keyfile ]; then
-      head -c 756 /dev/urandom | base64 > /data/configdb/keyfile
-      && chmod 400 /data/configdb/keyfile
-      && chown 999:999 /data/configdb/keyfile;
-      fi
-      && exec mongod --auth --replSet rs0 --keyFile /data/configdb/keyfile --bind_ip_all"
-    healthcheck:
-      test: ["CMD-SHELL", "mongosh --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval \"db.adminCommand('ping')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    networks:
+      - shared_proxy
       - inventory_net
 
   redis:
@@ -142,8 +98,6 @@ services:
       - inventory_net
 
 volumes:
-  mongo_data:
-  mongo_config:
   redis_data:
   meili_data:
   backend_tmp:
@@ -151,3 +105,7 @@ volumes:
 networks:
   inventory_net:
     driver: bridge
+  shared_db:
+    external: true
+  shared_proxy:
+    external: true

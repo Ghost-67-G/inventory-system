@@ -1,0 +1,23 @@
+# Shared Caddy config for the VPS.
+#
+# Each project owns a block. Caddy auto-provisions Let's Encrypt certs
+# the first time a domain receives a request, provided DNS points here.
+#
+# Upstream container names must be reachable on the `shared_proxy`
+# docker network (each project attaches its web-facing containers to it).
+
+{
+    email admin@devsdesk.site
+}
+
+# ─── Inventory System ─────────────────────────────────────────────
+stock.devsdesk.site {
+    reverse_proxy inventory-frontend:80
+}
+
+apistock.devsdesk.site {
+    request_body {
+        max_size 10MB
+    }
+    reverse_proxy inventory-backend:3000
+}
