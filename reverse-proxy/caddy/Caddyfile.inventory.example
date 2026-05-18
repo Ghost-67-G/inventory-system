@@ -1,0 +1,12 @@
+# Host-level Caddy config for Inventory System on a shared VPS.
+#
+# Assumes inventory stack is started with docker-compose.vps.yml,
+# where the app gateway binds to 127.0.0.1:18080.
+
+stock.example.com {
+    reverse_proxy 127.0.0.1:18080
+}
+
+apistock.example.com {
+    reverse_proxy 127.0.0.1:18080
+}

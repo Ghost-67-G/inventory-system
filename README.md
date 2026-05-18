@@ -211,13 +211,20 @@ inventory-system/
 │   ├── mongo-init.js         # Creates app DB user on first start
 │   └── redis.conf            # Redis config template (password substituted at runtime)
 │
+├── reverse-proxy/            # Host-level reverse proxy snippets (shared VPS)
+│   ├── nginx/
+│   │   └── inventory.example.conf
+│   └── caddy/
+│       └── Caddyfile.inventory.example
+│
 ├── scripts/
 │   ├── deploy.sh             # Git pull → backup → build → rolling restart → health check
 │   ├── backup.sh             # mongodump to timestamped archive
 │   ├── rollback.sh           # Restore previous image tags
 │   └── health-check.sh       # Curl /health and assert 200
 │
-├── docker-compose.yml         # Production / SaaS stack
+├── docker-compose.yml         # Production / SaaS stack (shared docker reverse proxy network)
+├── docker-compose.vps.yml     # Production stack for host-level reverse proxy (Nginx/Caddy)
 ├── docker-compose.dev.yml     # Local dev: data services only (MongoDB, Redis, MeiliSearch)
 └── docker-compose.selfhosted.yml  # Self-hosted all-in-one stack
 ```
@@ -382,7 +389,7 @@ Default seed credentials (SaaS mode):
 
 ## Production Deployment — SaaS (Shared VPS)
 
-This is the default production configuration. The stack binds only to `127.0.0.1:18080` so it does not conflict with other projects already running on the VPS. Your existing Nginx/Caddy/Traefik on the VPS routes the inventory subdomain to that local port.
+This is the default production configuration. For a shared VPS where other projects already use ports 80/443, run this project with `docker-compose.vps.yml`, which binds the inventory gateway only to `127.0.0.1:18080`. Then route inventory domains from your host-level Nginx or Caddy.
 
 ### Prerequisites
 
@@ -390,13 +397,6 @@ This is the default production configuration. The stack binds only to `127.0.0.1
 - Docker Engine + Compose plugin
 - Domain DNS `A` records pointing at the VPS (e.g. `stock.example.com`, `apistock.example.com`)
 - A VPS-level reverse proxy already running and managing TLS for other projects
-- An external Docker network named `shared_proxy` (created by the other projects' compose stack, or manually)
-
-### Create the shared network (if it does not exist)
-
-```bash
-docker network create shared_proxy
-```
 
 ### Step 1 — Clone the repository
 
@@ -453,77 +453,102 @@ NGINX_HTTP_PORT=18080
 NGINX_CONFIG=nginx.vps.conf
 ```
 
-### Step 3 — Add the inventory routing to your VPS reverse proxy
+### Step 3 — Add inventory routing to your host reverse proxy
 
-Example host-level Nginx server blocks (replace `stock.example.com` and port accordingly):
+Pick **one** proxy and follow its steps.
 
-```nginx
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
+#### Option A — Nginx (host-level)
 
-# Redirect HTTP → HTTPS
-server {
-    listen 80;
-    server_name stock.example.com apistock.example.com;
-    return 301 https://$host$request_uri;
-}
+1. Install Nginx (if not installed):
 
-# Frontend
-server {
-    listen 443 ssl http2;
-    server_name stock.example.com;
-
-    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:18080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-}
-
-# API + Socket.IO
-server {
-    listen 443 ssl http2;
-    server_name apistock.example.com;
-
-    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
-
-    client_max_body_size 10M;
-
-    location /socket.io/ {
-        proxy_pass http://127.0.0.1:18080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:18080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-}
+```bash
+sudo apt update
+sudo apt install -y nginx
 ```
 
-Reload your VPS Nginx after adding those blocks.
+2. Install Certbot for Nginx (if not installed):
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+```
+
+3. Create DNS records first (`stock.example.com` and `apistock.example.com` -> your VPS IP), then issue certificates:
+
+```bash
+sudo certbot --nginx -d stock.example.com -d apistock.example.com
+```
+
+4. Create a dedicated vhost file for inventory:
+
+```bash
+sudo cp reverse-proxy/nginx/inventory.example.conf /etc/nginx/sites-available/inventory.conf
+```
+
+5. Edit that file and replace:
+
+- `stock.example.com` and `apistock.example.com` with your real domains
+- `/etc/letsencrypt/live/example.com/...` with your real cert path (often the same domain you used in Certbot)
+
+```bash
+sudo nano /etc/nginx/sites-available/inventory.conf
+```
+
+6. Enable the site and validate config:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/inventory.conf /etc/nginx/sites-enabled/inventory.conf
+sudo nginx -t
+```
+
+7. Reload Nginx:
+
+```bash
+sudo systemctl reload nginx
+```
+
+#### Option B — Caddy (host-level)
+
+1. Install Caddy (Ubuntu):
+
+```bash
+sudo apt update
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install -y caddy
+```
+
+2. Copy the inventory Caddy template into your main Caddyfile:
+
+```bash
+sudo cp reverse-proxy/caddy/Caddyfile.inventory.example /etc/caddy/Caddyfile
+```
+
+3. Edit domains in Caddyfile:
+
+```bash
+sudo nano /etc/caddy/Caddyfile
+```
+
+Replace `stock.example.com` and `apistock.example.com` with your real domains. Caddy will handle TLS certificates automatically.
+
+4. Validate and reload Caddy:
+
+```bash
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+#### Notes
+
+- Keep inventory bound to `127.0.0.1:18080` in `docker-compose.vps.yml` so it does not conflict with other projects.
+- If you already have existing Nginx or Caddy config for other apps, merge only the inventory domain blocks into your existing config instead of replacing the whole file.
 
 ### Step 4 — Deploy
 
 ```bash
-docker compose --env-file .env.production up -d --build
+docker compose -f docker-compose.vps.yml --env-file .env.production up -d --build
 ```
 
 Or use the deploy script (recommended — it also backs up and health-checks):
@@ -543,8 +568,6 @@ Deploy script flags:
 ### Step 5 — Verify
 
 ```bash
-./scripts/health-check.sh
-# or
 curl http://127.0.0.1:18080/health
 ```
 
@@ -562,7 +585,7 @@ A healthy response looks like:
 ### Step 6 — Optional: seed initial data
 
 ```bash
-docker compose --env-file .env.production exec backend node dist/scripts/seed.js
+docker compose -f docker-compose.vps.yml --env-file .env.production exec backend node dist/scripts/seed.js
 ```
 
 ### Standalone VPS (owns public ports 80 / 443)

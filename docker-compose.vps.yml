@@ -1,0 +1,153 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:${INVENTORY_HTTP_PORT:-18080}:80"
+    volumes:
+      - ./nginx/nginx.vps.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/proxy_params:/etc/nginx/proxy_params:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - inventory_net
+
+  backend:
+    image: ghcr.io/${GHCR_NAMESPACE:-your-org}/inventory-backend:${APP_VERSION:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    expose:
+      - "3000"
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+      - DEPLOYMENT_MODE=saas
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - inventory_net
+    volumes:
+      - backend_tmp:/tmp
+
+  frontend:
+    image: ghcr.io/${GHCR_NAMESPACE:-your-org}/inventory-frontend:${APP_VERSION:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - VITE_API_URL=${VITE_API_URL:-https://apistock.example.com/api}
+        - VITE_SOCKET_URL=${VITE_SOCKET_URL:-https://apistock.example.com}
+        - VITE_DEPLOYMENT_MODE=saas
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - inventory_net
+
+  mongodb:
+    image: mongo:7
+    expose:
+      - "27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=inventory
+      - MONGO_APP_USERNAME=${MONGO_APP_USERNAME}
+      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    command: >
+      sh -c "if [ ! -f /data/configdb/keyfile ]; then
+      head -c 756 /dev/urandom | base64 > /data/configdb/keyfile
+      && chmod 400 /data/configdb/keyfile
+      && chown 999:999 /data/configdb/keyfile;
+      fi
+      && exec mongod --auth --replSet rs0 --keyFile /data/configdb/keyfile --bind_ip_all"
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval \"db.adminCommand('ping')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - inventory_net
+
+  redis:
+    image: redis:7-alpine
+    expose:
+      - "6379"
+    command: >
+      sh -c "sed 's/REDIS_PASSWORD_PLACEHOLDER/'\"$$REDIS_PASSWORD\"'/g' /usr/local/etc/redis/redis.conf > /tmp/redis.conf
+      && redis-server /tmp/redis.conf"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - inventory_net
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.7
+    expose:
+      - "7700"
+    environment:
+      - MEILI_ENV=production
+      - MEILI_MASTER_KEY=${MEILISEARCH_KEY}
+      - MEILI_NO_ANALYTICS=true
+    volumes:
+      - meili_data:/meili_data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - inventory_net
+
+volumes:
+  mongo_data:
+  mongo_config:
+  redis_data:
+  meili_data:
+  backend_tmp:
+
+networks:
+  inventory_net:
+    driver: bridge
