@@ -22,7 +22,10 @@ export function useOnboardingStatus() {
       return payload.data;
     },
     enabled: user?.role === 'owner',
-    staleTime: 0
+    // Was 0, which refetched on every navigation through the always-mounted
+    // onboarding guard. Explicit invalidations after each step still force a
+    // refetch, so correctness is unaffected.
+    staleTime: 60_000
   });
 }
 

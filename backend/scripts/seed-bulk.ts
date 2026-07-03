@@ -65,13 +65,28 @@ const formatNumber = (n: number): string => n.toLocaleString('en-US');
 
 const elapsed = (start: number): string => `${((Date.now() - start) / 1000).toFixed(1)}s`;
 
+/** Minimal shape needed to bulk-insert; any concrete Mongoose model satisfies it. */
+interface BulkInsertable {
+  insertMany(
+    docs: Array<Record<string, unknown>>,
+    options: { ordered?: boolean; lean?: boolean },
+  ): Promise<unknown>;
+}
+
+/** True for a MongoDB duplicate-key error (code 11000), single or bulk-write form. */
+const isDuplicateKeyError = (err: unknown): boolean => {
+  if (typeof err !== 'object' || err === null) return false;
+  const e = err as { code?: number; writeErrors?: Array<{ code?: number }> };
+  // Code 11000 = duplicate key. With ordered:false, non-duplicates are still inserted.
+  return e.code === 11000 || (Array.isArray(e.writeErrors) && e.writeErrors.every((w) => w.code === 11000));
+};
+
 /** insertMany with ordered:false, ignoring duplicate key errors */
-const bulkInsertIgnoreDups = async (model: mongoose.Model<any>, docs: Array<Record<string, unknown>>) => {
+const bulkInsertIgnoreDups = async (model: BulkInsertable, docs: Array<Record<string, unknown>>) => {
   try {
-    await model.insertMany(docs, { ordered: false, lean: true } as any);
-  } catch (err: any) {
-    // Code 11000 = duplicate key. With ordered:false, non-duplicates are still inserted.
-    if (err?.code === 11000 || err?.writeErrors?.every((e: any) => e.code === 11000)) return;
+    await model.insertMany(docs, { ordered: false, lean: true });
+  } catch (err: unknown) {
+    if (isDuplicateKeyError(err)) return;
     throw err;
   }
 };
@@ -313,8 +328,8 @@ const insertWarehouseStock = async (
   };
 
   for await (const product of cursor) {
-    const total = (product as any).totalStock ?? 0;
-    const threshold = (product as any).lowStockThreshold ?? 0;
+    const total = (product as {totalStock: number}).totalStock ?? 0;
+    const threshold = (product as {lowStockThreshold: number}).lowStockThreshold ?? 0;
     // Split ~60/40 between warehouses
     const wh1Qty = Math.ceil(total * 0.6);
     const wh2Qty = total - wh1Qty;
@@ -377,7 +392,7 @@ const insertMovements = async (
   };
 
   for await (const product of cursor) {
-    const total = (product as any).totalStock ?? 0;
+    const total = (product as {totalStock: number | string}).totalStock ?? 0;
     if (total === 0) { processed++; continue; }
 
     const daysAgo = 1 + (processed % 90);
@@ -459,7 +474,7 @@ const main = async () => {
   const warehouseMap = await ensureWarehouses(tenant._id, ownerId);
   console.log(`Warehouses: ${Object.keys(warehouseMap).length}`);
 
-  const tenantCustomFields = tenant.customFields.map((f: any) => ({ name: f.name, type: f.type }));
+  const tenantCustomFields = tenant.customFields.map((f: {name: string, type: string}) => ({ name: f.name, type: f.type }));
 
   // 2. Bulk insert products
   await insertProducts(tenant._id, categoryMap, ownerId, tenantCustomFields);
