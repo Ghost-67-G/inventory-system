@@ -72,7 +72,14 @@ export function useAuth() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
-  const { setAuth, setAccessToken, logout, setLoading, setSession } = useAuthStore();
+  // Select actions individually. Calling useAuthStore() with no selector
+  // subscribes the component to the ENTIRE store, so any field change
+  // (e.g. accessToken churn on token refresh) re-rendered every consumer.
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const setAccessToken = useAuthStore((s) => s.setAccessToken);
+  const logout = useAuthStore((s) => s.logout);
+  const setLoading = useAuthStore((s) => s.setLoading);
+  const setSession = useAuthStore((s) => s.setSession);
 
   return { user, accessToken, isAuthenticated, isLoading, setAuth, setAccessToken, logout, setLoading, setSession };
 }
