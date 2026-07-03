@@ -7,7 +7,16 @@ import { router } from '@/router';
 import { bindSystemThemeListener, initializeTheme } from '@/store/themeStore';
 import '@/styles.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Fewer request bursts on token expiry / focus means fewer external-store
+      // updates fighting React Router's navigation transition.
+      retry: 1,
+      refetchOnWindowFocus: false
+    }
+  }
+});
 
 initializeTheme();
 bindSystemThemeListener();
