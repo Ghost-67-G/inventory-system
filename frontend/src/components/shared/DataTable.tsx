@@ -110,13 +110,26 @@ export function DataTable<TData>({
     getSortedRowModel: getSortedRowModel()
   });
 
+  // Depend on the serialized value, not the array reference. Callers that omit
+  // this prop get a fresh `[]` default on every render (including this table's
+  // own re-renders), which previously re-ran the effect and set a new object
+  // each time -> infinite render loop that starved route navigation. A stable
+  // string key plus a no-op bail-out keeps it running only when the value changes.
+  const hiddenColumnsKey = hiddenColumnIds.join('|');
   useEffect(() => {
     const nextState: VisibilityState = {};
     hiddenColumnIds.forEach((id) => {
       nextState[id] = false;
     });
-    setColumnVisibility(nextState);
-  }, [hiddenColumnIds]);
+    setColumnVisibility((prev) => {
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(nextState);
+      const unchanged =
+        prevKeys.length === nextKeys.length && nextKeys.every((id) => prev[id] === false);
+      return unchanged ? prev : nextState;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenColumnsKey]);
 
   const rows = table.getRowModel().rows;
 
