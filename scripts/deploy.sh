@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # ─── Config ────────────────────────────────────────────────────────────────────
-COMPOSE="docker compose --env-file .env.production"
+COMPOSE="docker compose -f docker-compose.vps.yml --env-file .env.production"
 HEALTH_URL="https://apistock.devsdesk.site/health"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 

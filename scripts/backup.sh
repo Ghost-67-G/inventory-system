@@ -9,7 +9,7 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="./backups"
 BACKUP_FILE="${BACKUP_DIR}/inventory_${TIMESTAMP}_${LABEL}.gz"
 RETENTION_DAYS=30
-COMPOSE="docker compose --env-file .env.production"
+COMPOSE="docker compose -f docker-compose.vps.yml --env-file .env.production"
 
 if [ -f .env.production ]; then
   # shellcheck disable=SC1091
