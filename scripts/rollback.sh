@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-COMPOSE="docker compose --env-file .env.production"
+COMPOSE="docker compose -f docker-compose.vps.yml --env-file .env.production"
 
 if [ -f .env.production ]; then
   # shellcheck disable=SC1091
