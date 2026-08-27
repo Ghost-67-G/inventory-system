@@ -52,14 +52,14 @@ docker exec mongodb mongosh \
 Add A records (or AAAA for IPv6) at your registrar:
 
 ```
-stock.devsdesk.site     A  <VPS_IP>
-apistock.devsdesk.site  A  <VPS_IP>
+stock.codingstack.site     A  <VPS_IP>
+apistock.codingstack.site  A  <VPS_IP>
 ```
 
 Verify:
 ```bash
-dig +short stock.devsdesk.site
-dig +short apistock.devsdesk.site
+dig +short stock.codingstack.site
+dig +short apistock.codingstack.site
 ```
 
 Caddy will only issue Let's Encrypt certs once DNS resolves to this host.
@@ -94,18 +94,18 @@ Expected services healthy: `inventory-backend`, `inventory-frontend`, `redis`, `
 
 ```bash
 # DNS + Caddy + frontend
-curl -o /dev/null -w "%{http_code}\n" https://stock.devsdesk.site
+curl -o /dev/null -w "%{http_code}\n" https://stock.codingstack.site
 # Expected: 200
 
 # Backend health
-curl https://apistock.devsdesk.site/health
+curl https://apistock.codingstack.site/health
 # Expected: {"status":"ok"} or similar 200 response
 
 # Cross-network proves shared_db works
 docker exec inventory-backend node -e "require('net').connect(27017,'mongodb').on('connect',()=>{console.log('ok');process.exit(0)}).on('error',e=>{console.error(e.message);process.exit(1)})"
 ```
 
-Open `https://stock.devsdesk.site` in a browser, log in, and exercise a websocket-heavy action to confirm `/socket.io/*` works through Caddy.
+Open `https://stock.codingstack.site` in a browser, log in, and exercise a websocket-heavy action to confirm `/socket.io/*` works through Caddy.
 
 ---
 

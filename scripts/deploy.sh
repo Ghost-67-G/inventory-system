@@ -6,7 +6,7 @@ set -euo pipefail
 
 # ─── Config ────────────────────────────────────────────────────────────────────
 COMPOSE="docker compose -f docker-compose.vps.yml --env-file .env.production"
-HEALTH_URL="https://apistock.devsdesk.site/health"
+HEALTH_URL="https://apistock.codingstack.site/health"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$PROJECT_DIR"
@@ -163,6 +163,6 @@ echo ""
 echo "======================================"
 echo "  Deploy complete!"
 echo "  Time: $(date)"
-echo "  Frontend: https://stock.devsdesk.site"
-echo "  API:      https://apistock.devsdesk.site/health"
+echo "  Frontend: https://stock.codingstack.site"
+echo "  API:      https://apistock.codingstack.site/health"
 echo "======================================"
