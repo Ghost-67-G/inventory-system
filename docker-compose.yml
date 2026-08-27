@@ -41,8 +41,8 @@ services:
       dockerfile: Dockerfile
       target: production
       args:
-        - VITE_API_URL=https://apistock.devsdesk.site/api
-        - VITE_SOCKET_URL=https://apistock.devsdesk.site
+        - VITE_API_URL=https://apistock.codingstack.site/api
+        - VITE_SOCKET_URL=https://apistock.codingstack.site
         - VITE_DEPLOYMENT_MODE=saas
     expose:
       - "80"

@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-HEALTH_URL="https://apistock.devsdesk.site/health"
+HEALTH_URL="https://apistock.codingstack.site/health"
 MAX_RETRIES=10
 RETRY_INTERVAL=5
 

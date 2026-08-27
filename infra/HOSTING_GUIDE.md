@@ -71,7 +71,7 @@ docker network create shared_db
 - Ports: `80:80`, `443:443/tcp`, `443:443/udp` (HTTP/3)
 - Config: `~/infra/Caddyfile` (host-mounted, read-only inside container)
 - TLS: automatic via Let's Encrypt (HTTP-01 challenge). Cert state in `infra_caddy_data` volume.
-- ACME email: `admin@devsdesk.site` (change in Caddyfile global `{ }` block if needed)
+- ACME email: `admin@codingstack.site` (change in Caddyfile global `{ }` block if needed)
 
 **To reload after editing the Caddyfile** (zero downtime):
 ```bash
@@ -99,7 +99,7 @@ Run these per-project. Each project should isolate them on its own private compo
 | Path on VPS | `~/repos/inventory-system/` |
 | Compose file | `docker-compose.vps.yml` |
 | Env file | `.env.production` (NOT committed — secrets) |
-| Domains | `stock.devsdesk.site` (frontend), `apistock.devsdesk.site` (backend API + Socket.IO) |
+| Domains | `stock.codingstack.site` (frontend), `apistock.codingstack.site` (backend API + Socket.IO) |
 | Container names | `inventory-frontend`, `inventory-backend` |
 | Project-local services | `redis`, `meilisearch` (on private network `inventory_net`) |
 | Mongo DB used | `inventory` (app user: `inventory_app`) |
@@ -107,11 +107,11 @@ Run these per-project. Each project should isolate them on its own private compo
 ### 3.2 Caddyfile entries currently active
 
 ```
-stock.devsdesk.site {
+stock.codingstack.site {
     reverse_proxy inventory-frontend:80
 }
 
-apistock.devsdesk.site {
+apistock.codingstack.site {
     request_body { max_size 10MB }
     reverse_proxy inventory-backend:3000
 }
@@ -131,7 +131,7 @@ Follow in order. **Do not skip steps.** Each project must be additive — never 
 
 ### 4.2 Set up DNS
 
-At the registrar (devsdesk.site or wherever), add:
+At the registrar (codingstack.site or wherever), add:
 ```
 <sub>.<domain>     A   64.181.209.119
 api<sub>.<domain>  A   64.181.209.119
@@ -248,8 +248,8 @@ docker compose -f docker-compose.vps.yml --env-file .env.production ps
 docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E 'caddy|mongodb'
 
 # Existing project still works
-curl -I https://stock.devsdesk.site             # expect 200
-curl https://apistock.devsdesk.site/health      # expect 200
+curl -I https://stock.codingstack.site             # expect 200
+curl https://apistock.codingstack.site/health      # expect 200
 
 # New project works
 curl -I https://myapp.example.com               # expect 200 with valid TLS

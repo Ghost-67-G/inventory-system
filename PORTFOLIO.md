@@ -16,8 +16,8 @@ A full-stack inventory platform that gives small teams real-time stock visibilit
 
 | | |
 |---|---|
-| Live demo | https://stock.devsdesk.site |
-| API | https://apistock.devsdesk.site |
+| Live demo | https://stock.codingstack.site |
+| API | https://apistock.codingstack.site |
 | Source | https://github.com/Ghost-67-G/inventory-system |
 
 ## Problem it solves
