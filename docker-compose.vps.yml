@@ -29,6 +29,7 @@ services:
       - shared_db
       - shared_proxy
       - inventory_net
+      - coolify
     volumes:
       - backend_tmp:/tmp
 
@@ -55,9 +56,13 @@ services:
     networks:
       - shared_proxy
       - inventory_net
+      - coolify
 
   redis:
     image: redis:7-alpine
+    # unique name: plain "redis" collides with Coolify's own redis on the
+    # coolify network, which the backend is also attached to
+    container_name: inventory-redis
     expose:
       - "6379"
     command: >
@@ -108,4 +113,6 @@ networks:
   shared_db:
     external: true
   shared_proxy:
+    external: true
+  coolify:
     external: true
