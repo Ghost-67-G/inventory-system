@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios from 'axios';
@@ -49,10 +49,32 @@ interface WarehouseFormModalProps {
   onClose: () => void;
 }
 
+function hasAddress(warehouse?: IWarehouse): boolean {
+  return Boolean(warehouse) && Object.values(warehouse?.address || {}).some(Boolean);
+}
+
+function getDefaultValues(mode: 'create' | 'edit', warehouse?: IWarehouse): WarehouseFormValues {
+  const isEdit = mode === 'edit' && Boolean(warehouse);
+  return {
+    name: isEdit && warehouse ? warehouse.name : '',
+    code: isEdit && warehouse ? warehouse.code : '',
+    description: isEdit && warehouse ? (warehouse.description ?? '') : '',
+    address:
+      isEdit && warehouse
+        ? {
+            street: warehouse.address?.street ?? '',
+            city: warehouse.address?.city ?? '',
+            state: warehouse.address?.state ?? '',
+            country: warehouse.address?.country ?? '',
+            postalCode: warehouse.address?.postalCode ?? ''
+          }
+        : { street: '', city: '', state: '', country: '', postalCode: '' },
+    isDefault: isEdit && warehouse ? warehouse.isDefault : false
+  };
+}
+
 export function WarehouseFormModal({ mode, warehouse, open, onClose }: WarehouseFormModalProps) {
-  const [isAddressExpanded, setIsAddressExpanded] = useState(
-    mode === 'edit' && warehouse && Object.values(warehouse.address || {}).some(Boolean)
-  );
+  const [isAddressExpanded, setIsAddressExpanded] = useState(mode === 'edit' && hasAddress(warehouse));
 
   const createMutation = useCreateWarehouse();
   const updateMutation = useUpdateWarehouse();
@@ -60,26 +82,26 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
 
   const form = useForm<WarehouseFormValues>({
     resolver: zodResolver(warehouseFormSchema),
-    defaultValues: {
-      name: mode === 'edit' && warehouse ? warehouse.name : '',
-      code: mode === 'edit' && warehouse ? warehouse.code : '',
-      description: mode === 'edit' && warehouse ? warehouse.description : '',
-      address:
-        mode === 'edit' && warehouse
-          ? warehouse.address
-          : { street: '', city: '', state: '', country: '', postalCode: '' },
-      isDefault: mode === 'edit' && warehouse ? warehouse.isDefault : false
-    }
+    defaultValues: getDefaultValues(mode, warehouse)
   });
   const {
     register,
     handleSubmit,
     setValue,
     setError,
-    watch,
     reset,
     formState: { errors }
   } = form;
+
+  // The modal stays mounted between opens (and switches between create/edit targets), so
+  // `defaultValues` alone would keep showing the first-mounted values. Re-sync on every open.
+  useEffect(() => {
+    if (!open) return;
+    reset(getDefaultValues(mode, warehouse));
+    setIsAddressExpanded(mode === 'edit' && hasAddress(warehouse));
+  }, [open, mode, warehouse, reset]);
+
+  const codeField = register('code');
 
   async function onSubmit(values: WarehouseFormValues) {
     const payload = {
@@ -106,7 +128,6 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
           data: updatePayload
         });
       }
-      reset();
       onClose();
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
@@ -142,7 +163,7 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
               <div className="space-y-1">
                 <label htmlFor="warehouse-name" className="text-sm font-medium text-foreground">Name *</label>
                 <Input id="warehouse-name" placeholder="e.g. Main Warehouse" {...register('name')} />
-                {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
+                {errors.name && <p className="text-xs text-red-600 dark:text-red-400">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-1">
@@ -150,8 +171,11 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
                 <Input
                   id="warehouse-code"
                   placeholder="e.g. WH-001, NORTH, MAIN"
-                  {...register('code')}
+                  autoCapitalize="characters"
+                  {...codeField}
                   onBlur={(e) => {
+                    // Keep react-hook-form's own blur bookkeeping, then normalise to uppercase.
+                    void codeField.onBlur(e);
                     const value = e.currentTarget.value.toUpperCase();
                     setValue('code', value, { shouldValidate: true });
                   }}
@@ -159,18 +183,19 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
                 <p className="text-xs text-muted-foreground">
                   Leave blank to auto-generate. Uppercase letters, numbers, and dashes only.
                 </p>
-                {errors.code && <p className="text-xs text-red-600">{errors.code.message}</p>}
+                {errors.code && <p className="text-xs text-red-600 dark:text-red-400">{errors.code.message}</p>}
               </div>
 
               <div className="space-y-2 rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <div>
+                  <label htmlFor="warehouse-is-default" className="cursor-pointer">
                     <p className="text-sm font-medium text-foreground">Default warehouse</p>
                     <p className="text-xs text-muted-foreground">Pre-selected when recording stock movements</p>
-                  </div>
+                  </label>
                   <input
+                    id="warehouse-is-default"
                     type="checkbox"
-                    className="h-4 w-4"
+                    className="h-4 w-4 shrink-0"
                     disabled={mode === 'edit' && warehouse?.isDefault}
                     {...register('isDefault')}
                   />
@@ -187,7 +212,7 @@ export function WarehouseFormModal({ mode, warehouse, open, onClose }: Warehouse
             <div className="space-y-1">
               <label htmlFor="warehouse-description" className="text-sm font-medium text-foreground">Description</label>
               <Textarea id="warehouse-description" placeholder="Add notes about this warehouse..." rows={3} {...register('description')} />
-              {errors.description && <p className="text-xs text-red-600">{errors.description.message}</p>}
+              {errors.description && <p className="text-xs text-red-600 dark:text-red-400">{errors.description.message}</p>}
             </div>
 
             {/* Section 3: Address (Collapsible) */}

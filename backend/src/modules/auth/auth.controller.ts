@@ -130,9 +130,27 @@ export const changePassword = catchAsync(async (req: Request, res: Response) => 
   res.status(200).json({ success: true, message: 'Password changed successfully' });
 });
 
+export const acceptInvite = catchAsync(async (req: Request, res: Response) => {
+  const { token, password } = req.body as { token: string; password: string };
+  await authService.acceptInvite(token, password);
+  res.status(200).json({ success: true, message: 'Invite accepted. You can now sign in.' });
+});
+
 export const resendVerification = catchAsync(async (req: Request, res: Response) => {
-  await authService.resendVerificationEmail(req.user!.id);
-  res.status(200).json({ success: true, message: 'Verification email sent' });
+  if (req.user) {
+    await authService.resendVerificationEmail(req.user.id);
+    res.status(200).json({ success: true, message: 'Verification email sent' });
+    return;
+  }
+
+  const { email } = (req.body ?? {}) as { email?: string };
+  if (!email) {
+    res.status(400).json({ success: false, error: 'BadRequest', message: 'Email is required' });
+    return;
+  }
+
+  await authService.resendVerificationEmailByAddress(email);
+  res.status(200).json({ success: true, message: 'If that email needs verification, a new link has been sent' });
 });
 
 export const getMe = catchAsync(async (req: Request, res: Response) => {

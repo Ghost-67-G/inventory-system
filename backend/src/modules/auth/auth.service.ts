@@ -257,6 +257,35 @@ export async function verifyEmail(token: string): Promise<void> {
   void sendWelcomeEmail(user.email, user.name, tenantName).catch(() => undefined);
 }
 
+// ─── Accept Invite ───────────────────────────────────────────────────────────
+
+/**
+ * Invited users receive a single email-verification token. Accepting the invite
+ * verifies the email and sets the chosen password in one step, so the frontend
+ * does not need a separate password-reset token (which is never issued on invite).
+ */
+export async function acceptInvite(token: string, newPassword: string): Promise<void> {
+  const tokenHash = hashToken(token);
+  const user = await UserModel.findOne({
+    emailVerificationToken: tokenHash,
+    emailVerificationExpires: { $gt: new Date() }
+  }).select('+emailVerificationToken +emailVerificationExpires +password');
+
+  if (!user) throw new ApiError(400, 'Invalid or expired invite token');
+  if (!user.isActive) throw new ApiError(403, 'Account is disabled');
+
+  user.isEmailVerified = true;
+  user.emailVerificationToken = null;
+  user.emailVerificationExpires = null;
+  user.password = newPassword;
+  user.refreshTokens = [];
+  await user.save();
+
+  const tenant = await TenantModel.findById(user.tenantId);
+  const tenantName = tenant?.name ?? 'Inventory System';
+  void sendWelcomeEmail(user.email, user.name, tenantName).catch(() => undefined);
+}
+
 // ─── Forgot / Reset Password ─────────────────────────────────────────────────
 
 export async function forgotPassword(email: string): Promise<void> {
@@ -316,6 +345,36 @@ export async function resendVerificationEmail(userId: string): Promise<void> {
   if (!user) throw new ApiError(404, 'User not found');
   if (user.isEmailVerified) throw new ApiError(400, 'Email already verified');
 
+  await issueVerificationEmail(user);
+}
+
+/**
+ * Public variant used from the email-verification page where the visitor has
+ * no session yet. Never reveals whether the address exists or is verified.
+ */
+export async function resendVerificationEmailByAddress(email: string): Promise<void> {
+  let user: IUser | null;
+
+  if (config.DEPLOYMENT_MODE === 'self_hosted') {
+    const tenant = await getSelfHostedTenant();
+    user = await UserModel.findOne({ tenantId: tenant._id, email: email.toLowerCase() });
+  } else {
+    user = await UserModel.findOne({ email: email.toLowerCase() });
+  }
+
+  if (!user || user.isEmailVerified || !user.isActive) return;
+
+  try {
+    await issueVerificationEmail(user);
+  } catch (error) {
+    // Swallow the per-user cooldown so the response stays indistinguishable.
+    if (error instanceof ApiError && error.statusCode === 429) return;
+    throw error;
+  }
+}
+
+async function issueVerificationEmail(user: IUser): Promise<void> {
+  const userId = String(user._id);
   const rateLimitKey = `resend_verify:${userId}`;
   const existing = await redis.get(rateLimitKey);
   if (existing) throw new ApiError(429, 'Please wait before requesting another email');

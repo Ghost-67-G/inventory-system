@@ -156,8 +156,9 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
       <section className="rounded-xl border border-border bg-card p-5">
         <h3 className="text-base font-semibold text-foreground">Business Information</h3>
         <div className="mt-4">
-          <label className="mb-1.5 block text-sm font-medium text-foreground">Business name</label>
+          <label htmlFor="settings-name" className="mb-1.5 block text-sm font-medium text-foreground">Business name</label>
           <input
+            id="settings-name"
             {...form.register('name')}
             disabled={!canManage}
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
@@ -166,7 +167,7 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
             Your workspace URL: <span className="font-mono">app.yourdomain.com/{slugPreview}</span>
           </p>
           {form.formState.errors.name && (
-            <p className="mt-1 text-xs text-red-500">{form.formState.errors.name.message}</p>
+            <p className="mt-1 text-xs text-red-500 dark:text-red-400">{form.formState.errors.name.message}</p>
           )}
         </div>
       </section>
@@ -176,8 +177,9 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
 
         <div className="mt-4 grid gap-5 md:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">Currency</label>
+            <label htmlFor="settings-currency" className="mb-1.5 block text-sm font-medium text-foreground">Currency</label>
             <select
+              id="settings-currency"
               {...form.register('currency')}
               disabled={!canManage}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
@@ -194,8 +196,9 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">Timezone</label>
+            <label htmlFor="settings-timezone" className="mb-1.5 block text-sm font-medium text-foreground">Timezone</label>
             <select
+              id="settings-timezone"
               {...form.register('timezone')}
               disabled={!canManage}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
@@ -216,8 +219,9 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">Date format</label>
+            <label htmlFor="settings-date-format" className="mb-1.5 block text-sm font-medium text-foreground">Date format</label>
             <select
+              id="settings-date-format"
               {...form.register('dateFormat')}
               disabled={!canManage}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
@@ -230,8 +234,9 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">Low stock threshold</label>
+            <label htmlFor="settings-low-stock" className="mb-1.5 block text-sm font-medium text-foreground">Low stock threshold</label>
             <input
+              id="settings-low-stock"
               {...form.register('lowStockThreshold')}
               type="number"
               min={0}
@@ -243,6 +248,9 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
               Products with stock at or below this number will trigger low stock alerts.
               Individual products can override this threshold.
             </p>
+            {form.formState.errors.lowStockThreshold && (
+              <p className="mt-1 text-xs text-red-500 dark:text-red-400">{form.formState.errors.lowStockThreshold.message}</p>
+            )}
           </div>
         </div>
 
@@ -273,7 +281,7 @@ export function GeneralSettingsTab({ canManage }: GeneralSettingsTabProps) {
         </div>
       </section>
 
-      {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
+      {errorMessage ? <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p> : null}
 
       {canManage ? (
         <div className="flex justify-end">

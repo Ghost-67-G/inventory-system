@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, Menu, UserCircle2 } from 'lucide-react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -19,11 +19,42 @@ export function AppLayout() {
   const { data: alertCount = 0 } = usePendingAlertCount();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setIsSidebarOpen(false);
     setIsUserMenuOpen(false);
   }, [location.pathname]);
+
+  // Close the user menu when clicking anywhere outside of it.
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [isUserMenuOpen]);
+
+  // Lock body scroll while the mobile sidebar is open.
+  useEffect(() => {
+    if (!isSidebarOpen) {
+      return;
+    }
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isSidebarOpen]);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -65,8 +96,10 @@ export function AppLayout() {
       ) : null}
 
       <aside
+        aria-hidden={!isSidebarOpen}
+        inert={!isSidebarOpen}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-70 -translate-x-full transition-transform duration-250 lg:hidden',
+          'fixed inset-y-0 left-0 z-50 w-70 max-w-[85vw] -translate-x-full transition-transform duration-250 lg:hidden',
           isSidebarOpen && 'translate-x-0'
         )}
       >
@@ -81,9 +114,10 @@ export function AppLayout() {
                 type="button"
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 min-h-11 lg:hidden"
+                className="size-10 lg:hidden"
                 onClick={() => setIsSidebarOpen((value) => !value)}
                 aria-label="Toggle sidebar"
+                aria-expanded={isSidebarOpen}
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -97,7 +131,7 @@ export function AppLayout() {
                 type="button"
                 variant="outline"
                 size="icon"
-                className="relative h-10 w-10 min-h-11"
+                className="relative size-10"
                 onClick={() => void navigate('/alerts')}
                 aria-label="Open alerts"
               >
@@ -109,12 +143,15 @@ export function AppLayout() {
                 ) : null}
               </Button>
 
-              <div className="relative">
+              <div ref={userMenuRef} className="relative">
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 min-h-11 gap-2 px-2"
+                  className="h-10 gap-2 px-2"
                   onClick={() => setIsUserMenuOpen((value) => !value)}
+                  aria-label="Open user menu"
+                  aria-haspopup="menu"
+                  aria-expanded={isUserMenuOpen}
                 >
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
                     {initials}
@@ -125,8 +162,8 @@ export function AppLayout() {
                 {isUserMenuOpen ? (
                   <div className="absolute right-0 z-50 mt-2 w-64 rounded-md border border-border bg-popover p-1 shadow-md">
                     <div className="px-3 py-2">
-                      <p className="text-sm font-medium text-foreground">{user?.name ?? 'User'}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email ?? 'No email'}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{user?.name ?? 'User'}</p>
+                      <p className="truncate text-xs text-muted-foreground">{user?.email ?? 'No email'}</p>
                     </div>
                     <div className="my-1 h-px bg-border" />
                     <button
@@ -159,7 +196,7 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main className="w-full p-4 sm:p-6">
+        <main className="w-full min-w-0 p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -47,13 +47,13 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
 
   const [currentImageUrl, setCurrentImageUrl] = useState('');
   const [currentTag, setCurrentTag] = useState('');
-  const [profitMargin, setProfitMargin] = useState<number | null>(null);
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    setError,
     reset,
     formState: { errors }
   } = useForm<FormData>({
@@ -89,35 +89,45 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
     [tenant?.customFields]
   );
 
-  // Calculate profit margin
-  useEffect(() => {
-    if (sellingPrice && costPrice >= 0) {
-      if (sellingPrice > 0) {
-        const margin = ((sellingPrice - costPrice) / sellingPrice) * 100;
-        setProfitMargin(Number.isFinite(margin) ? margin : null);
-      } else {
-        setProfitMargin(null);
-      }
-    }
+  // Calculate profit margin. Number inputs registered without valueAsNumber
+  // yield strings, so coerce explicitly and clear the margin when the selling
+  // price is emptied (the previous effect kept a stale value in that case).
+  const profitMargin = useMemo(() => {
+    const cost = Number(costPrice);
+    const sell = Number(sellingPrice);
+    if (!Number.isFinite(cost) || !Number.isFinite(sell) || sell <= 0) return null;
+    const margin = ((sell - cost) / sell) * 100;
+    return Number.isFinite(margin) ? margin : null;
   }, [costPrice, sellingPrice]);
+
+  // Keep the latest product in a ref so the prefill effect only runs when the
+  // drawer opens or the target product changes, not on every refetch of the
+  // same product (which would wipe in-progress edits).
+  const productRef = useRef(product);
+  productRef.current = product;
+  const productId = product?._id;
 
   // Pre-fill form in edit mode
   useEffect(() => {
-    if (mode === 'edit' && product && open) {
+    if (!open) return;
+    setCurrentTag('');
+    setCurrentImageUrl('');
+    const current = productRef.current;
+    if (mode === 'edit' && current) {
       reset({
-        sku: product.sku,
-        name: product.name,
-        description: product.description,
-        categoryId: product.categoryId ?? null,
-        unit: product.unit,
-        costPrice: product.costPrice,
-        sellingPrice: product.sellingPrice,
-        lowStockThreshold: product.lowStockThreshold,
-        images: product.images,
-        tags: product.tags,
-        customFields: product.customFields ?? {}
+        sku: current.sku,
+        name: current.name,
+        description: current.description ?? '',
+        categoryId: current.categoryId ?? null,
+        unit: current.unit,
+        costPrice: current.costPrice,
+        sellingPrice: current.sellingPrice,
+        lowStockThreshold: current.lowStockThreshold,
+        images: current.images ?? [],
+        tags: current.tags ?? [],
+        customFields: current.customFields ?? {}
       });
-    } else if (mode === 'create' && open) {
+    } else if (mode === 'create') {
       reset({
         sku: '',
         name: '',
@@ -132,9 +142,24 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
         customFields: defaultCustomFields
       });
     }
-  }, [mode, open, product, reset, defaultCustomFields]);
+  }, [mode, open, productId, reset, defaultCustomFields]);
 
   const onSubmit = async (data: FormData) => {
+    // Custom fields are dynamic (per tenant), so the static zod schema cannot
+    // enforce their `required` flag; check it here before submitting.
+    const missingRequired = (tenant?.customFields ?? []).filter((field) => {
+      if (!field.required || field.type === 'boolean') return false;
+      const value = data.customFields?.[field.key];
+      return value === undefined || value === null || value === '';
+    });
+    if (missingRequired.length > 0) {
+      setError('customFields', {
+        type: 'manual',
+        message: `${missingRequired.map((field) => field.name).join(', ')} ${missingRequired.length === 1 ? 'is' : 'are'} required`
+      });
+      return;
+    }
+
     try {
       const payload: CreateProductDto = {
         ...data,
@@ -155,8 +180,9 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
   };
 
   const addImage = () => {
-    if (currentImageUrl && watchImages.length < 10) {
-      setValue('images', [...watchImages, currentImageUrl]);
+    const url = currentImageUrl.trim();
+    if (url && watchImages.length < 10) {
+      setValue('images', [...watchImages, url]);
       setCurrentImageUrl('');
     }
   };
@@ -181,7 +207,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side={isMobile ? 'bottom' : 'right'} className={isMobile ? 'h-[90vh] w-full overflow-y-auto' : 'w-full max-w-2xl overflow-y-auto'}>
+      <SheetContent side={isMobile ? 'bottom' : 'right'} className={isMobile ? 'h-[90vh] w-full overflow-y-auto' : 'w-full overflow-y-auto sm:max-w-2xl'}>
         <SheetHeader>
           <SheetTitle>{mode === 'create' ? 'Add Product' : 'Edit Product'}</SheetTitle>
           <SheetDescription>
@@ -195,8 +221,9 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
             <h3 className="text-sm font-semibold">Basic Information</h3>
 
             <div>
-              <label className="text-sm font-medium">SKU *</label>
+              <label htmlFor="product-sku" className="text-sm font-medium">SKU *</label>
               <Input
+                id="product-sku"
                 {...register('sku')}
                 placeholder="e.g., PROD-001"
                 className={errors.sku ? 'border-red-500' : ''}
@@ -206,8 +233,9 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
             </div>
 
             <div>
-              <label className="text-sm font-medium">Name *</label>
+              <label htmlFor="product-name" className="text-sm font-medium">Name *</label>
               <Input
+                id="product-name"
                 {...register('name')}
                 placeholder="Product name"
                 className={errors.name ? 'border-red-500' : ''}
@@ -216,8 +244,9 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
             </div>
 
             <div>
-              <label className="text-sm font-medium">Description</label>
+              <label htmlFor="product-description" className="text-sm font-medium">Description</label>
               <Textarea
+                id="product-description"
                 {...register('description')}
                 placeholder="Product description"
                 rows={4}
@@ -228,8 +257,9 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium">Category</label>
+                <label htmlFor="product-category" className="text-sm font-medium">Category</label>
                 <select
+                  id="product-category"
                   {...register('categoryId')}
                   className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                 >
@@ -243,8 +273,9 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
               </div>
 
               <div>
-                <label className="text-sm font-medium">Unit *</label>
+                <label htmlFor="product-unit" className="text-sm font-medium">Unit *</label>
                 <Input
+                  id="product-unit"
                   {...register('unit')}
                   list="product-unit-presets"
                   placeholder="pcs"
@@ -269,7 +300,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
 
                   return (
                     <div key={field._id}>
-                      <label className="text-sm font-medium">
+                      <label htmlFor={`product-custom-${field.key}`} className="text-sm font-medium">
                         {field.name}
                         {field.required ? ' *' : ''}
                       </label>
@@ -277,6 +308,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                       {field.type === 'boolean' ? (
                         <label className="mt-2 flex items-center gap-2 text-sm text-foreground">
                           <input
+                            id={`product-custom-${field.key}`}
                             type="checkbox"
                             checked={Boolean(fieldValue)}
                             onChange={(e) => setValue(`customFields.${field.key}`, e.target.checked)}
@@ -285,6 +317,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                         </label>
                       ) : (
                         <Input
+                          id={`product-custom-${field.key}`}
                           type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
                           value={fieldValue === undefined || fieldValue === null ? '' : String(fieldValue)}
                           onChange={(e) => {
@@ -301,6 +334,9 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                   );
                 })}
               </div>
+              {errors.customFields?.message ? (
+                <p className="text-xs text-red-500">{String(errors.customFields.message)}</p>
+              ) : null}
             </div>
           ) : null}
 
@@ -310,30 +346,36 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium">Cost Price</label>
+                <label htmlFor="product-cost-price" className="text-sm font-medium">Cost Price</label>
                 <Input
+                  id="product-cost-price"
                   type="number"
                   step="0.01"
+                  min="0"
                   {...register('costPrice')}
                   placeholder="0.00"
                   className={errors.costPrice ? 'border-red-500' : ''}
                 />
+                {errors.costPrice && <p className="text-xs text-red-500 mt-1">{errors.costPrice.message}</p>}
               </div>
 
               <div>
-                <label className="text-sm font-medium">Selling Price</label>
+                <label htmlFor="product-selling-price" className="text-sm font-medium">Selling Price</label>
                 <Input
+                  id="product-selling-price"
                   type="number"
                   step="0.01"
+                  min="0"
                   {...register('sellingPrice')}
                   placeholder="0.00"
                   className={errors.sellingPrice ? 'border-red-500' : ''}
                 />
+                {errors.sellingPrice && <p className="text-xs text-red-500 mt-1">{errors.sellingPrice.message}</p>}
               </div>
             </div>
 
             {profitMargin !== null && (
-              <p className={`text-sm font-medium ${profitMargin > 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-sm font-medium ${profitMargin > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 Profit Margin: {profitMargin.toFixed(1)}%
               </p>
             )}
@@ -343,13 +385,17 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
           <div className="space-y-4">
             <h3 className="text-sm font-semibold">Stock Settings</h3>
             <div>
-              <label className="text-sm font-medium">Low Stock Threshold</label>
+              <label htmlFor="product-low-stock-threshold" className="text-sm font-medium">Low Stock Threshold</label>
               <Input
+                id="product-low-stock-threshold"
                 type="number"
+                min="0"
+                step="1"
                 {...register('lowStockThreshold')}
                 placeholder="0"
                 className={errors.lowStockThreshold ? 'border-red-500' : ''}
               />
+              {errors.lowStockThreshold && <p className="text-xs text-red-500 mt-1">{errors.lowStockThreshold.message}</p>}
               <p className="mt-1 text-xs text-muted-foreground">Alert when stock falls to or below this number</p>
             </div>
           </div>
@@ -368,6 +414,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                   }
                 }}
                 placeholder="Add a tag"
+                aria-label="Add a tag"
               />
               <Button type="button" onClick={addTag} variant="outline" size="sm">
                 Add
@@ -375,11 +422,12 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
             </div>
             <div className="flex flex-wrap gap-2">
               {watchTags.map((tag, idx) => (
-                <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm">
+                <span key={tag} className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm">
                   {tag}
                   <button
                     type="button"
                     onClick={() => removeTag(idx)}
+                    aria-label={`Remove tag ${tag}`}
                     className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                   >
                     ×
@@ -397,6 +445,7 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                 value={currentImageUrl}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentImageUrl(e.target.value)}
                 placeholder="Enter image URL"
+                aria-label="Image URL"
               />
               <Button type="button" onClick={addImage} variant="outline" size="sm">
                 Add
@@ -416,7 +465,8 @@ export default function ProductFormDrawer({ mode, product, open, onClose }: Prod
                   <button
                     type="button"
                     onClick={() => removeImage(idx)}
-                    className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition"
+                    aria-label={`Remove image ${idx + 1}`}
+                    className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded transition md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
                   >
                     ×
                   </button>

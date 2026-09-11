@@ -58,25 +58,23 @@ export function WarehousesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <PageHeader
-            title="Warehouses"
-            subtitle={
-              summary
-                ? `${summary.active} of ${summary.total} warehouses active`
-                : 'Manage storage locations'
-            }
-          />
-        </div>
+      <PageHeader
+        title="Warehouses"
+        subtitle={
+          summary
+            ? `${summary.active} of ${summary.total} warehouses active`
+            : 'Manage storage locations'
+        }
+      >
         <PermissionGuard permission="warehouse.manage" fallback={null}>
           <Button
+            type="button"
             onClick={() => setFormModal({ open: true, mode: 'create' })}
           >
             Add warehouse
           </Button>
         </PermissionGuard>
-      </div>
+      </PageHeader>
 
       {/* Summary Strip */}
       {summary && (
@@ -112,15 +110,18 @@ export function WarehousesPage() {
       <div className="space-y-4">
         <Input
           placeholder="Search by name or code..."
+          aria-label="Search warehouses"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-md"
         />
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(['active', 'inactive', 'all'] as const).map((status) => (
             <Button
               key={status}
+              type="button"
+              aria-pressed={statusFilter === status}
               variant={statusFilter === status ? 'default' : 'outline'}
               onClick={() => setStatusFilter(status)}
               className="capitalize"
@@ -149,17 +150,17 @@ export function WarehousesPage() {
       ) : (
         <div
           className="grid gap-4"
-          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))' }}
         >
           {filteredWarehouses.map((warehouse) => (
             <article
               key={warehouse._id}
               className={`flex flex-col rounded-xl border border-border bg-card shadow-sm ${!warehouse.isActive ? 'opacity-60' : ''}`}
             >
-              <div className="flex items-start justify-between border-b border-border p-4">
-                  <div className="flex-1">
-                  <h3 className="text-base font-semibold text-foreground">{warehouse.name}</h3>
-                    <div className="mt-1 flex items-center gap-2">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4">
+                  <div className="min-w-0 flex-1">
+                  <h3 className="break-words text-base font-semibold text-foreground">{warehouse.name}</h3>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
                         {warehouse.code}
                     </span>
@@ -194,6 +195,7 @@ export function WarehousesPage() {
                         type="button"
                         variant="outline"
                         size="sm"
+                        disabled={setDefaultMutation.isPending}
                         onClick={() => setDefaultMutation.mutate({ id: warehouse._id, name: warehouse.name })}
                       >
                         <Star className="mr-1 h-3.5 w-3.5" />
@@ -215,6 +217,7 @@ export function WarehousesPage() {
                         type="button"
                         variant="outline"
                         size="sm"
+                        disabled={reactivateMutation.isPending}
                         onClick={() => reactivateMutation.mutate(warehouse._id)}
                       >
                         <RotateCcw className="mr-1 h-3.5 w-3.5" />
@@ -229,11 +232,11 @@ export function WarehousesPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg bg-muted/50 p-2">
                     <p className="text-xs text-muted-foreground">Products</p>
-                    <p className="text-lg font-semibold text-foreground">{warehouse.stockSummary.totalProducts}</p>
+                    <p className="text-lg font-semibold text-foreground">{warehouse.stockSummary?.totalProducts ?? 0}</p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-2">
                     <p className="text-xs text-muted-foreground">Units</p>
-                    <p className="text-lg font-semibold text-foreground">{warehouse.stockSummary.totalUnits}</p>
+                    <p className="text-lg font-semibold text-foreground">{warehouse.stockSummary?.totalUnits ?? 0}</p>
                   </div>
                 </div>
 

@@ -24,11 +24,11 @@ interface POStatusBadgeProps {
 export function POStatusBadge({ status, size = 'md' }: POStatusBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-full font-medium ${STATUS_STYLE[status]} ${
+      className={`inline-flex items-center whitespace-nowrap rounded-full font-medium ${STATUS_STYLE[status] ?? 'bg-muted text-muted-foreground'} ${
         size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs'
       }`}
     >
-      {STATUS_LABEL[status]}
+      {STATUS_LABEL[status] ?? status}
     </span>
   );
 }

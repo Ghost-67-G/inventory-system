@@ -64,9 +64,13 @@ export function AddCustomFieldModal({ open, onOpenChange }: AddCustomFieldModalP
       required: values.required,
       defaultValue: values.defaultValue || undefined,
     };
-    await mutateAsync(dto);
-    form.reset();
-    onOpenChange(false);
+    try {
+      await mutateAsync(dto);
+      form.reset();
+      onOpenChange(false);
+    } catch {
+      // error toast is handled by the mutation hook; keep the modal open
+    }
   }
 
   function handleClose() {
@@ -77,11 +81,22 @@ export function AddCustomFieldModal({ open, onOpenChange }: AddCustomFieldModalP
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-custom-field-title"
+      className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4"
+    >
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Add custom field</h2>
-          <button onClick={handleClose} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+          <h2 id="add-custom-field-title" className="text-lg font-semibold text-foreground">Add custom field</h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isPending}
+            aria-label="Close"
+            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
             <X size={18} />
           </button>
         </div>
@@ -89,10 +104,11 @@ export function AddCustomFieldModal({ open, onOpenChange }: AddCustomFieldModalP
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             {/* Field name */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
+              <label htmlFor="custom-field-name" className="mb-1.5 block text-sm font-medium text-foreground">
                 Field name
               </label>
               <input
+                id="custom-field-name"
                 {...form.register('name')}
                 placeholder="e.g. Batch Number, Expiry Date, Supplier Code"
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
@@ -103,7 +119,7 @@ export function AddCustomFieldModal({ open, onOpenChange }: AddCustomFieldModalP
                 </p>
               )}
               {form.formState.errors.name && (
-                <p className="mt-1 text-xs text-red-500">{form.formState.errors.name.message}</p>
+                <p className="mt-1 text-xs text-red-500 dark:text-red-400">{form.formState.errors.name.message}</p>
               )}
             </div>
 
@@ -135,18 +151,19 @@ export function AddCustomFieldModal({ open, onOpenChange }: AddCustomFieldModalP
                 <div className="text-xs text-muted-foreground">Products cannot be saved without this field</div>
               </div>
               <label className="relative inline-flex cursor-pointer items-center">
-                <input type="checkbox" {...form.register('required')} className="peer sr-only" />
-                <div className="peer h-5 w-9 rounded-full bg-muted transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-4" />
+                <input type="checkbox" aria-label="Required field" {...form.register('required')} className="peer sr-only" />
+                <div className="peer h-5 w-9 rounded-full bg-muted-foreground/40 transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-4" />
               </label>
             </div>
 
             {/* Default value — only for text and number */}
             {(watchedType === 'text' || watchedType === 'number') && (
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                <label htmlFor="custom-field-default" className="mb-1.5 block text-sm font-medium text-foreground">
                   Default value <span className="font-normal text-muted-foreground">(optional)</span>
                 </label>
                 <input
+                  id="custom-field-default"
                   {...form.register('defaultValue')}
                   type={watchedType === 'number' ? 'number' : 'text'}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"

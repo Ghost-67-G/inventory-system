@@ -54,8 +54,16 @@ export function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<IProduct | undefined>(undefined);
   const [deleteProduct, setDeleteProduct] = useState<IProduct | null>(null);
   const [bulkCategoryModalOpen, setBulkCategoryModalOpen] = useState(false);
+  // DataTable owns its checkbox state and exposes no way to clear it, so we
+  // remount it (via key) whenever selection is cleared programmatically.
+  const [selectionResetKey, setSelectionResetKey] = useState(0);
 
   const bulkUpdateMutation = useBulkUpdateProducts();
+
+  const clearSelection = useCallback(() => {
+    setSelectedProducts([]);
+    setSelectionResetKey((key) => key + 1);
+  }, []);
 
   const params: ListProductsParams = useMemo(() => ({
     search: debouncedSearch || undefined,
@@ -91,20 +99,28 @@ export function ProductsPage() {
 
   const handleBulkDeactivate = async () => {
     if (!selectedProducts.length) return;
-    await bulkUpdateMutation.mutateAsync({
-      productIds: selectedProducts.map((p) => p._id),
-      updates: { isActive: false }
-    });
-    setSelectedProducts([]);
+    try {
+      await bulkUpdateMutation.mutateAsync({
+        productIds: selectedProducts.map((p) => p._id),
+        updates: { isActive: false }
+      });
+      clearSelection();
+    } catch {
+      // Error toast is handled by the mutation.
+    }
   };
 
   const handleBulkActivate = async () => {
     if (!selectedProducts.length) return;
-    await bulkUpdateMutation.mutateAsync({
-      productIds: selectedProducts.map((p) => p._id),
-      updates: { isActive: true }
-    });
-    setSelectedProducts([]);
+    try {
+      await bulkUpdateMutation.mutateAsync({
+        productIds: selectedProducts.map((p) => p._id),
+        updates: { isActive: true }
+      });
+      clearSelection();
+    } catch {
+      // Error toast is handled by the mutation.
+    }
   };
 
   const columns: ColumnDef<IProduct>[] = useMemo(() => [
@@ -195,11 +211,13 @@ export function ProductsPage() {
     {
       id: 'actions',
       header: '',
-      size: 80,
+      size: 130,
+      enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {canDo('product.update') && (
             <button
+              type="button"
               className="rounded px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-50 hover:underline dark:text-blue-400 dark:hover:bg-blue-900/20"
               onClick={() => {
                 setEditingProduct(row.original);
@@ -211,6 +229,7 @@ export function ProductsPage() {
           )}
           {canDo('product.delete') && (
             <button
+              type="button"
               className="rounded px-2 py-1 text-xs text-red-600 transition-colors hover:bg-red-50 hover:underline dark:text-red-400 dark:hover:bg-red-900/20"
               onClick={() => setDeleteProduct(row.original)}
             >
@@ -255,6 +274,8 @@ export function ProductsPage() {
           <div className="relative min-w-0 flex-1 md:min-w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
+              type="search"
+              aria-label="Search products"
               className="h-11 w-full rounded-lg border border-input bg-background py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground md:h-9 md:min-h-0"
               placeholder="Search by name, SKU, or description..."
               value={searchInput}
@@ -265,13 +286,20 @@ export function ProductsPage() {
             )}
           </div>
 
-          <Button type="button" variant="outline" className="h-11 min-h-11 md:hidden" onClick={() => setShowMobileFilters((value) => !value)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 min-h-11 md:hidden"
+            aria-expanded={showMobileFilters}
+            onClick={() => setShowMobileFilters((value) => !value)}
+          >
             <Filter className="mr-2 h-4 w-4" />
             Filters
           </Button>
 
-          <div className={`${showMobileFilters ? 'grid' : 'hidden'} w-full grid-cols-1 gap-2 md:flex md:w-auto md:items-center md:gap-2`}>
+          <div className={`${showMobileFilters ? 'grid' : 'hidden'} w-full grid-cols-1 gap-2 md:flex md:w-auto md:flex-wrap md:items-center md:gap-2`}>
             <select
+              aria-label="Filter by category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="h-11 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground md:h-9 md:min-h-0"
@@ -285,6 +313,7 @@ export function ProductsPage() {
             </select>
 
             <select
+              aria-label="Filter by status"
               value={isActiveFilter}
               onChange={(e) => setIsActiveFilter(e.target.value as 'true' | 'false' | 'all')}
               className="h-11 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground md:h-9 md:min-h-0"
@@ -295,10 +324,12 @@ export function ProductsPage() {
             </select>
 
             <button
+              type="button"
+              aria-pressed={lowStockOnly}
               onClick={() => setLowStockOnly(!lowStockOnly)}
               className={`h-11 rounded-lg border px-3 py-2 text-sm transition-colors md:h-9 md:min-h-0 ${
                 lowStockOnly
-                  ? 'border-amber-300 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  ? 'border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                   : 'border-input bg-background text-foreground hover:bg-muted'
               }`}
             >
@@ -306,6 +337,7 @@ export function ProductsPage() {
             </button>
 
             <select
+              aria-label="Sort products"
               value={`${sortBy}:${sortOrder}`}
               onChange={(e) => {
                 const [by, order] = e.target.value.split(':');
@@ -324,6 +356,7 @@ export function ProductsPage() {
 
             {hasActiveFilters && (
               <button
+                type="button"
                 onClick={clearFilters}
                 className="flex h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:h-auto"
               >
@@ -335,31 +368,42 @@ export function ProductsPage() {
         </div>
 
         {selectedProducts.length > 0 && (
-          <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 dark:border-blue-800 dark:bg-blue-900/20">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 dark:border-blue-800 dark:bg-blue-900/20">
             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
               {selectedProducts.length} selected
             </span>
+            {canDo('product.update') && (
+              <>
+                <button
+                  type="button"
+                  className="rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted disabled:opacity-50 md:ml-2"
+                  disabled={bulkUpdateMutation.isPending}
+                  onClick={() => setBulkCategoryModalOpen(true)}
+                >
+                  Change category
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+                  disabled={bulkUpdateMutation.isPending}
+                  onClick={() => void handleBulkDeactivate()}
+                >
+                  Deactivate
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+                  disabled={bulkUpdateMutation.isPending}
+                  onClick={() => void handleBulkActivate()}
+                >
+                  Activate
+                </button>
+              </>
+            )}
             <button
-              className="ml-2 rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted"
-              onClick={() => setBulkCategoryModalOpen(true)}
-            >
-              Change category
-            </button>
-            <button
-              className="rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted"
-              onClick={() => void handleBulkDeactivate()}
-            >
-              Deactivate
-            </button>
-            <button
-              className="rounded border border-input bg-background px-3 py-1 text-sm text-foreground hover:bg-muted"
-              onClick={() => void handleBulkActivate()}
-            >
-              Activate
-            </button>
-            <button
+              type="button"
               className="ml-auto text-sm text-blue-600 hover:underline dark:text-blue-400"
-              onClick={() => setSelectedProducts([])}
+              onClick={clearSelection}
             >
               Clear selection
             </button>
@@ -368,6 +412,7 @@ export function ProductsPage() {
       </div>
 
       <DataTable
+        key={selectionResetKey}
         columns={columns}
         data={allProducts}
         isLoading={isLoading}
@@ -415,13 +460,20 @@ export function ProductsPage() {
         onOpenChange={(open) => {
           if (!open) setDeleteProduct(null);
         }}
+        onSuccess={() => {
+          // Drop the deleted row from any pending bulk selection.
+          if (deleteProduct && selectedProducts.some((p) => p._id === deleteProduct._id)) {
+            setSelectedProducts((prev) => prev.filter((p) => p._id !== deleteProduct._id));
+            setSelectionResetKey((key) => key + 1);
+          }
+        }}
       />
 
       <BulkCategoryModal
         productIds={selectedProducts.map((p) => p._id)}
         open={bulkCategoryModalOpen}
         onOpenChange={setBulkCategoryModalOpen}
-        onSuccess={() => setSelectedProducts([])}
+        onSuccess={clearSelection}
       />
     </div>
   );

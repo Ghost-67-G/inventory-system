@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -39,8 +39,13 @@ export function AcceptInvitePage() {
   const token = params.get('token') ?? '';
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState<'verifying' | 'ready' | 'error'>('verifying');
-  const [error, setError] = useState<string | null>(null);
+  // The invite token is consumed by the accept request itself, so the form is
+  // shown straight away instead of "pre-verifying" (which used up the token and
+  // made a page reload look like an expired invite).
+  const [status, setStatus] = useState<'ready' | 'error'>(token ? 'ready' : 'error');
+  const [error, setError] = useState<string | null>(
+    token ? null : 'This invite link is missing its token. Please use the link from your email.'
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -56,34 +61,24 @@ export function AcceptInvitePage() {
   const passwordValue = watch('password') ?? '';
   const passwordScore = useMemo(() => getPasswordScore(passwordValue), [passwordValue]);
 
-  useEffect(() => {
-    if (!token) {
-      setStatus('error');
-      setError('This invite link has expired or already been used');
-      return;
-    }
-
-    authApi
-      .verifyEmail(token)
-      .then(() => {
-        setStatus('ready');
-      })
-      .catch(() => {
-        setStatus('error');
-        setError('This invite link has expired or already been used');
-      });
-  }, [token]);
-
   const onSubmit = handleSubmit(async (values) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      await authApi.resetPassword(token, values.password);
-      void navigate('/dashboard');
+      await authApi.acceptInvite(token, values.password);
+      // No session is issued by this endpoint, so a protected route would
+      // bounce straight back to /login. Land on /login with a success note.
+      void navigate('/login', { state: { message: 'Your password is set. Please sign in.' } });
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        setError((err.response?.data as { message?: string } | undefined)?.message ?? 'Failed to set password');
+        const message = (err.response?.data as { message?: string } | undefined)?.message;
+        if (err.response?.status === 400) {
+          setStatus('error');
+          setError(message ?? 'This invite link has expired or already been used');
+        } else {
+          setError(message ?? 'Failed to set password');
+        }
       } else {
         setError('Failed to set password');
       }
@@ -92,20 +87,11 @@ export function AcceptInvitePage() {
     }
   });
 
-  if (status === 'verifying') {
-    return (
-      <div className="flex flex-col items-center gap-3">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
-        <p className="text-sm text-muted-foreground">Verifying invite link...</p>
-      </div>
-    );
-  }
-
   if (status === 'error') {
     return (
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-foreground">Invite invalid</h1>
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
         <Link className="mt-4 inline-block text-sm text-muted-foreground underline" to="/login">
           Back to login
         </Link>
@@ -122,17 +108,20 @@ export function AcceptInvitePage() {
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
+          <label htmlFor="invite-password" className="mb-1 block text-sm font-medium text-foreground">Password</label>
           <div className="relative">
             <input
+              id="invite-password"
               type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
               placeholder="Create a strong password"
               {...register('password')}
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword((prev) => !prev)}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -150,9 +139,11 @@ export function AcceptInvitePage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Confirm password</label>
+          <label htmlFor="invite-confirm-password" className="mb-1 block text-sm font-medium text-foreground">Confirm password</label>
           <input
+            id="invite-confirm-password"
             type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="Re-enter your password"
             {...register('confirmPassword')}

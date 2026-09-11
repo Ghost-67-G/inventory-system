@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import {
   AlertDialog,
@@ -35,8 +36,18 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
+function isTabKey(value: string | null): value is TabKey {
+  return TABS.some((tab) => tab.key === value);
+}
+
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>('general');
+  // Keep the active tab in the URL (?tab=...) so deep links / refresh land on the right section.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab: TabKey = isTabKey(tabParam) ? tabParam : 'general';
+  const setActiveTab = (tab: TabKey) => {
+    setSearchParams(tab === 'general' ? {} : { tab }, { replace: true });
+  };
   const [restartDialogOpen, setRestartDialogOpen] = useState(false);
   const { role } = usePermission();
   const canManage = role === 'owner';
@@ -45,6 +56,9 @@ export function SettingsPage() {
   const timezone = tenant?.settings.timezone ?? 'UTC';
   const { data: preferences } = useNotificationPreferences();
   const updatePreferences = useUpdateNotificationPreferences();
+  // `mutateAsync` is referentially stable; the mutation result object is not, and depending
+  // on it re-armed the autosave timer on every render while a save was in flight (duplicate PATCHes).
+  const { mutateAsync: savePreferences } = updatePreferences;
   const [draft, setDraft] = useState<EmailNotificationPreferences | null>(null);
   const [showSaved, setShowSaved] = useState(false);
   const { isMobile } = useWindowSize();
@@ -74,8 +88,7 @@ export function SettingsPage() {
     }
 
     const timeout = window.setTimeout(() => {
-      updatePreferences
-        .mutateAsync(draft)
+      savePreferences(draft)
         .then(() => {
           setShowSaved(true);
           window.setTimeout(() => setShowSaved(false), 2000);
@@ -84,7 +97,7 @@ export function SettingsPage() {
     }, 500);
 
     return () => window.clearTimeout(timeout);
-  }, [canEditNotifications, draft, preferences, updatePreferences]);
+  }, [canEditNotifications, draft, preferences, savePreferences]);
 
   const togglePreference = (key: keyof EmailNotificationPreferences) => {
     if (!draft || !canEditNotifications) {
@@ -102,7 +115,7 @@ export function SettingsPage() {
       <PageHeader title="Settings" subtitle="Manage your workspace configuration" />
 
       {!canManage ? (
-        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
           You have view-only access to settings. Contact an owner to make changes.
         </div>
       ) : null}
@@ -110,6 +123,7 @@ export function SettingsPage() {
       {isMobile ? (
         <div className="mb-4">
           <select
+            aria-label="Settings section"
             value={activeTab}
             onChange={(event) => setActiveTab(event.target.value as TabKey)}
             className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -122,12 +136,15 @@ export function SettingsPage() {
           </select>
         </div>
       ) : (
-        <div className="mb-4 flex border-b border-border">
+        <div role="tablist" className="mb-4 flex overflow-x-auto border-b border-border">
           {TABS.map((tab) => (
             <button
               key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? 'border-blue-600 text-blue-700 dark:text-blue-400'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -261,7 +278,10 @@ export function SettingsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void resetOnboarding.mutateAsync()} disabled={resetOnboarding.isPending}>
+            <AlertDialogAction
+              onClick={() => void resetOnboarding.mutateAsync().catch(() => undefined)}
+              disabled={resetOnboarding.isPending}
+            >
               Restart
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -10,6 +10,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { importApi } from '@/api/endpoints/import';
@@ -124,6 +125,9 @@ export function ImportPage() {
   const [historyHasMore, setHistoryHasMore] = useState(false);
   const { isMobile } = useWindowSize();
   const [historyNextCursor, setHistoryNextCursor] = useState<string | null>(null);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const handledTerminalJobRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { upload, isUploading, uploadProgress, uploadError } = useUploadCsv();
   const activeJobQuery = useImportJob(activeJobId);
@@ -151,9 +155,15 @@ export function ImportPage() {
     if (!currentJob) return;
 
     if (currentJob.status === 'COMPLETED' || currentJob.status === 'FAILED' || currentJob.status === 'PARTIAL') {
+      // Run once per finished job. Resetting the cursor alone does nothing when
+      // it is already undefined, so also invalidate the history list to pull
+      // the final status/counters into the sidebar.
+      if (handledTerminalJobRef.current === currentJob._id) return;
+      handledTerminalJobRef.current = currentJob._id;
       setHistoryCursor(undefined);
+      void queryClient.invalidateQueries({ queryKey: ['import', 'jobs'] });
     }
-  }, [activeJobQuery.data?.job]);
+  }, [activeJobQuery.data?.job, queryClient]);
 
   const currentJob = activeJobQuery.data?.job as IImportJob | undefined;
   const processingPct = currentJob
@@ -201,6 +211,18 @@ export function ImportPage() {
     setSelectedFile(file);
   };
 
+  const clearFileInput = () => {
+    // Clearing the native input lets the user re-pick the same file; otherwise
+    // the browser suppresses the change event for an identical selection.
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    setLocalFileError(null);
+    clearFileInput();
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -208,6 +230,9 @@ export function ImportPage() {
       const result = await upload(selectedFile);
       setActiveJobId(result.jobId);
       setSelectedFile(null);
+      clearFileInput();
+      // Jump back to the first history page so the new job shows up at the top.
+      setHistoryCursor(undefined);
       toast.success('Import job created. Processing started.');
     } catch {
       // Error message is shown in uploadError.
@@ -218,7 +243,13 @@ export function ImportPage() {
     setSelectedFile(null);
     setActiveJobId(null);
     setLocalFileError(null);
+    clearFileInput();
   };
+
+  const showUploader = !isUploading && (!activeJobId || activeJobQuery.isError);
+  const showProcessing =
+    !isUploading && !!activeJobId && !activeJobQuery.isError && !terminalStatus;
+  const visibleHistoryJobs = isMobile && !showAllHistory ? historyJobs.slice(0, 5) : historyJobs;
 
   return (
     <div className="space-y-6">
@@ -281,7 +312,7 @@ export function ImportPage() {
           <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <h2 className="text-base font-semibold text-foreground">3. Upload your file</h2>
 
-            {!isUploading && !currentJob?.status && (
+            {showUploader && (
               <div className="mt-4 space-y-3">
                 {!selectedFile ? (
                   <button
@@ -311,16 +342,16 @@ export function ImportPage() {
                 ) : (
                   <div className="rounded-xl border border-border bg-muted/40 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{selectedFile.name}</p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <p className="break-all text-sm font-medium text-foreground">{selectedFile.name}</p>
                           <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
                         </div>
                       </div>
                       <button
-                        className="text-sm text-red-600 hover:underline"
-                        onClick={() => setSelectedFile(null)}
+                        className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
+                        onClick={removeSelectedFile}
                         type="button"
                       >
                         Remove
@@ -331,14 +362,18 @@ export function ImportPage() {
 
                 <input
                   accept=".csv,text/csv"
+                  aria-label="CSV file"
                   className="hidden"
                   onChange={(event) => onFileSelected(event.target.files?.[0] ?? null)}
                   ref={fileInputRef}
                   type="file"
                 />
 
-                {localFileError ? <p className="text-sm text-red-600">{localFileError}</p> : null}
-                {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
+                {localFileError ? <p className="text-sm text-red-600 dark:text-red-400">{localFileError}</p> : null}
+                {uploadError ? <p className="text-sm text-red-600 dark:text-red-400">{uploadError}</p> : null}
+                {activeJobQuery.isError ? (
+                  <p className="text-sm text-red-600 dark:text-red-400">Could not load the status of your import. Please try again.</p>
+                ) : null}
 
                 {selectedFile ? (
                   <div>
@@ -347,7 +382,7 @@ export function ImportPage() {
                     </Button>
                     <button
                       className="mt-2 w-full text-sm text-muted-foreground hover:text-foreground"
-                      onClick={() => setSelectedFile(null)}
+                      onClick={removeSelectedFile}
                       type="button"
                     >
                       Cancel
@@ -366,18 +401,24 @@ export function ImportPage() {
               </div>
             ) : null}
 
-            {currentJob && (currentJob.status === 'PENDING' || currentJob.status === 'PROCESSING') ? (
+            {showProcessing ? (
               <div className="mt-4 space-y-2">
                 <p className="text-sm font-medium text-foreground">Processing your import...</p>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div className="h-full bg-blue-600 transition-all" style={{ width: `${processingPct}%` }} />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {currentJob.processedRows.toLocaleString()} of {currentJob.totalRows.toLocaleString()} rows processed
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {currentJob.successCount.toLocaleString()} added - {currentJob.errorCount.toLocaleString()} errors
-                </p>
+                {currentJob ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      {(currentJob.processedRows ?? 0).toLocaleString()} of {(currentJob.totalRows ?? 0).toLocaleString()} rows processed
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {(currentJob.successCount ?? 0).toLocaleString()} added - {(currentJob.errorCount ?? 0).toLocaleString()} errors
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Starting import...</p>
+                )}
               </div>
             ) : null}
 
@@ -443,7 +484,7 @@ export function ImportPage() {
               </div>
 
               {displayedErrors.length === 101 && displayedErrors[displayedErrors.length - 1]?.row === -1 ? (
-                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-400">
                   Only showing first 100 errors. Fix these and re-upload.
                 </div>
               ) : null}
@@ -464,7 +505,7 @@ export function ImportPage() {
                         <td className="px-3 py-2 text-foreground">{error.row === -1 ? '-' : error.row}</td>
                         <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{error.sku || '-'}</td>
                         <td className="px-3 py-2 text-foreground">{error.field}</td>
-                        <td className="px-3 py-2 text-foreground">{error.message}</td>
+                        <td className="min-w-48 px-3 py-2 text-foreground break-words">{error.message}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -486,26 +527,27 @@ export function ImportPage() {
           ) : null}
 
           <div className="mt-4 space-y-3">
-            {(isMobile ? historyJobs.slice(0, 5) : historyJobs).map((job) => (
+            {visibleHistoryJobs.map((job) => (
               <div className="rounded-lg border border-border p-3" key={job._id}>
                 <button
                   className="w-full text-left"
+                  aria-expanded={expandedJobId === job._id}
                   onClick={() => setExpandedJobId((previous) => (previous === job._id ? null : job._id))}
                   type="button"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="line-clamp-1 text-sm font-medium text-foreground">{job.fileName}</p>
+                    <div className="min-w-0">
+                      <p className="line-clamp-1 break-all text-sm font-medium text-foreground">{job.fileName}</p>
                       <p className="text-xs text-muted-foreground">{formatRelativeTime(job.createdAt)}</p>
                     </div>
-                    {statusBadge(job)}
+                    <span className="shrink-0">{statusBadge(job)}</span>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {job.successCount.toLocaleString()}/{job.totalRows.toLocaleString()} rows imported
+                    {(job.successCount ?? 0).toLocaleString()}/{(job.totalRows ?? 0).toLocaleString()} rows imported
                   </p>
                 </button>
 
-                {expandedJobId === job._id && job.errors.length > 0 ? (
+                {expandedJobId === job._id && (job.errors?.length ?? 0) > 0 ? (
                   <div className="mt-3 max-h-40 overflow-y-auto rounded border border-border bg-muted/50 p-2">
                     {sortErrors(job.errors).map((error, index) => (
                       <p className="text-xs text-muted-foreground" key={`${error.row}-${error.field}-${index}`}>
@@ -518,17 +560,17 @@ export function ImportPage() {
             ))}
           </div>
 
-          {isMobile && historyJobs.length > 5 ? (
+          {isMobile && !showAllHistory && historyJobs.length > 5 ? (
             <button
               type="button"
               className="mt-2 text-sm text-blue-600 hover:underline dark:text-blue-400"
-              onClick={() => setHistoryCursor(historyNextCursor ?? undefined)}
+              onClick={() => setShowAllHistory(true)}
             >
               View all
             </button>
           ) : null}
 
-          {!isMobile && historyHasMore ? (
+          {(!isMobile || showAllHistory) && historyHasMore && historyNextCursor ? (
             <Button
               className="mt-4 w-full"
               onClick={() => setHistoryCursor(historyNextCursor ?? undefined)}

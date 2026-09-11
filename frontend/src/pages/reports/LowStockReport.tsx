@@ -11,6 +11,7 @@ import { ReportExportButton } from '@/components/reports/ReportExportButton';
 import { ReportSummaryCard } from '@/components/reports/ReportSummaryCard';
 import { useCategoriesDropdown } from '@/hooks/useCategories';
 import { useWarehousesDropdown } from '@/hooks/useWarehouses';
+import { useTenantFormatting } from '@/hooks/useTenantFormatting';
 import { formatCurrency } from '@/lib/formatting';
 import type { LowStockRow, LowStockParams } from '@/types';
 import { createColumnHelper } from '@tanstack/react-table';
@@ -31,6 +32,7 @@ export function LowStockReport() {
   const { data: infiniteData, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useLowStockReport(params);
   const { data: categories } = useCategoriesDropdown();
   const { data: warehouses } = useWarehousesDropdown();
+  const { currency } = useTenantFormatting();
 
   const updateParams = (newParams: Partial<LowStockParams>) => {
     const updated = { ...params, ...newParams };
@@ -89,7 +91,7 @@ export function LowStockReport() {
         cell: (info) => {
           const stock = info.getValue();
           return (
-            <span className={stock === 0 ? 'font-bold text-red-600' : 'font-medium'}>
+            <span className={stock === 0 ? 'font-bold text-red-600 dark:text-red-400' : 'font-medium'}>
               {stock}
             </span>
           );
@@ -101,22 +103,22 @@ export function LowStockReport() {
       }),
       columnHelper.accessor('shortage', {
         header: 'Shortage',
-        cell: (info) => <span className="font-bold text-red-600">{info.getValue()}</span>
+        cell: (info) => <span className="font-bold text-red-600 dark:text-red-400">{info.getValue()}</span>
       }),
       columnHelper.accessor('reorderSuggestion', {
         header: 'Reorder Suggestion',
         cell: (info) => (
-          <span className="font-medium text-blue-600">{info.getValue()}</span>
+          <span className="font-medium text-blue-600 dark:text-blue-400">{info.getValue()}</span>
         )
       }),
       columnHelper.accessor('restockCost', {
         header: 'Estimated Restock Cost',
         cell: (info) => (
-          <span className="text-muted-foreground">{formatCurrency(info.getValue(), 'USD')}</span>
+          <span className="text-muted-foreground">{formatCurrency(info.getValue() ?? 0, currency)}</span>
         )
       })
     ],
-    []
+    [currency]
   );
 
   const rows = useMemo(
@@ -124,12 +126,14 @@ export function LowStockReport() {
     [infiniteData]
   );
   const summary = infiniteData?.pages[0]?.summary;
+  const hasActiveFilters = Boolean(params.categoryId || params.warehouseId);
 
-  // Empty state — positive styling
-  if (!isLoading && rows.length === 0) {
+  // Empty state — positive styling. Only when NO filters are applied; otherwise the
+  // early return would hide the filter controls and the user could not clear them.
+  if (!isLoading && rows.length === 0 && !hasActiveFilters) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <CheckCircle className="h-16 w-16 text-green-600 mb-4" />
+        <CheckCircle className="h-16 w-16 text-green-600 dark:text-green-400 mb-4" />
         <h3 className="mb-2 text-lg font-bold text-foreground">No Low Stock Items</h3>
         <p className="max-w-md text-center text-muted-foreground">
           Your inventory is healthy! All products are stocked above their thresholds.
@@ -143,6 +147,7 @@ export function LowStockReport() {
       {/* Filters */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <select 
+          aria-label="Filter by category"
           value={params.categoryId || ''} 
           onChange={(e) => updateParams({ categoryId: e.target.value || undefined })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -154,6 +159,7 @@ export function LowStockReport() {
         </select>
 
         <select 
+          aria-label="Filter by warehouse"
           value={params.warehouseId || ''} 
           onChange={(e) => updateParams({ warehouseId: e.target.value || undefined })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -165,6 +171,7 @@ export function LowStockReport() {
         </select>
 
         <select 
+          aria-label="Sort by"
           value={params.sortBy} 
           onChange={(e) => updateParams({ sortBy: e.target.value as any })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -197,26 +204,26 @@ export function LowStockReport() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <ReportSummaryCard
             label="Total Low Stock Items"
-            value={summary.totalItems}
+            value={summary.totalItems ?? 0}
             icon={Package}
             accentColor="blue"
           />
           <ReportSummaryCard
             label="Out of Stock"
-            value={summary.outOfStock}
+            value={summary.outOfStock ?? 0}
             icon={AlertTriangle}
             accentColor="red"
           />
           <ReportSummaryCard
             label="Critical Items"
-            value={summary.criticalItems}
+            value={summary.criticalItems ?? 0}
             subLabel="≤25% of threshold"
             icon={AlertCircle}
             accentColor="amber"
           />
           <ReportSummaryCard
             label="Restock Cost"
-            value={formatCurrency(summary.totalRestockCost, 'USD')}
+            value={formatCurrency(summary.totalRestockCost ?? 0, currency)}
             accentColor="blue"
           />
         </div>
@@ -227,13 +234,13 @@ export function LowStockReport() {
         <ReportExportButton onExport={() => reportsApi.exportLowStock(params)} estimatedRows={rows.length} />
       </div>
 
-      {/* Data Table */}
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      {/* Data Table (DataTable renders its own border/rounding) */}
+      <div>
         <DataTable
           columns={columns as any}
           data={rows}
           isLoading={isLoading}
-          emptyMessage="No low stock items"
+          emptyMessage={hasActiveFilters ? 'No low stock items match the selected filters' : 'No low stock items'}
           hasNextPage={hasNextPage}
           onFetchNextPage={fetchNextPage}
           isFetchingNextPage={isFetchingNextPage}

@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import axios from 'axios';
 import { ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -22,6 +23,13 @@ interface StepTwoProps {
   onNext: () => void;
 }
 
+function getErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    return (error.response?.data as { message?: string } | undefined)?.message ?? 'Could not create the warehouse.';
+  }
+  return 'Could not create the warehouse.';
+}
+
 export function StepTwo({ status, onNext }: StepTwoProps) {
   const completeStepTwo = useCompleteStep2();
   const [showLocation, setShowLocation] = useState(false);
@@ -41,13 +49,20 @@ export function StepTwo({ status, onNext }: StepTwoProps) {
     }
   });
 
+  const warehouseCodeField = register('warehouseCode');
+
   const onSubmit = handleSubmit(async (values) => {
-    await completeStepTwo.mutateAsync({
-      warehouseName: values.warehouseName,
-      warehouseCode: values.warehouseCode || undefined,
-      city: values.city || undefined,
-      country: values.country || undefined
-    });
+    try {
+      await completeStepTwo.mutateAsync({
+        warehouseName: values.warehouseName,
+        warehouseCode: values.warehouseCode || undefined,
+        city: values.city || undefined,
+        country: values.country || undefined
+      });
+    } catch {
+      // Error is rendered below via the mutation state.
+      return;
+    }
     onNext();
   });
 
@@ -67,7 +82,7 @@ export function StepTwo({ status, onNext }: StepTwoProps) {
           <p className="mt-1 text-emerald-700 dark:text-emerald-400">{status.warehouseName ?? 'Your first warehouse is ready.'}</p>
         </div>
 
-        <Button className="w-full" onClick={onNext}>
+        <Button type="button" className="w-full" onClick={onNext}>
           Continue →
         </Button>
       </div>
@@ -92,50 +107,65 @@ export function StepTwo({ status, onNext }: StepTwoProps) {
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Warehouse name</label>
-        <Input placeholder="e.g. Main Warehouse, North Storage, Workshop" {...register('warehouseName')} />
+        <label htmlFor="onb-warehouse-name" className="mb-1 block text-sm font-medium text-foreground">Warehouse name</label>
+        <Input id="onb-warehouse-name" placeholder="e.g. Main Warehouse, North Storage, Workshop" {...register('warehouseName')} />
         {errors.warehouseName ? <p className="mt-1 text-xs text-red-600">{errors.warehouseName.message}</p> : null}
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Short code</label>
+        <label htmlFor="onb-warehouse-code" className="mb-1 block text-sm font-medium text-foreground">Short code</label>
         <Input
+          id="onb-warehouse-code"
+          aria-describedby="onb-warehouse-code-hint"
           placeholder="e.g. WH-001, MAIN, NORTH"
-          {...register('warehouseCode')}
-          onBlur={(event) => setValue('warehouseCode', event.currentTarget.value.toUpperCase(), { shouldValidate: true })}
+          {...warehouseCodeField}
+          onBlur={(event) => {
+            // Overriding onBlur previously dropped react-hook-form's own blur handler.
+            void warehouseCodeField.onBlur(event);
+            setValue('warehouseCode', event.currentTarget.value.toUpperCase(), { shouldValidate: true });
+          }}
         />
-        <p className="mt-1 text-xs text-muted-foreground">Used as a quick identifier. Auto-generated if left blank.</p>
+        <p id="onb-warehouse-code-hint" className="mt-1 text-xs text-muted-foreground">Used as a quick identifier. Auto-generated if left blank.</p>
+        {errors.warehouseCode ? <p className="mt-1 text-xs text-red-600">{errors.warehouseCode.message}</p> : null}
       </div>
 
       <button
         type="button"
+        aria-expanded={showLocation}
+        aria-controls="onb-location-fields"
         onClick={() => setShowLocation((prev) => !prev)}
         className="flex items-center gap-2 text-sm font-medium text-foreground"
       >
-        <ChevronDown size={16} className={showLocation ? 'rotate-180 transition-transform' : 'transition-transform'} />
+        <ChevronDown size={16} aria-hidden="true" className={showLocation ? 'rotate-180 transition-transform' : 'transition-transform'} />
         Add location details (optional)
       </button>
 
       {showLocation ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div id="onb-location-fields" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">City</label>
-            <Input placeholder="City" {...register('city')} />
+            <label htmlFor="onb-city" className="mb-1 block text-sm font-medium text-foreground">City</label>
+            <Input id="onb-city" autoComplete="address-level2" placeholder="City" {...register('city')} />
             {errors.city ? <p className="mt-1 text-xs text-red-600">{errors.city.message}</p> : null}
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Country</label>
-            <Input placeholder="Country" {...register('country')} />
+            <label htmlFor="onb-country" className="mb-1 block text-sm font-medium text-foreground">Country</label>
+            <Input id="onb-country" autoComplete="country-name" placeholder="Country" {...register('country')} />
             {errors.country ? <p className="mt-1 text-xs text-red-600">{errors.country.message}</p> : null}
           </div>
         </div>
+      ) : null}
+
+      {completeStepTwo.isError ? (
+        <p role="alert" className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+          {getErrorMessage(completeStepTwo.error)}
+        </p>
       ) : null}
 
       <Button type="submit" className="w-full" disabled={completeStepTwo.isPending}>
         {completeStepTwo.isPending ? 'Creating...' : 'Add warehouse →'}
       </Button>
 
-      <button type="button" onClick={onNext} className="w-full text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+      <button type="button" onClick={onNext} disabled={completeStepTwo.isPending} className="w-full text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50">
         I&apos;ll add this later →
       </button>
       <p className="text-center text-xs text-muted-foreground">You&apos;ll need at least one warehouse before recording stock</p>

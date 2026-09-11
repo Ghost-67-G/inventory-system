@@ -29,14 +29,16 @@ export function EditCustomFieldModal({ open, onOpenChange, field }: EditCustomFi
     defaultValues: { name: '', required: false, defaultValue: '' },
   });
 
+  // Re-sync whenever the modal opens or the target field changes so a cancelled
+  // edit doesn't leak stale values into the next session.
   useEffect(() => {
-    if (!field) return;
+    if (!field || !open) return;
     form.reset({
       name: field.name,
       required: field.required,
       defaultValue: field.defaultValue ?? '',
     });
-  }, [field, form]);
+  }, [field, open, form]);
 
   async function onSubmit(values: FormValues) {
     if (!field) return;
@@ -45,35 +47,55 @@ export function EditCustomFieldModal({ open, onOpenChange, field }: EditCustomFi
       required: values.required,
       defaultValue: values.defaultValue || undefined,
     };
-    await mutateAsync({ fieldId: field._id, data: dto });
-    onOpenChange(false);
+    try {
+      await mutateAsync({ fieldId: field._id, data: dto });
+      onOpenChange(false);
+    } catch {
+      // error toast is handled by the mutation hook; keep the modal open
+    }
   }
 
   if (!field) return null;
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-custom-field-title"
+      className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4"
+    >
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Edit field</h2>
-          <button onClick={() => onOpenChange(false)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+          <h2 id="edit-custom-field-title" className="text-lg font-semibold text-foreground">Edit field</h2>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+            aria-label="Close"
+            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
             <X size={18} />
           </button>
         </div>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Field name</label>
+              <label htmlFor="edit-custom-field-name" className="mb-1.5 block text-sm font-medium text-foreground">Field name</label>
               <input
+                id="edit-custom-field-name"
                 {...form.register('name')}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
+              {form.formState.errors.name && (
+                <p className="mt-1 text-xs text-red-500 dark:text-red-400">{form.formState.errors.name.message}</p>
+              )}
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Field key</label>
+              <label htmlFor="edit-custom-field-key" className="mb-1.5 block text-sm font-medium text-foreground">Field key</label>
               <input
+                id="edit-custom-field-key"
                 value={field.key}
                 disabled
                 className="w-full cursor-not-allowed rounded-lg border border-input bg-muted px-3 py-2 font-mono text-sm text-muted-foreground"
@@ -95,17 +117,18 @@ export function EditCustomFieldModal({ open, onOpenChange, field }: EditCustomFi
                 <div className="text-sm font-medium text-foreground">Required field</div>
               </div>
               <label className="relative inline-flex cursor-pointer items-center">
-                <input type="checkbox" {...form.register('required')} className="peer sr-only" />
-                <div className="peer h-5 w-9 rounded-full bg-muted transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-4" />
+                <input type="checkbox" aria-label="Required field" {...form.register('required')} className="peer sr-only" />
+                <div className="peer h-5 w-9 rounded-full bg-muted-foreground/40 transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-4" />
               </label>
             </div>
 
             {(field.type === 'text' || field.type === 'number') && (
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                <label htmlFor="edit-custom-field-default" className="mb-1.5 block text-sm font-medium text-foreground">
                   Default value <span className="font-normal text-muted-foreground">(optional)</span>
                 </label>
                 <input
+                  id="edit-custom-field-default"
                   {...form.register('defaultValue')}
                   type={field.type === 'number' ? 'number' : 'text'}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"

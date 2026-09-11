@@ -62,15 +62,21 @@ export default function ConfirmDeleteProductDialog({
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="flex gap-3">
-          <AlertDialogCancel>
+        <div className="flex flex-wrap justify-end gap-3">
+          <AlertDialogCancel disabled={deleteMutation.isPending}>
             {canDelete ? 'Cancel' : 'Got it'}
           </AlertDialogCancel>
           {canDelete && (
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(event) => {
+                // Radix closes the dialog on Action click by default; keep it open
+                // until the request resolves so the pending state is visible and
+                // a failed delete does not silently dismiss the dialog.
+                event.preventDefault();
+                void handleDelete();
+              }}
               disabled={deleteMutation.isPending}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
             >
               {deleteMutation.isPending ? '...' : 'Delete'}
             </AlertDialogAction>

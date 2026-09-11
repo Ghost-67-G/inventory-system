@@ -11,7 +11,7 @@ interface FloatingActionButtonProps {
 
 export function FloatingActionButton({ onClick, icon: Icon, label, permission }: FloatingActionButtonProps) {
   const content = (
-    <div className="fixed bottom-6 right-6 z-50 lg:hidden">
+    <div className="fixed bottom-6 right-6 z-40 md:hidden">
       <button
         type="button"
         onClick={onClick}

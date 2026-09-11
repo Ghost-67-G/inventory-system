@@ -39,7 +39,10 @@ export function ThemeToggle() {
         size="icon"
         onClick={() => setIsOpen((value) => !value)}
         title={`Theme: ${MODE_META[mode].label.toLowerCase()}`}
-        className="h-10 w-10 min-h-11 md:min-h-0"
+        className="size-10"
+        aria-label={`Theme: ${MODE_META[mode].label}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
       >
         <ActiveIcon className="h-4 w-4" />
       </Button>

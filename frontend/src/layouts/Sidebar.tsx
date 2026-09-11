@@ -52,25 +52,33 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   const location = useLocation();
   const { data: alertCount = 0 } = usePendingAlertCount();
 
+  const visibleItems = navItems.filter((item) => !item.permission || canDo(item.permission));
+
+  // Pick the single most specific matching item so that e.g. "/settings/users"
+  // highlights "Team" and not both "Team" and "Settings".
+  const activeHref = visibleItems
+    .filter((item) => location.pathname === item.href || location.pathname.startsWith(`${item.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
   return (
     <aside className={cn('sidebar flex h-full w-full flex-col border-r border-border bg-card/95 p-4 backdrop-blur', className)}>
-      <h2 className="mb-4 text-lg font-semibold text-foreground">Inventory</h2>
-      <nav className="space-y-2">
-        {navItems
-          .filter((item) => !item.permission || canDo(item.permission))
+      <h2 className="mb-4 shrink-0 text-lg font-semibold text-foreground">Inventory</h2>
+      <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto" aria-label="Main navigation">
+        {visibleItems
           .map((item) => (
             <Link
               key={item.href}
               to={item.href}
               onClick={onNavigate}
+              aria-current={activeHref === item.href ? 'page' : undefined}
               className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
-                location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)
+                activeHref === item.href
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
-              <item.icon size={16} />
-              <span>{item.label}</span>
+              <item.icon size={16} className="shrink-0" />
+              <span className="truncate">{item.label}</span>
               {item.label === 'Alerts' && alertCount > 0 ? (
                 <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                   {alertCount > 99 ? '99+' : alertCount}

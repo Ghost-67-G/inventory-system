@@ -30,13 +30,19 @@ export function EditProfileModal({ open, user, onClose }: EditProfileModalProps)
     defaultValues: { name: user?.name ?? '' }
   });
 
+  // Re-sync on open so a cancelled edit doesn't leave a dirty name behind.
   useEffect(() => {
+    if (!open) return;
     reset({ name: user?.name ?? '' });
-  }, [user, reset]);
+  }, [open, user, reset]);
 
   const onSubmit = handleSubmit(async (values) => {
-    await updateProfile.mutateAsync(values);
-    onClose();
+    try {
+      await updateProfile.mutateAsync(values);
+      onClose();
+    } catch {
+      // error toast is handled by the mutation hook; keep the modal open
+    }
   });
 
   if (!open || !user) {
@@ -44,20 +50,26 @@ export function EditProfileModal({ open, user, onClose }: EditProfileModalProps)
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">Edit profile</h2>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-profile-title"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4"
+    >
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 id="edit-profile-title" className="text-lg font-semibold text-foreground">Edit profile</h2>
 
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
-            <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('name')} />
-            {errors.name ? <p className="mt-1 text-xs text-red-600">{errors.name.message}</p> : null}
+            <label htmlFor="edit-profile-name" className="mb-1 block text-sm font-medium text-foreground">Name</label>
+            <input id="edit-profile-name" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('name')} />
+            {errors.name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name.message}</p> : null}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
+            <label htmlFor="edit-profile-email" className="mb-1 block text-sm font-medium text-foreground">Email</label>
             <input
+              id="edit-profile-email"
               className="w-full cursor-not-allowed rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground"
               value={user.email}
               disabled
@@ -67,7 +79,7 @@ export function EditProfileModal({ open, user, onClose }: EditProfileModalProps)
           </div>
 
           <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={updateProfile.isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={updateProfile.isPending}>

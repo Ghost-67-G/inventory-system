@@ -58,6 +58,7 @@ interface ListMovementsQuery {
   warehouseId?: string;
   type?: 'IN' | 'OUT' | 'ADJUSTMENT' | 'WASTE' | 'TRANSFER_OUT' | 'TRANSFER_IN';
   performedBy?: string;
+  referenceId?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -890,6 +891,9 @@ export async function listMovements(tenantId: string, query: ListMovementsQuery)
   }
   if (query.performedBy) {
     filter.performedBy = toObjectId(query.performedBy);
+  }
+  if (query.referenceId) {
+    filter.referenceId = toObjectId(query.referenceId);
   }
   if (query.dateFrom || query.dateTo) {
     filter.createdAt = {

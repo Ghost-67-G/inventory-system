@@ -118,8 +118,12 @@ export function UsersPage() {
       return;
     }
 
-    await deactivateMutation.mutateAsync({ userId: deactivateUser._id, userName: deactivateUser.name });
-    setDeactivateUser(null);
+    try {
+      await deactivateMutation.mutateAsync({ userId: deactivateUser._id, userName: deactivateUser.name });
+      setDeactivateUser(null);
+    } catch {
+      // error toast is handled by the mutation hook; keep the dialog open
+    }
   };
 
   return (
@@ -132,6 +136,7 @@ export function UsersPage() {
         <input
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           placeholder="Search name or email"
+          aria-label="Search team members"
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -140,6 +145,7 @@ export function UsersPage() {
         />
         <select
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          aria-label="Filter by role"
           value={roleFilter}
           onChange={(event) => {
             setRoleFilter(event.target.value);
@@ -154,6 +160,7 @@ export function UsersPage() {
         </select>
         <select
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          aria-label="Filter by status"
           value={statusFilter}
           onChange={(event) => {
             setStatusFilter(event.target.value);
@@ -169,7 +176,7 @@ export function UsersPage() {
       <div className="overflow-x-auto rounded-xl border border-border bg-card">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr className="whitespace-nowrap border-b border-border bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <th className="px-4 py-3">User</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Status</th>
@@ -204,33 +211,33 @@ export function UsersPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`grid h-8 w-8 place-items-center rounded-full text-xs font-semibold ${avatarClassForName(
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold ${avatarClassForName(
                           user.name
                         )}`}
                       >
                         {getInitials(user.name)}
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <div className="min-w-0">
+                        <p className="max-w-[240px] truncate font-medium text-foreground" title={user.name}>{user.name}</p>
+                        <p className="max-w-[240px] truncate text-xs text-muted-foreground" title={user.email}>{user.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium capitalize ${roleBadgeClass[user.role]}`}>
+                    <span className={`whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium capitalize ${roleBadgeClass[user.role] ?? roleBadgeClass.viewer}`}>
                       {user.role}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-1 text-xs font-medium ${
+                      className={`whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${
                         user.isActive ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                       }`}
                     >
                       {user.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                     {user.lastLoginAt ? formatRelativeTime(user.lastLoginAt) : 'Never'}
                   </td>
                   <td className="px-4 py-3">
@@ -240,11 +247,9 @@ export function UsersPage() {
                           <Button size="sm" variant="outline" onClick={() => setEditProfileOpen(true)}>
                             Edit profile
                           </Button>
-                          <Link to="/settings/security">
-                            <Button size="sm" variant="outline">
-                              Change password
-                            </Button>
-                          </Link>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to="/settings/security">Change password</Link>
+                          </Button>
                         </>
                       ) : null}
 
@@ -268,7 +273,7 @@ export function UsersPage() {
                           size="sm"
                           variant="outline"
                           disabled={reactivateMutation.isPending}
-                          onClick={() => void reactivateMutation.mutateAsync(user._id)}
+                          onClick={() => void reactivateMutation.mutateAsync(user._id).catch(() => undefined)}
                         >
                           Reactivate
                         </Button>
@@ -282,7 +287,7 @@ export function UsersPage() {
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <p>
           Showing {showingFrom}-{showingTo} of {data?.total ?? 0} members
         </p>

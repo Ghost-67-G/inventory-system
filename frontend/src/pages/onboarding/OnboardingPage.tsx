@@ -1,5 +1,7 @@
+import axios from 'axios';
 import { Check } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,12 +29,27 @@ function clampStep(step: number): 1 | 2 | 3 | 4 {
 }
 
 function readStoredStep(): number {
-  const raw = localStorage.getItem(STEP_STORAGE_KEY);
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(STEP_STORAGE_KEY);
+  } catch {
+    return 1;
+  }
+  if (raw === null) {
+    return 1;
+  }
   const parsed = Number(raw);
   if (!Number.isFinite(parsed)) {
     return 1;
   }
   return clampStep(parsed);
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    return (error.response?.data as { message?: string } | undefined)?.message ?? fallback;
+  }
+  return fallback;
 }
 
 export function OnboardingPage() {
@@ -76,14 +93,22 @@ export function OnboardingPage() {
   };
 
   const handleSkipConfirm = async () => {
-    await skipOnboarding.mutateAsync();
-    localStorage.removeItem(STEP_STORAGE_KEY);
-    setSkipDialogOpen(false);
+    try {
+      await skipOnboarding.mutateAsync();
+      localStorage.removeItem(STEP_STORAGE_KEY);
+      setSkipDialogOpen(false);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not skip setup. Please try again.'));
+    }
   };
 
   const handleComplete = async (destination: string) => {
-    await completeOnboarding.mutateAsync(destination);
-    localStorage.removeItem(STEP_STORAGE_KEY);
+    try {
+      await completeOnboarding.mutateAsync(destination);
+      localStorage.removeItem(STEP_STORAGE_KEY);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not finish setup. Please try again.'));
+    }
   };
 
   if (statusQuery.isLoading) {
@@ -94,21 +119,36 @@ export function OnboardingPage() {
     );
   }
 
+  if (statusQuery.isError) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-4">
+        <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 text-center">
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {getErrorMessage(statusQuery.error, 'Could not load your setup progress.')}
+          </p>
+          <Button type="button" className="mt-4" variant="outline" onClick={() => void statusQuery.refetch()}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const stepLineProgress = ((currentStep - 1) / 3) * 100;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 sm:px-6">
+    <div className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
       <style>
         {`@keyframes onboarding-step-enter { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }`}
       </style>
 
       <div className="mx-auto w-full max-w-140">
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-sm font-semibold tracking-wide text-foreground">Inventory System</p>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <p className="truncate text-sm font-semibold tracking-wide text-foreground">Inventory System</p>
           <button
             type="button"
             onClick={() => setSkipDialogOpen(true)}
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+            className="shrink-0 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50"
             disabled={skipOnboarding.isPending}
           >
             Skip setup
@@ -116,19 +156,27 @@ export function OnboardingPage() {
         </div>
 
         <div className="mb-6 rounded-xl border border-border bg-card p-4">
-          <div className="relative mb-4 h-1 rounded-full bg-muted">
+          <div
+            className="relative mb-4 h-1 rounded-full bg-muted"
+            role="progressbar"
+            aria-label="Setup progress"
+            aria-valuemin={1}
+            aria-valuemax={4}
+            aria-valuenow={currentStep}
+          >
             <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${stepLineProgress}%` }} />
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <ol className="grid grid-cols-4 gap-2">
             {STEP_LABELS.map((label, index) => {
               const stepNumber = index + 1;
               const isDone = completedSteps.has(stepNumber) || currentStep > stepNumber;
               const isCurrent = currentStep === stepNumber;
 
               return (
-                <div key={label} className="flex flex-col items-center gap-2">
+                <li key={label} className="flex flex-col items-center gap-2" aria-current={isCurrent ? 'step' : undefined}>
                   <div
+                    aria-hidden="true"
                     className={`grid h-8 w-8 place-items-center rounded-full border text-xs font-semibold transition-all ${
                       isDone
                         ? 'border-emerald-500 bg-emerald-500 text-white'
@@ -137,13 +185,16 @@ export function OnboardingPage() {
                           : 'border-border bg-background text-muted-foreground'
                     }`}
                   >
-                    {isDone ? <Check size={14} /> : stepNumber}
+                    {isDone ? <Check size={14} aria-hidden="true" /> : stepNumber}
                   </div>
-                  <span className="hidden text-xs text-muted-foreground sm:block">{label}</span>
-                </div>
+                  <span className="sr-only text-center text-xs text-muted-foreground sm:not-sr-only">
+                    {label}
+                    {isDone ? <span className="sr-only"> (completed)</span> : null}
+                  </span>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </div>
 
         <div key={currentStep} className="rounded-xl border border-border bg-card p-5" style={{ animation: 'onboarding-step-enter 200ms ease-out' }}>
@@ -156,7 +207,7 @@ export function OnboardingPage() {
 
           {currentStep === 2 || currentStep === 3 ? (
             <div className="mt-5 border-t border-border pt-4">
-              <Button variant="outline" onClick={handleBack}>
+              <Button type="button" variant="outline" onClick={handleBack}>
                 Back
               </Button>
             </div>
@@ -173,9 +224,16 @@ export function OnboardingPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Continue setup</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleSkipConfirm()}>
-              Skip anyway
+            <AlertDialogCancel disabled={skipOnboarding.isPending}>Continue setup</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={skipOnboarding.isPending}
+              onClick={(event) => {
+                // Keep the dialog open until the request settles so failures can be retried.
+                event.preventDefault();
+                void handleSkipConfirm();
+              }}
+            >
+              {skipOnboarding.isPending ? 'Skipping...' : 'Skip anyway'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

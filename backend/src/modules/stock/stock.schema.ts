@@ -69,6 +69,7 @@ export const listMovementsSchema = z.object({
     warehouseId: mongoId.optional(),
     type: z.enum(['IN', 'OUT', 'ADJUSTMENT', 'WASTE', 'TRANSFER_OUT', 'TRANSFER_IN']).optional(),
     performedBy: mongoId.optional(),
+    referenceId: mongoId.optional(),
     dateFrom: dateString.optional(),
     dateTo: dateString.optional()
   })

@@ -28,7 +28,15 @@ export function ConfirmDeactivateWarehouseDialog({
   const [apiError, setApiError] = useState<string | null>(null);
   const deactivateMutation = useDeactivateWarehouse();
   const isLoading = deactivateMutation.isPending;
-  const hasStock = warehouse.stockSummary.totalUnits > 0;
+  const hasStock = (warehouse.stockSummary?.totalUnits ?? 0) > 0;
+
+  // Radix passes a boolean; only treat "closing" as close, and drop any stale API error.
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setApiError(null);
+      onClose();
+    }
+  };
 
   async function handleDeactivate() {
     try {
@@ -48,7 +56,7 @@ export function ConfirmDeactivateWarehouseDialog({
   if (hasStock) {
     // State B: Cannot deactivate — has stock
     return (
-      <AlertDialog open={open} onOpenChange={onClose}>
+      <AlertDialog open={open} onOpenChange={handleOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -56,12 +64,15 @@ export function ConfirmDeactivateWarehouseDialog({
               Cannot deactivate "{warehouse.name}"
             </AlertDialogTitle>
           </AlertDialogHeader>
-          <AlertDialogDescription className="space-y-2">
-            <p>
-              This warehouse contains <strong>{warehouse.stockSummary.totalUnits} units</strong> across{' '}
-              <strong>{warehouse.stockSummary.totalProducts} products</strong>.
-            </p>
-            <p>Transfer all stock to another warehouse before deactivating.</p>
+          {/* asChild: Description renders a <p>; nesting <p>/<div> inside it is invalid HTML. */}
+          <AlertDialogDescription asChild>
+            <div className="space-y-2">
+              <p>
+                This warehouse contains <strong>{warehouse.stockSummary?.totalUnits ?? 0} units</strong> across{' '}
+                <strong>{warehouse.stockSummary?.totalProducts ?? 0} products</strong>.
+              </p>
+              <p>Transfer all stock to another warehouse before deactivating.</p>
+            </div>
           </AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogCancel>Got it</AlertDialogCancel>
@@ -73,12 +84,13 @@ export function ConfirmDeactivateWarehouseDialog({
 
   // State A: Safe to deactivate — no stock
   return (
-    <AlertDialog open={open} onOpenChange={onClose}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Deactivate "{warehouse.name}"?</AlertDialogTitle>
         </AlertDialogHeader>
-        <AlertDialogDescription className="space-y-3">
+        <AlertDialogDescription asChild>
+          <div className="space-y-3">
           <p>
             This warehouse will be deactivated and hidden from stock forms. You can reactivate it at any
             time.
@@ -96,13 +108,14 @@ export function ConfirmDeactivateWarehouseDialog({
               {apiError}
             </div>
           )}
+          </div>
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDeactivate}
             disabled={isLoading}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-destructive text-white hover:bg-destructive/90"
           >
             {isLoading ? 'Deactivating...' : 'Deactivate'}
           </AlertDialogAction>

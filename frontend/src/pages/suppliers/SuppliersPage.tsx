@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +12,17 @@ import { useSuppliers, useDeactivateSupplier } from '@/hooks/useSuppliers';
 import { useTenantFormatting } from '@/hooks/useTenantFormatting';
 import type { ISupplier } from '@/types';
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debounced;
+}
+
 export function SuppliersPage() {
   const navigate = useNavigate();
   const { formatMoney } = useTenantFormatting();
@@ -21,9 +32,10 @@ export function SuppliersPage() {
   const [isActive, setIsActive] = useState<'true' | 'false' | 'all'>('true');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editSupplier, setEditSupplier] = useState<ISupplier | undefined>();
+  const debouncedSearch = useDebounce(search, 300);
 
   const suppliersQuery = useSuppliers({
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     isActive: isActive === 'all' ? undefined : isActive
   });
 
@@ -36,9 +48,9 @@ export function SuppliersPage() {
         header: 'Supplier',
         size: 220,
         cell: ({ row }) => (
-          <div>
-            <span className="inline-flex rounded bg-muted px-2 py-0.5 font-mono text-xs">{row.original.code}</span>
-            <p className="mt-1 font-medium">{row.original.name}</p>
+          <div className="min-w-0">
+            <span className="inline-flex rounded bg-muted px-2 py-0.5 font-mono text-xs text-foreground">{row.original.code}</span>
+            <p className="mt-1 truncate font-medium text-foreground" title={row.original.name}>{row.original.name}</p>
           </div>
         )
       },
@@ -47,35 +59,40 @@ export function SuppliersPage() {
         header: 'Contact',
         size: 220,
         cell: ({ row }) => (
-          <div>
-            <p>{row.original.contactName || '-'}</p>
-            <p className="text-xs text-muted-foreground">{row.original.email || '-'}</p>
+          <div className="min-w-0">
+            <p className="truncate">{row.original.contactName || '-'}</p>
+            <p className="truncate text-xs text-muted-foreground" title={row.original.email || undefined}>{row.original.email || '-'}</p>
           </div>
         )
       },
       {
         id: 'terms',
         header: 'Payment terms',
+        size: 130,
         cell: ({ row }) => <span className="text-sm">{row.original.paymentTerms}</span>
       },
       {
         id: 'leadTime',
         header: 'Lead time',
+        size: 110,
         cell: ({ row }) => <span className="text-sm">{row.original.leadTimeDays} days</span>
       },
       {
         id: 'totalOrders',
         header: 'Total orders',
+        size: 120,
         cell: ({ row }) => row.original.totalOrders
       },
       {
         id: 'totalOrderValue',
         header: 'Total value',
+        size: 140,
         cell: ({ row }) => formatMoney(row.original.totalOrderValue)
       },
       {
         id: 'lastOrder',
         header: 'Last order',
+        size: 150,
         cell: ({ row }) =>
           row.original.lastOrderDate
             ? formatDistanceToNow(new Date(row.original.lastOrderDate), { addSuffix: true })
@@ -84,6 +101,7 @@ export function SuppliersPage() {
       {
         id: 'status',
         header: 'Status',
+        size: 100,
         cell: ({ row }) => (
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
@@ -99,11 +117,14 @@ export function SuppliersPage() {
       {
         id: 'actions',
         header: '',
+        size: 140,
+        enableSorting: false,
         cell: ({ row }) => (
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             <PermissionGuard permission="supplier.manage">
               <button
-                className="text-xs text-blue-600 hover:underline"
+                type="button"
+                className="text-xs text-blue-600 hover:underline dark:text-blue-400"
                 onClick={() => {
                   setEditSupplier(row.original);
                   setDrawerOpen(true);
@@ -115,8 +136,14 @@ export function SuppliersPage() {
             {row.original.isActive ? (
               <PermissionGuard permission="supplier.manage">
                 <button
-                  className="text-xs text-red-600 hover:underline"
-                  onClick={() => void deactivateMutation.mutateAsync(row.original._id)}
+                  type="button"
+                  className="text-xs text-red-600 hover:underline disabled:opacity-50 dark:text-red-400"
+                  disabled={deactivateMutation.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Deactivate supplier "${row.original.name}"?`)) {
+                      void deactivateMutation.mutateAsync(row.original._id).catch(() => undefined);
+                    }
+                  }}
                 >
                   Deactivate
                 </button>
@@ -126,14 +153,19 @@ export function SuppliersPage() {
         )
       }
     ],
-    [deactivateMutation, formatMoney]
+    [deactivateMutation.mutateAsync, deactivateMutation.isPending, formatMoney]
   );
 
   return (
     <div>
-      <PageHeader title="Suppliers" subtitle={`${suppliers.length} active suppliers`}>
+      <PageHeader
+        title="Suppliers"
+        subtitle={`${suppliers.length}${suppliersQuery.hasNextPage ? '+' : ''} ${
+          isActive === 'true' ? 'active ' : isActive === 'false' ? 'inactive ' : ''
+        }supplier${suppliers.length === 1 ? '' : 's'}`}
+      >
         <PermissionGuard permission="supplier.manage">
-          <Button onClick={() => { setEditSupplier(undefined); setDrawerOpen(true); }}>
+          <Button type="button" onClick={() => { setEditSupplier(undefined); setDrawerOpen(true); }}>
             <Plus className="mr-1 h-4 w-4" />
             Add supplier
           </Button>
@@ -144,14 +176,16 @@ export function SuppliersPage() {
         <div className="relative md:col-span-2">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm"
+            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             placeholder="Search suppliers"
+            aria-label="Search suppliers"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <select
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          aria-label="Filter suppliers by status"
           value={isActive}
           onChange={(e) => setIsActive(e.target.value as 'true' | 'false' | 'all')}
         >

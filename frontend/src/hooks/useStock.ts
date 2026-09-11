@@ -84,14 +84,24 @@ export function usePendingAlertCount() {
   });
 }
 
+// Any stock movement changes product stock levels, the movement list, alert
+// state and dashboard figures, so refresh all of them together.
+function invalidateAfterMovement(queryClient: ReturnType<typeof useQueryClient>): void {
+  void queryClient.invalidateQueries({ queryKey: ['stock'] });
+  void queryClient.invalidateQueries({ queryKey: ['products'] });
+  void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+}
+
 export function useRecordIn() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: RecordInDto) => stockApi.recordIn(data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['stock', 'movements'] });
-      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      invalidateAfterMovement(queryClient);
       toast.success('Stock added');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message ?? 'Failed to add stock');
     }
   });
 }
@@ -101,8 +111,7 @@ export function useRecordOut() {
   return useMutation({
     mutationFn: (data: RecordOutDto) => stockApi.recordOut(data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['stock', 'movements'] });
-      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      invalidateAfterMovement(queryClient);
       toast.success('Stock removed');
     },
     onError: (error: any) => {
@@ -116,9 +125,11 @@ export function useRecordAdjustment() {
   return useMutation({
     mutationFn: (data: RecordAdjustmentDto) => stockApi.recordAdjustment(data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['stock', 'movements'] });
-      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      invalidateAfterMovement(queryClient);
       toast.success('Stock adjusted');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message ?? 'Failed to adjust stock');
     }
   });
 }
@@ -128,8 +139,7 @@ export function useRecordWaste() {
   return useMutation({
     mutationFn: (data: RecordWasteDto) => stockApi.recordWaste(data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['stock', 'movements'] });
-      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      invalidateAfterMovement(queryClient);
       toast.success('Waste recorded');
     },
     onError: (error: any) => {
@@ -143,9 +153,12 @@ export function useRecordTransfer() {
   return useMutation({
     mutationFn: (data: RecordTransferDto) => stockApi.recordTransfer(data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['stock', 'movements'] });
+      invalidateAfterMovement(queryClient);
       void queryClient.invalidateQueries({ queryKey: ['warehouses'] });
       toast.success('Transfer complete');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message ?? 'Failed to transfer stock');
     }
   });
 }

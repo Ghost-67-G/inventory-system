@@ -36,31 +36,36 @@ const colorStyles: Record<MovementMeta['color'], { background: string; icon: str
 };
 
 export function ActivityFeedItem({ movement }: { movement: IStockMovement }) {
-  const meta = MOVEMENT_META[movement.type];
+  // Fall back to a neutral style for unknown/new movement types instead of crashing.
+  const meta = MOVEMENT_META[movement.type] ?? MOVEMENT_META.ADJUSTMENT;
   const Icon = meta.icon;
   const color = colorStyles[meta.color];
 
+  const quantity = Number(movement.quantity ?? 0);
   const quantityText =
     meta.sign === ''
-      ? `${movement.quantity}`
-      : `${meta.sign}${Math.abs(movement.quantity)}`;
+      ? `${quantity}`
+      : `${meta.sign}${Math.abs(quantity)}`;
+
+  const createdAt = new Date(movement.createdAt);
+  const timeAgo = Number.isNaN(createdAt.getTime()) ? '-' : formatDistanceToNow(createdAt, { addSuffix: true });
 
   return (
     <div className="flex items-start gap-3 py-3">
-      <div className={`mt-0.5 rounded-full p-2 ${color.background}`}>
+      <div className={`mt-0.5 shrink-0 rounded-full p-2 ${color.background}`}>
         <Icon size={14} className={color.icon} />
       </div>
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{movement.product?.name ?? 'Unknown product'}</p>
-        <p className="text-xs text-muted-foreground">
-          {movement.quantity} {movement.product?.unit ?? ''} - {movement.warehouse?.name ?? 'Unknown warehouse'}
+        <p className="truncate text-xs text-muted-foreground">
+          {meta.label} - {quantity} {movement.product?.unit ?? ''} - {movement.warehouse?.name ?? 'Unknown warehouse'}
         </p>
       </div>
 
-      <div className="text-right">
+      <div className="shrink-0 text-right">
         <p className={`text-sm font-semibold ${color.amount}`}>{quantityText}</p>
-        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(movement.createdAt), { addSuffix: true })}</p>
+        <p className="whitespace-nowrap text-xs text-muted-foreground">{timeAgo}</p>
       </div>
     </div>
   );

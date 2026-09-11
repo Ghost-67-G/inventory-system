@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
@@ -9,6 +10,7 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
   arrayMove,
@@ -56,36 +58,37 @@ function SortableRow({
       className="group flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3"
     >
       <button
+        type="button"
         {...attributes}
         {...listeners}
         disabled={!canManage}
-        className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed"
+        className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 disabled:cursor-not-allowed"
         aria-label="Drag to reorder"
       >
         <GripVertical size={16} />
       </button>
 
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-foreground">{field.name}</div>
-        <code className="text-xs text-muted-foreground">{field.key}</code>
+        <div className="truncate text-sm font-medium text-foreground">{field.name}</div>
+        <code className="block truncate text-xs text-muted-foreground">{field.key}</code>
       </div>
 
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${TYPE_BADGE_CLASS[field.type]}`}>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${TYPE_BADGE_CLASS[field.type] ?? TYPE_BADGE_CLASS.text}`}>
         {field.type}
       </span>
 
       {field.required ? (
-        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+        <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
           Required
         </span>
       ) : null}
 
       {canManage ? (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon-sm" onClick={() => onEdit(field)}>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(field)} aria-label={`Edit ${field.name}`}>
             <Pencil size={14} />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => onDelete(field)}>
+          <Button type="button" variant="ghost" size="icon-sm" onClick={() => onDelete(field)} aria-label={`Delete ${field.name}`}>
             <Trash2 size={14} className="text-red-600 dark:text-red-400" />
           </Button>
         </div>
@@ -113,7 +116,10 @@ export function CustomFieldsTab({ canManage }: CustomFieldsTabProps) {
     [tenant?.customFields]
   );
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   function handleDragEnd(event: DragEndEvent) {
     if (!canManage) return;
@@ -142,9 +148,11 @@ export function CustomFieldsTab({ canManage }: CustomFieldsTabProps) {
 
   function confirmDelete() {
     if (!deletingField) return;
-    void deleteMutateAsync(deletingField._id).then(() => {
-      setDeletingField(null);
-    });
+    void deleteMutateAsync(deletingField._id)
+      .then(() => {
+        setDeletingField(null);
+      })
+      .catch(() => undefined); // error toast is handled by the mutation hook
   }
 
   const isAtLimit = fields.length >= 20;

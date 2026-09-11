@@ -63,6 +63,7 @@ export function DataTable<TData>({
         checked={table.getIsAllPageRowsSelected()}
         onChange={table.getToggleAllPageRowsSelectedHandler()}
         className="cursor-pointer"
+        aria-label="Select all rows"
       />
     ),
     cell: ({ row }) => (
@@ -72,6 +73,7 @@ export function DataTable<TData>({
         onChange={row.getToggleSelectedHandler()}
         className="cursor-pointer"
         onClick={(e) => e.stopPropagation()}
+        aria-label="Select row"
       />
     )
   };
@@ -87,23 +89,7 @@ export function DataTable<TData>({
     state: { sorting, rowSelection, columnVisibility },
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: (updater) => {
-      const newState = typeof updater === 'function' ? updater(rowSelection) : updater;
-      setRowSelection(newState);
-
-      if (onSelectionChange) {
-        const selectedRows = Object.keys(newState)
-          .filter((key) => newState[key])
-          .map((key) => {
-            if (getRowId) {
-              return safeData.find((row) => getRowId(row) === key);
-            }
-            return safeData[Number(key)];
-          })
-          .filter(Boolean) as TData[];
-        onSelectionChange(selectedRows);
-      }
-    },
+    onRowSelectionChange: setRowSelection,
     enableRowSelection,
     getRowId,
     getCoreRowModel: getCoreRowModel(),
@@ -131,6 +117,44 @@ export function DataTable<TData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hiddenColumnsKey]);
 
+  // Keep selection in sync with the data: drop ids for rows that were removed
+  // (deleted, filtered out, re-fetched) and tell the parent about the current
+  // selection. The callback lives in a ref so an inline arrow from the parent
+  // does not re-run this effect on every render.
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  onSelectionChangeRef.current = onSelectionChange;
+  const lastEmittedSelectionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!enableRowSelection) {
+      return;
+    }
+
+    const rowKey = (row: TData, index: number) => (getRowId ? getRowId(row) : String(index));
+    const validKeys = new Set(safeData.map(rowKey));
+
+    const selectedKeys = Object.keys(rowSelection).filter((key) => rowSelection[key]);
+    const prunedKeys = selectedKeys.filter((key) => validKeys.has(key));
+
+    if (prunedKeys.length !== selectedKeys.length) {
+      const next: RowSelectionState = {};
+      prunedKeys.forEach((key) => {
+        next[key] = true;
+      });
+      setRowSelection(next);
+      return; // effect re-runs with the pruned state
+    }
+
+    const serialized = prunedKeys.join('|');
+    if (serialized === lastEmittedSelectionRef.current) {
+      return;
+    }
+    lastEmittedSelectionRef.current = serialized;
+
+    const selectedRows = safeData.filter((row, index) => rowSelection[rowKey(row, index)]);
+    onSelectionChangeRef.current?.(selectedRows);
+  }, [rowSelection, safeData, enableRowSelection, getRowId]);
+
   const rows = table.getRowModel().rows;
 
   useEffect(() => {
@@ -155,7 +179,10 @@ export function DataTable<TData>({
         className="overflow-auto"
         style={{ maxHeight }}
       >
-        <table className="w-full table-fixed border-collapse text-sm text-foreground">
+        <table
+          className="w-full table-fixed border-collapse text-sm text-foreground"
+          style={{ minWidth: table.getTotalSize() }}
+        >
           <thead className="border-b border-border bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -164,7 +191,25 @@ export function DataTable<TData>({
                     key={header.id}
                     className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                     style={{ width: header.getSize() }}
-                    onClick={header.column.getToggleSortingHandler()}
+                    onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+                    onKeyDown={
+                      header.column.getCanSort()
+                        ? (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              header.column.toggleSorting();
+                            }
+                          }
+                        : undefined
+                    }
+                    tabIndex={header.column.getCanSort() ? 0 : undefined}
+                    aria-sort={
+                      header.column.getIsSorted() === 'asc'
+                        ? 'ascending'
+                        : header.column.getIsSorted() === 'desc'
+                          ? 'descending'
+                          : undefined
+                    }
                   >
                     {header.isPlaceholder ? null : (
                       <div
@@ -217,7 +262,7 @@ export function DataTable<TData>({
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
-                      className="px-4 py-3 align-middle"
+                      className="px-4 py-3 align-middle break-words"
                       style={{ width: cell.column.getSize() }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

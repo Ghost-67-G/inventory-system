@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { format, subDays } from 'date-fns';
+import { format, isValid, subDays } from 'date-fns';
 import { useWasteAdjustmentsReport } from '@/hooks/useReports';
 import { reportsApi } from '@/api/endpoints/reports';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { ReportExportButton } from '@/components/reports/ReportExportButton';
 import { ReportSummaryCard } from '@/components/reports/ReportSummaryCard';
 import { useProducts } from '@/hooks/useProducts';
 import { useWarehousesDropdown } from '@/hooks/useWarehouses';
+import { useTenantFormatting } from '@/hooks/useTenantFormatting';
 import { formatCurrency } from '@/lib/formatting';
 import type { WasteAdjustmentsParams, IStockMovement } from '@/types';
 import { createColumnHelper } from '@tanstack/react-table';
@@ -18,10 +19,29 @@ import { AlertTriangle, Repeat2, Trash2 } from 'lucide-react';
 
 const columnHelper = createColumnHelper<IStockMovement>();
 
+const DATE_RANGE_ERROR = 'Start date must be on or before end date';
+
+// The reports endpoints populate productId / warehouseId / performedBy in place
+// (unlike the dashboard, which remaps them to product / warehouse / performedByUser),
+// so accept either shape. Without this every row rendered as "—" and $0.00.
+function getPopulated<T>(direct: T | undefined, raw: unknown): T | undefined {
+  if (direct) return direct;
+  return raw && typeof raw === 'object' ? (raw as T) : undefined;
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  return isValid(date) ? `${format(date, 'MMM d')} · ${format(date, 'HH:mm')}` : '—';
+}
+
+const isValidRange = (from: string, to: string) => !from || !to || from <= to;
+
 export function WasteAdjustmentsReport() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [customDateFrom, setCustomDateFrom] = useState(searchParams.get('dateFrom') || '');
   const [customDateTo, setCustomDateTo] = useState(searchParams.get('dateTo') || '');
+  const [dateError, setDateError] = useState<string | null>(null);
+  const { currency } = useTenantFormatting();
 
   const params: WasteAdjustmentsParams = {
     dateFrom: searchParams.get('dateFrom') || undefined,
@@ -45,7 +65,7 @@ export function WasteAdjustmentsReport() {
     }
   }, []);
 
-  const { data: infiniteData, fetchNextPage, hasNextPage, isFetchingNextPage } = useWasteAdjustmentsReport(params);
+  const { data: infiniteData, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useWasteAdjustmentsReport(params);
   const { data: productsData } = useProducts({});
   const { data: warehouses } = useWarehousesDropdown();
 
@@ -80,6 +100,20 @@ export function WasteAdjustmentsReport() {
     setSearchParams(search);
   };
 
+  const handleDateChange = (field: 'dateFrom' | 'dateTo', value: string) => {
+    const nextFrom = field === 'dateFrom' ? value : customDateFrom;
+    const nextTo = field === 'dateTo' ? value : customDateTo;
+    if (field === 'dateFrom') setCustomDateFrom(value);
+    else setCustomDateTo(value);
+
+    if (!isValidRange(nextFrom, nextTo)) {
+      setDateError(DATE_RANGE_ERROR);
+      return;
+    }
+    setDateError(null);
+    if (nextFrom && nextTo) updateParams({ dateFrom: nextFrom, dateTo: nextTo });
+  };
+
   // Flatten paginated data
   const allMovements = useMemo(
     () =>
@@ -96,14 +130,7 @@ export function WasteAdjustmentsReport() {
     () => [
       columnHelper.accessor('createdAt', {
         header: 'Date',
-        cell: (info) => {
-          const date = new Date(info.getValue());
-          return (
-            <span className="text-sm">
-              {format(date, 'MMM d')} · {format(date, 'HH:mm')}
-            </span>
-          );
-        }
+        cell: (info) => <span className="whitespace-nowrap text-sm">{formatDateTime(info.getValue())}</span>
       }),
       columnHelper.accessor('type', {
         header: 'Type',
@@ -133,11 +160,11 @@ export function WasteAdjustmentsReport() {
         id: 'product',
         header: 'Product',
         cell: (info) => {
-          const product = info.row.original.product as any;
+          const product = getPopulated<any>(info.row.original.product, info.row.original.productId);
           return (
-            <div className="text-sm">
-              <div className="font-medium">{product?.name || '—'}</div>
-              <div className="text-muted-foreground text-xs">{product?.sku || '—'}</div>
+            <div className="min-w-0 text-sm">
+              <div className="truncate font-medium" title={product?.name}>{product?.name || '—'}</div>
+              <div className="truncate text-muted-foreground text-xs">{product?.sku || '—'}</div>
             </div>
           );
         }
@@ -146,7 +173,7 @@ export function WasteAdjustmentsReport() {
         id: 'warehouse',
         header: 'Warehouse',
         cell: (info) => {
-          const warehouse = info.row.original.warehouse as any;
+          const warehouse = getPopulated<any>(info.row.original.warehouse, info.row.original.warehouseId);
           return (
             <WarehouseBadge name={warehouse?.name || '—'} code={warehouse?.code || '—'} />
           );
@@ -156,33 +183,29 @@ export function WasteAdjustmentsReport() {
         header: 'Quantity',
         cell: (info) => {
           const type = info.row.original.type;
-          const quantity = info.getValue();
-          const product = info.row.original.product as any;
+          const quantity = Math.abs(Number(info.getValue() ?? 0));
+          const product = getPopulated<any>(info.row.original.product, info.row.original.productId);
           const color = type === 'WASTE' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400';
           return (
-            <span className={`font-medium ${color}`}>
-              {type === 'WASTE' ? '-' : '±'}{quantity} {product?.unit}
+            <span className={`whitespace-nowrap font-medium ${color}`}>
+              {type === 'WASTE' ? '-' : '±'}{quantity} {product?.unit ?? ''}
             </span>
           );
         }
       }),
-      columnHelper.accessor((row: IStockMovement) => {
-        const product = row.productId;
-        const quantity = row.quantity;
-        return quantity;
-      }, {
+      columnHelper.accessor((row: IStockMovement) => row.quantity, {
         id: 'estimatedValue',
         header: 'Estimated Value',
         cell: (info) => {
           const type = info.row.original.type;
-          const quantity = info.getValue();
-          const product = info.row.original.product as any;
-          const costPrice = product?.costPrice ?? 0;
-          const value = quantity * costPrice;
+          const quantity = Math.abs(Number(info.getValue() ?? 0));
+          const product = getPopulated<any>(info.row.original.product, info.row.original.productId);
+          const costPrice = Number(product?.costPrice ?? 0);
+          const value = Number.isFinite(quantity * costPrice) ? quantity * costPrice : 0;
           const color = type === 'WASTE' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground';
           return (
-            <span className={color}>
-              {formatCurrency(value, 'USD')}
+            <span className={`whitespace-nowrap ${color}`}>
+              {formatCurrency(value, currency)}
             </span>
           );
         }
@@ -190,7 +213,7 @@ export function WasteAdjustmentsReport() {
       columnHelper.accessor('note', {
         header: 'Note',
         cell: (info) => (
-          <span className="text-sm text-muted-foreground" title={info.getValue()}>
+          <span className="block max-w-xs truncate text-sm text-muted-foreground" title={info.getValue()}>
             {info.getValue() || '—'}
           </span>
         )
@@ -199,12 +222,12 @@ export function WasteAdjustmentsReport() {
         id: 'performedBy',
         header: 'Performed By',
         cell: (info) => {
-          const user = info.row.original.performedBy as any;
+          const user = getPopulated<any>(info.row.original.performedByUser, info.row.original.performedBy);
           return <span className="text-sm">{user?.name || '—'}</span>;
         }
       })
     ],
-    []
+    [currency]
   );
 
   return (
@@ -212,36 +235,42 @@ export function WasteAdjustmentsReport() {
       {/* Date Range Filter */}
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium text-foreground">From</label>
+          <div className="min-w-0">
+            <label htmlFor="waste-date-from" className="text-sm font-medium text-foreground">From</label>
             <Input
+              id="waste-date-from"
               type="date"
               value={customDateFrom}
-              onChange={(e) => {
-                setCustomDateFrom(e.target.value);
-                if (customDateTo) updateParams({ dateFrom: e.target.value, dateTo: customDateTo });
-              }}
-              className="mt-1"
+              max={customDateTo || undefined}
+              aria-invalid={dateError ? true : undefined}
+              onChange={(e) => handleDateChange('dateFrom', e.target.value)}
+              className="mt-1 min-w-0"
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">To</label>
+          <div className="min-w-0">
+            <label htmlFor="waste-date-to" className="text-sm font-medium text-foreground">To</label>
             <Input
+              id="waste-date-to"
               type="date"
               value={customDateTo}
-              onChange={(e) => {
-                setCustomDateTo(e.target.value);
-                if (customDateFrom) updateParams({ dateFrom: customDateFrom, dateTo: e.target.value });
-              }}
-              className="mt-1"
+              min={customDateFrom || undefined}
+              aria-invalid={dateError ? true : undefined}
+              onChange={(e) => handleDateChange('dateTo', e.target.value)}
+              className="mt-1 min-w-0"
             />
           </div>
         </div>
+        {dateError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {dateError}
+          </p>
+        ) : null}
       </div>
 
       {/* Type Filter */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <select 
+          aria-label="Filter by type"
           value={params.type || ''} 
           onChange={(e) => updateParams({ type: e.target.value as any || undefined })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -252,17 +281,19 @@ export function WasteAdjustmentsReport() {
         </select>
 
         <select 
+          aria-label="Filter by product"
           value={params.productId || ''} 
           onChange={(e) => updateParams({ productId: e.target.value || undefined })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="">All products</option>
-          {products?.map((p) => (
+          {products?.map((p: any) => (
             <option key={p._id} value={p._id}>{p.name}</option>
           ))}
         </select>
 
         <select 
+          aria-label="Filter by warehouse"
           value={params.warehouseId || ''} 
           onChange={(e) => updateParams({ warehouseId: e.target.value || undefined })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -276,22 +307,22 @@ export function WasteAdjustmentsReport() {
 
       {/* Summary Stats */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <ReportSummaryCard
               label="Waste Events"
-              value={summary.waste.count}
+              value={summary.waste?.count ?? 0}
               icon={Trash2}
               accentColor="red"
             />
             <ReportSummaryCard
               label="Waste Quantity"
-              value={`${summary.waste.totalQuantity} units`}
+              value={`${summary.waste?.totalQuantity ?? 0} units`}
               accentColor="red"
             />
             <ReportSummaryCard
               label="Waste Value"
-              value={formatCurrency(summary.waste.totalValue, 'USD')}
+              value={formatCurrency(summary.waste?.totalValue ?? 0, currency)}
               accentColor="red"
             />
           </div>
@@ -299,18 +330,18 @@ export function WasteAdjustmentsReport() {
           <div className="space-y-2">
             <ReportSummaryCard
               label="Adjustments"
-              value={summary.adjustment.count}
+              value={summary.adjustment?.count ?? 0}
               icon={Repeat2}
               accentColor="blue"
             />
             <ReportSummaryCard
               label="Adjustment Qty"
-              value={`${summary.adjustment.totalQuantity} units`}
+              value={`${summary.adjustment?.totalQuantity ?? 0} units`}
               accentColor="blue"
             />
             <ReportSummaryCard
               label="Adjustment Value"
-              value={formatCurrency(summary.adjustment.totalValue, 'USD')}
+              value={formatCurrency(summary.adjustment?.totalValue ?? 0, currency)}
               accentColor="blue"
             />
           </div>
@@ -322,11 +353,12 @@ export function WasteAdjustmentsReport() {
         <ReportExportButton onExport={() => reportsApi.exportWasteAdjustments(params)} estimatedRows={allMovements.length} />
       </div>
 
-      {/* Data Table with Infinite Scroll */}
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      {/* Data Table with Infinite Scroll (DataTable renders its own border/rounding) */}
+      <div>
         <DataTable
           columns={columns as any}
           data={allMovements}
+          isLoading={isLoading}
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           onFetchNextPage={fetchNextPage}

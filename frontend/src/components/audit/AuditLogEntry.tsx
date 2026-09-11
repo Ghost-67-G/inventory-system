@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Boxes, Package, Settings, Tag, User, Warehouse } from 'lucide-react';
+import { Boxes, FileText, Package, Settings, Tag, Truck, User, Warehouse } from 'lucide-react';
 import type { AuditAction, AuditChange, IAuditLog } from '@/types';
 
 interface AuditLogEntryProps {
@@ -83,6 +83,10 @@ function getEntityIcon(entityType: IAuditLog['entityType']) {
       return Boxes;
     case 'settings':
       return Settings;
+    case 'supplier':
+      return Truck;
+    case 'purchase_order':
+      return FileText;
     default:
       return Package;
   }
@@ -91,7 +95,7 @@ function getEntityIcon(entityType: IAuditLog['entityType']) {
 function UserInitial({ name }: { name: string }) {
   const initial = (name || '?').charAt(0).toUpperCase();
   return (
-    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
       {initial}
     </span>
   );
@@ -115,16 +119,24 @@ export function AuditLogEntry({ log, compact = false }: AuditLogEntryProps) {
   const Icon = getEntityIcon(log.entityType);
   const actionClass = getActionBadgeClass(log.action);
   const actionLabel = useMemo(() => getActionLabel(log.action), [log.action]);
+  // Older/partial log rows may omit `changes`; never assume the array exists.
+  const changes = log.changes ?? [];
 
   if (compact) {
     return (
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">{formatTimestamp(log.createdAt)}</span>
-          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${actionClass}`}>{actionLabel}</span>
+          <span className="shrink-0 text-xs text-muted-foreground">{formatTimestamp(log.createdAt)}</span>
+          <span className={`truncate rounded-full border px-2 py-0.5 text-[11px] font-medium ${actionClass}`}>{actionLabel}</span>
         </div>
-        <div className="mt-2 text-sm text-foreground">by {log.performedByName}</div>
-        <div className="mt-1 text-xs text-muted-foreground">{log.changes.length} fields changed</div>
+        {log.entityName ? (
+          <div className="mt-2 flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">{log.entityName}</span>
+          </div>
+        ) : null}
+        <div className="mt-1 truncate text-sm text-foreground">by {log.performedByName}</div>
+        <div className="mt-1 text-xs text-muted-foreground">{changes.length} fields changed</div>
       </div>
     );
   }
@@ -134,31 +146,32 @@ export function AuditLogEntry({ log, compact = false }: AuditLogEntryProps) {
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
         className="w-full p-4 text-left"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-center">
           <div className="md:col-span-2 text-xs text-muted-foreground">{formatTimestamp(log.createdAt)}</div>
-          <div className="md:col-span-2 flex items-center gap-2">
+          <div className="md:col-span-2 flex min-w-0 items-center gap-2">
             <UserInitial name={log.performedByName} />
             <span className="truncate text-sm text-foreground">{log.performedByName}</span>
           </div>
           <div className="md:col-span-2">
             <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${actionClass}`}>{actionLabel}</span>
           </div>
-          <div className="md:col-span-3 flex items-center gap-2 text-sm text-foreground">
-            <Icon className="h-4 w-4 text-muted-foreground" />
+          <div className="md:col-span-3 flex min-w-0 items-center gap-2 text-sm text-foreground">
+            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate">{log.entityName}</span>
           </div>
-          <div className="md:col-span-2 text-sm text-muted-foreground">{log.changes.length} fields changed</div>
-          <div className="md:col-span-1 text-right text-xs text-muted-foreground">{log.ipAddress ?? ''}</div>
+          <div className="md:col-span-2 text-sm text-muted-foreground">{changes.length} fields changed</div>
+          <div className="md:col-span-1 truncate text-right text-xs text-muted-foreground">{log.ipAddress ?? ''}</div>
         </div>
       </button>
 
       {expanded ? (
         <div className="border-t border-border px-4 pb-2">
-          {log.changes.length > 0 ? (
+          {changes.length > 0 ? (
             <div className="pt-2">
-              {log.changes.map((change, index) => (
+              {changes.map((change, index) => (
                 <ChangeRow key={`${log._id}-${change.field}-${index}`} change={change} />
               ))}
             </div>

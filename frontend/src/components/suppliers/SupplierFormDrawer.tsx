@@ -23,7 +23,11 @@ const formSchema = z
     country: z.string().max(100).optional(),
     postalCode: z.string().max(30).optional(),
     paymentTerms: z.enum(['immediate', 'net15', 'net30', 'net45', 'net60', 'custom']),
-    paymentTermsDays: z.coerce.number().int().min(1).optional(),
+    // Empty/null (the field is hidden unless terms are "custom") must not coerce to 0 and fail min(1).
+    paymentTermsDays: z.preprocess(
+      (value) => (value === '' || value === null || value === undefined ? undefined : value),
+      z.coerce.number().int().min(1).optional()
+    ),
     currency: z.string().min(3).max(10),
     leadTimeDays: z.coerce.number().int().min(0).max(365),
     minimumOrderValue: z.coerce.number().min(0),
@@ -146,56 +150,69 @@ export function SupplierFormDrawer({ open, onClose, supplier }: SupplierFormDraw
   };
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
+  const codeField = register('code');
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
         <SheetHeader>
           <SheetTitle>{isEdit ? 'Edit supplier' : 'Add supplier'}</SheetTitle>
           <SheetDescription>{isEdit ? 'Update supplier information' : 'Create a new supplier'}</SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 py-6 pb-20">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pt-6">
           <section className="space-y-3">
             <h3 className="text-sm font-semibold">Identity</h3>
             <div>
-              <label className="text-sm">Supplier name *</label>
-              <Input {...register('name')} />
-              {errors.name ? <p className="mt-1 text-xs text-red-500">{errors.name.message}</p> : null}
+              <label htmlFor="supplier-name" className="text-sm text-foreground">Supplier name *</label>
+              <Input id="supplier-name" {...register('name')} />
+              {errors.name ? <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.name.message}</p> : null}
             </div>
             <div>
-              <label className="text-sm">Code</label>
+              <label htmlFor="supplier-code" className="text-sm text-foreground">Code</label>
               <Input
-                {...register('code')}
-                onBlur={(e) => setValue('code', e.target.value.trim().toUpperCase())}
+                id="supplier-code"
+                autoCapitalize="characters"
+                {...codeField}
+                onBlur={(e) => {
+                  // Keep react-hook-form's own blur bookkeeping, then normalise.
+                  void codeField.onBlur(e);
+                  setValue('code', e.target.value.trim().toUpperCase());
+                }}
                 placeholder="Auto-generated if empty"
               />
-              {errors.code ? <p className="mt-1 text-xs text-red-500">{errors.code.message}</p> : null}
+              {errors.code ? <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.code.message}</p> : null}
             </div>
             <div>
-              <label className="text-sm">Website</label>
-              <Input {...register('website')} placeholder="https://" />
-              {errors.website ? <p className="mt-1 text-xs text-red-500">{errors.website.message}</p> : null}
+              <label htmlFor="supplier-website" className="text-sm text-foreground">Website</label>
+              <Input id="supplier-website" {...register('website')} placeholder="https://" />
+              {errors.website ? <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.website.message}</p> : null}
             </div>
           </section>
 
           <section className="space-y-3">
             <h3 className="text-sm font-semibold">Contact</h3>
-            <Input {...register('contactName')} placeholder="Contact name" />
-            <Input {...register('email')} placeholder="Email" />
-            <Input {...register('phone')} placeholder="Phone" />
+            <Input {...register('contactName')} placeholder="Contact name" aria-label="Contact name" />
+            <Input {...register('email')} placeholder="Email" aria-label="Email" inputMode="email" autoComplete="off" />
+            {errors.email ? <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.email.message}</p> : null}
+            <Input {...register('phone')} placeholder="Phone" aria-label="Phone" inputMode="tel" />
           </section>
 
           <section className="space-y-3">
             <h3 className="text-sm font-semibold">Address</h3>
-            <Input {...register('street')} placeholder="Street" />
-            <div className="grid grid-cols-2 gap-2">
-              <Input {...register('city')} placeholder="City" />
-              <Input {...register('state')} placeholder="State" />
+            <Input {...register('street')} placeholder="Street" aria-label="Street" />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Input {...register('city')} placeholder="City" aria-label="City" />
+              <Input {...register('state')} placeholder="State" aria-label="State" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Input {...register('country')} placeholder="Country" />
-              <Input {...register('postalCode')} placeholder="Postal code" />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Input {...register('country')} placeholder="Country" aria-label="Country" />
+              <Input {...register('postalCode')} placeholder="Postal code" aria-label="Postal code" />
             </div>
           </section>
 
@@ -203,7 +220,8 @@ export function SupplierFormDrawer({ open, onClose, supplier }: SupplierFormDraw
             <h3 className="text-sm font-semibold">Commercial terms</h3>
             <select
               {...register('paymentTerms')}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              aria-label="Payment terms"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
             >
               <option value="immediate">Immediate</option>
               <option value="net15">Net 15</option>
@@ -212,32 +230,48 @@ export function SupplierFormDrawer({ open, onClose, supplier }: SupplierFormDraw
               <option value="net60">Net 60</option>
               <option value="custom">Custom</option>
             </select>
-            {watch('paymentTerms') === 'custom' ? <Input type="number" {...register('paymentTermsDays')} placeholder="Payment days" /> : null}
+            {watch('paymentTerms') === 'custom' ? (
+              <div>
+                <Input type="number" min={1} {...register('paymentTermsDays')} placeholder="Payment days" aria-label="Payment days" />
+                {errors.paymentTermsDays ? <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.paymentTermsDays.message}</p> : null}
+              </div>
+            ) : null}
             <select
               {...register('currency')}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              aria-label="Currency"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
             >
-              {SUPPORTED_CURRENCIES.slice(0, 10).map((currency) => (
+              {/* Full list: slicing to 10 hid the saved currency of existing suppliers (select fell back to the first option). */}
+              {SUPPORTED_CURRENCIES.map((currency) => (
                 <option key={currency.code} value={currency.code}>
-                  {currency.code}
+                  {currency.code} - {currency.label}
                 </option>
               ))}
             </select>
-            <Input type="number" {...register('leadTimeDays')} placeholder="Lead time days" />
-            <Input type="number" step="0.01" {...register('minimumOrderValue')} placeholder="Minimum order value" />
+            <div>
+              <label htmlFor="supplier-lead-time" className="text-sm text-foreground">Lead time (days)</label>
+              <Input id="supplier-lead-time" type="number" min={0} max={365} {...register('leadTimeDays')} placeholder="Lead time days" />
+              {errors.leadTimeDays ? <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.leadTimeDays.message}</p> : null}
+            </div>
+            <div>
+              <label htmlFor="supplier-moq-value" className="text-sm text-foreground">Minimum order value</label>
+              <Input id="supplier-moq-value" type="number" min={0} step="0.01" {...register('minimumOrderValue')} placeholder="Minimum order value" />
+              {errors.minimumOrderValue ? <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.minimumOrderValue.message}</p> : null}
+            </div>
           </section>
 
           <section className="space-y-2">
             <h3 className="text-sm font-semibold">Notes</h3>
-            <Textarea rows={4} {...register('notes')} />
+            <Textarea rows={4} {...register('notes')} aria-label="Notes" />
           </section>
 
-          <div className="fixed bottom-0 left-0 right-0 flex justify-end gap-2 border-t border-border bg-background p-4 sm:absolute">
-            <Button type="button" variant="outline" onClick={onClose}>
+          {/* Sticky (not fixed/absolute) so the footer stays visible while the sheet body scrolls. */}
+          <div className="sticky bottom-0 -mx-6 -mb-6 flex justify-end gap-2 border-t border-border bg-background px-6 py-4">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isEdit ? 'Save changes' : 'Create supplier'}
+              {isLoading ? 'Saving...' : isEdit ? 'Save changes' : 'Create supplier'}
             </Button>
           </div>
         </form>
