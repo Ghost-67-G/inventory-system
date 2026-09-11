@@ -36,7 +36,7 @@ function formatMoney(value: number, currency: string): string {
 
 function DashboardStatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
       {Array.from({ length: 7 }).map((_, index) => (
         <div key={index} className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <Skeleton className="mb-3 h-4 w-2/3" />
@@ -86,17 +86,17 @@ export function DashboardPage() {
       {statsQuery.isLoading ? (
         <DashboardStatsSkeleton />
       ) : statsQuery.isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
           <p>Could not load stats.</p>
           <Button className="mt-3" size="sm" variant="outline" onClick={() => void statsQuery.refetch()}>
             Retry
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
           <StatCard
             label="Total products"
-            value={stats?.overview.totalProducts.toLocaleString() ?? 0}
+            value={(stats?.overview.totalProducts ?? 0).toLocaleString()}
             icon={Package}
             accentColor="blue"
             helperText="Active products"
@@ -138,7 +138,7 @@ export function DashboardPage() {
 
           <StatCard
             label="Total units"
-            value={stats?.overview.totalUnits.toLocaleString() ?? 0}
+            value={(stats?.overview.totalUnits ?? 0).toLocaleString()}
             icon={Boxes}
             accentColor="purple"
             helperText="Units in stock"
@@ -156,13 +156,13 @@ export function DashboardPage() {
       )}
 
       {isStatsStale ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+        <div className="rounded-lg border border-amber-200 bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/30 dark:text-amber-300">
           Stats may be slightly outdated - refresh in progress.
         </div>
       ) : null}
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm lg:col-span-3">
+        <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm lg:col-span-3">
           <div className="mb-3">
             <h2 className="text-base font-semibold text-foreground">Stock movements</h2>
             <p className="text-xs text-muted-foreground">Last 30 days</p>
@@ -170,7 +170,7 @@ export function DashboardPage() {
           <MovementBarChart data={stats?.charts.movements ?? []} isLoading={statsQuery.isLoading} />
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm lg:col-span-2">
+        <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm lg:col-span-2">
           <div className="mb-3">
             <h2 className="text-base font-semibold text-foreground">Value by category</h2>
           </div>
@@ -274,10 +274,17 @@ export function DashboardPage() {
                   <Skeleton key={index} className="h-14 w-full" />
                 ))}
               </div>
+            ) : activityQuery.isError ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                <p>Could not load recent activity.</p>
+                <Button className="mt-3" size="sm" variant="outline" onClick={() => void activityQuery.refetch()}>
+                  Retry
+                </Button>
+              </div>
             ) : activityQuery.data && activityQuery.data.length > 0 ? (
               <>
                 {activityQuery.data.map((movement, index) => (
-                  <div key={movement._id} className={index !== activityQuery.data.length - 1 ? 'border-b border-border' : ''}>
+                  <div key={movement._id ?? index} className={index !== activityQuery.data.length - 1 ? 'border-b border-border' : ''}>
                     <ActivityFeedItem movement={movement} />
                   </div>
                 ))}

@@ -20,7 +20,7 @@ export function ConfirmDeleteCategoryDialog({
   // State B — has products: informational only
   if (category.productCount > 0) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
+      <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
         <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
           <h2 className="text-lg font-semibold text-foreground">
             Cannot delete &ldquo;{category.name}&rdquo;
@@ -30,7 +30,7 @@ export function ConfirmDeleteCategoryDialog({
             it. Reassign or deactivate those products first.
           </p>
           <div className="mt-4 flex justify-end">
-            <Button onClick={onClose}>Got it</Button>
+            <Button type="button" onClick={onClose}>Got it</Button>
           </div>
         </div>
       </div>
@@ -39,12 +39,16 @@ export function ConfirmDeleteCategoryDialog({
 
   // State A — safe to delete
   const handleDelete = async () => {
-    await deleteMutation.mutateAsync(category._id);
-    onClose();
+    try {
+      await deleteMutation.mutateAsync(category._id);
+      onClose();
+    } catch {
+      // error toast is handled by the mutation hook; keep the dialog open
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
+    <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
         <h2 className="text-lg font-semibold text-foreground">
           Delete &ldquo;{category.name}&rdquo;?
@@ -53,10 +57,11 @@ export function ConfirmDeleteCategoryDialog({
           This category will be permanently deleted. This cannot be undone.
         </p>
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={deleteMutation.isPending}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={deleteMutation.isPending}>
             Cancel
           </Button>
           <Button
+            type="button"
             className="bg-red-600 text-white hover:bg-red-700"
             onClick={handleDelete}
             disabled={deleteMutation.isPending}

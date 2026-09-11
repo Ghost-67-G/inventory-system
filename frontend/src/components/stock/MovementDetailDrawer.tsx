@@ -10,7 +10,7 @@ interface MovementDetailDrawerProps {
 }
 
 export function MovementDetailDrawer({ movementId, open, onClose }: MovementDetailDrawerProps) {
-  const { data: movement, isLoading } = useMovement(movementId);
+  const { data: movement, isLoading, isError } = useMovement(movementId);
 
   const signedQty = movement
     ? movement.type === 'IN' || movement.type === 'TRANSFER_IN'
@@ -27,17 +27,22 @@ export function MovementDetailDrawer({ movementId, open, onClose }: MovementDeta
           <SheetTitle>Movement details</SheetTitle>
         </SheetHeader>
 
-        {isLoading || !movement ? (
+        {isError ? (
+          <div className="mt-6 space-y-4">
+            <p className="text-sm text-destructive">Failed to load movement.</p>
+            <Button type="button" variant="outline" onClick={onClose} className="w-full">Close</Button>
+          </div>
+        ) : isLoading || !movement ? (
           <div className="mt-6 text-sm text-muted-foreground">Loading movement...</div>
         ) : (
           <div className="mt-5 space-y-5 text-sm text-foreground">
             <div className="inline-flex rounded-full bg-muted px-3 py-1 text-xs font-semibold text-foreground">
-              {movement.type}
+              {movement.type.replace('_', ' ')}
             </div>
 
             <section>
               <h3 className="font-semibold text-foreground">Product</h3>
-              <p>{movement.product?.name ?? '-'}</p>
+              <p className="break-words">{movement.product?.name ?? '-'}</p>
               <p className="text-muted-foreground">
                 {movement.product?.sku ?? '-'} {movement.product?.unit ? `- ${movement.product.unit}` : ''}
               </p>
@@ -65,18 +70,18 @@ export function MovementDetailDrawer({ movementId, open, onClose }: MovementDeta
             <section>
               <h3 className="font-semibold text-foreground">Reference</h3>
               <p>{movement.referenceType}</p>
-              {movement.referenceId ? <p className="font-mono text-xs text-muted-foreground">{movement.referenceId}</p> : null}
+              {movement.referenceId ? <p className="break-all font-mono text-xs text-muted-foreground">{movement.referenceId}</p> : null}
             </section>
 
             <section>
               <h3 className="font-semibold text-foreground">Note</h3>
-              <p className="text-foreground">{movement.note || '-'}</p>
+              <p className="whitespace-pre-wrap break-words text-foreground">{movement.note || '-'}</p>
             </section>
 
             <section>
               <h3 className="font-semibold text-foreground">Performed by</h3>
               <p>{movement.performedByUser?.name ?? '-'}</p>
-              <p className="text-muted-foreground">{movement.performedByUser?.email ?? '-'}</p>
+              <p className="break-all text-muted-foreground">{movement.performedByUser?.email ?? '-'}</p>
             </section>
 
             <section>
@@ -96,7 +101,7 @@ export function MovementDetailDrawer({ movementId, open, onClose }: MovementDeta
               </section>
             ) : null}
 
-            <Button onClick={onClose} className="w-full">Close</Button>
+            <Button type="button" onClick={onClose} className="w-full">Close</Button>
           </div>
         )}
       </SheetContent>

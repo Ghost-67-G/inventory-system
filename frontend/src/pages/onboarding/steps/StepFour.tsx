@@ -11,8 +11,12 @@ interface StepFourProps {
 function ChecklistItem({ done, label }: { done: boolean; label: string }) {
   return (
     <li className="flex items-start gap-2 text-sm text-foreground">
-      {done ? <CheckCircle2 size={16} className="mt-0.5 text-emerald-600 dark:text-emerald-400" /> : <Minus size={16} className="mt-0.5 text-muted-foreground" />}
-      <span>{label}</span>
+      {done ? (
+        <CheckCircle2 size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+      ) : (
+        <Minus size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-muted-foreground" />
+      )}
+      <span className="min-w-0 break-words">{label}</span>
     </li>
   );
 }
@@ -26,7 +30,7 @@ export function StepFour({ status, onComplete, isCompleting }: StepFourProps) {
 
       <div className="flex flex-col items-center text-center">
         <div className="mb-4 rounded-full bg-emerald-100 p-3 dark:bg-emerald-900/30" style={{ animation: 'onboarding-pop-in 200ms ease-out' }}>
-          <CheckCircle2 size={56} className="text-emerald-600 dark:text-emerald-400" />
+          <CheckCircle2 size={56} aria-hidden="true" className="text-emerald-600 dark:text-emerald-400" />
         </div>
         <h1 className="text-2xl font-semibold text-foreground">You&apos;re all set! 🎉</h1>
         <p className="text-sm text-muted-foreground">Your inventory system is ready to use.</p>
@@ -57,7 +61,7 @@ export function StepFour({ status, onComplete, isCompleting }: StepFourProps) {
             <Package size={18} className="text-foreground" />
             <p className="mt-2 text-sm font-medium text-foreground">Add more products</p>
             <p className="text-xs text-muted-foreground">Import via CSV or add one by one</p>
-            <Button className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/products')}>
+            <Button type="button" className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/products')}>
               Go to Products →
             </Button>
           </div>
@@ -66,7 +70,7 @@ export function StepFour({ status, onComplete, isCompleting }: StepFourProps) {
             <ArrowDownToLine size={18} className="text-foreground" />
             <p className="mt-2 text-sm font-medium text-foreground">Record stock in</p>
             <p className="text-xs text-muted-foreground">Add your current inventory levels</p>
-            <Button className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/stock')}>
+            <Button type="button" className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/stock')}>
               Record stock →
             </Button>
           </div>
@@ -75,14 +79,14 @@ export function StepFour({ status, onComplete, isCompleting }: StepFourProps) {
             <Users size={18} className="text-foreground" />
             <p className="mt-2 text-sm font-medium text-foreground">Invite your team</p>
             <p className="text-xs text-muted-foreground">Add managers and staff members</p>
-            <Button className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/settings/users')}>
+            <Button type="button" className="mt-3 w-full" variant="outline" disabled={isCompleting} onClick={() => void onComplete('/settings/users')}>
               Manage team →
             </Button>
           </div>
         </div>
       </div>
 
-      <Button className="w-full" disabled={isCompleting} onClick={() => void onComplete('/dashboard')}>
+      <Button type="button" className="w-full" disabled={isCompleting} onClick={() => void onComplete('/dashboard')}>
         {isCompleting ? 'Finishing setup...' : 'Go to dashboard →'}
       </Button>
 

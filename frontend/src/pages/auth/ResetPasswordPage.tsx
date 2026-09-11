@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import axios from 'axios';
 import { authApi } from '@/api/endpoints/auth';
@@ -31,7 +31,7 @@ export function ResetPasswordPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(token ? null : 'Invalid or missing reset token.');
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema)
@@ -69,9 +69,10 @@ export function ResetPasswordPage() {
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">New password</label>
+          <label htmlFor="reset-password" className="mb-1 block text-sm font-medium text-foreground">New password</label>
           <div className="relative">
             <input
+              id="reset-password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
@@ -80,6 +81,7 @@ export function ResetPasswordPage() {
             />
             <button
               type="button"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword((v) => !v)}
             >
@@ -90,8 +92,9 @@ export function ResetPasswordPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Confirm password</label>
+          <label htmlFor="reset-confirm-password" className="mb-1 block text-sm font-medium text-foreground">Confirm password</label>
           <input
+            id="reset-confirm-password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
@@ -101,9 +104,15 @@ export function ResetPasswordPage() {
           {errors.confirmPassword && <p className="mt-1 text-xs text-red-600">{errors.confirmPassword.message}</p>}
         </div>
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full" disabled={isLoading || !token}>
           {isLoading ? 'Resetting…' : 'Reset password'}
         </Button>
+
+        <p className="text-center text-sm">
+          <Link to="/forgot-password" className="text-muted-foreground hover:text-foreground hover:underline">
+            Request a new reset link
+          </Link>
+        </p>
       </form>
     </div>
   );

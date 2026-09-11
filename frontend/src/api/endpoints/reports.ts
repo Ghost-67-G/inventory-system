@@ -35,7 +35,8 @@ const triggerDownload = async (url: string, token: string | null): Promise<void>
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(objectUrl);
+    // Revoking synchronously can abort the download in Firefox/Safari.
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   } catch (error) {
     console.error('Download error:', error);
     throw error;
@@ -46,8 +47,17 @@ const triggerDownload = async (url: string, token: string | null): Promise<void>
  * Helper: Extract filename from Content-Disposition header
  */
 const extractFilename = (header: string): string => {
-  const match = header.match(/filename="([^"]+)"/);
-  return match?.[1] ?? 'export.csv';
+  // RFC 5987 form (filename*=UTF-8''name.csv) takes precedence when present.
+  const extended = header.match(/filename\*=(?:UTF-8'')?"?([^";]+)"?/i);
+  if (extended?.[1]) {
+    try {
+      return decodeURIComponent(extended[1]);
+    } catch {
+      return extended[1];
+    }
+  }
+  const plain = header.match(/filename="?([^";]+)"?/i);
+  return plain?.[1]?.trim() || 'export.csv';
 };
 
 /**

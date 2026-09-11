@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCategoriesDropdown } from '@/hooks/useCategories';
 import { useBulkUpdateProducts } from '@/hooks/useProducts';
 
@@ -20,6 +20,12 @@ export default function BulkCategoryModal({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const { data: categories } = useCategoriesDropdown();
   const bulkUpdateMutation = useBulkUpdateProducts();
+
+  // Reset the picked category whenever the modal closes (Cancel / X / overlay),
+  // otherwise the previous choice leaks into the next open.
+  useEffect(() => {
+    if (!open) setSelectedCategoryId(null);
+  }, [open]);
 
   const handleApply = async () => {
     try {
@@ -49,6 +55,7 @@ export default function BulkCategoryModal({
 
         <div className="space-y-4">
           <select
+            aria-label="Category"
             value={selectedCategoryId ?? ''}
             onChange={(e) => setSelectedCategoryId(e.target.value || null)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -63,12 +70,13 @@ export default function BulkCategoryModal({
         </div>
 
         <div className="flex gap-3 justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={bulkUpdateMutation.isPending}>
             Cancel
           </Button>
           <Button
-            onClick={handleApply}
-            disabled={bulkUpdateMutation.isPending}
+            type="button"
+            onClick={() => void handleApply()}
+            disabled={bulkUpdateMutation.isPending || productIds.length === 0}
           >
             {bulkUpdateMutation.isPending ? '...' : `Apply to ${productIds.length} Products`}
           </Button>

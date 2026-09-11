@@ -8,6 +8,8 @@ import { PermissionGuard } from '@/router/guards/PermissionGuard';
 import { WarehouseFormModal } from '@/components/warehouses/WarehouseFormModal';
 import { ConfirmDeactivateWarehouseDialog } from '@/components/warehouses/ConfirmDeactivateWarehouseDialog';
 import { useWarehouse, useWarehouseStock, useSetDefaultWarehouse } from '@/hooks/useWarehouses';
+import { useCategoriesDropdown } from '@/hooks/useCategories';
+import CategoryBadge from '@/components/shared/CategoryBadge';
 import { DataTable } from '@/components/shared/DataTable';
 import { useWindowSize } from '@/hooks/useWindowSize';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -35,11 +37,25 @@ export function WarehouseDetailPage() {
   const { isMobile } = useWindowSize();
 
   const { data: warehouse, isLoading } = useWarehouse(id || '');
-  const { data: stockPages, fetchNextPage, hasNextPage, isFetchingNextPage } = useWarehouseStock(
+  const {
+    data: stockPages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isStockLoading
+  } = useWarehouseStock(
     id || '',
     { search: debouncedSearch || undefined, lowStock: showLowStockOnly ? 'true' : undefined }
   );
   const setDefaultMutation = useSetDefaultWarehouse();
+  const { data: categoryOptions } = useCategoriesDropdown();
+
+  // The stock endpoint only returns categoryId; resolve it to a name/colour instead of showing a raw id.
+  const categoriesById = useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    (categoryOptions ?? []).forEach((category) => map.set(category._id, { name: category.name, color: category.color }));
+    return map;
+  }, [categoryOptions]);
 
   const columns = useMemo<ColumnDef<WarehouseStockItem>[]>(
     () => [
@@ -48,9 +64,9 @@ export function WarehouseDetailPage() {
         header: 'Product',
         size: 260,
         cell: ({ row }) => (
-          <div>
-            <p className="font-medium text-foreground">{row.original.product.name}</p>
-            <p className="text-xs text-muted-foreground">{row.original.product.sku}</p>
+          <div className="min-w-0">
+            <p className="truncate font-medium text-foreground">{row.original.product?.name ?? 'Unknown product'}</p>
+            <p className="truncate text-xs text-muted-foreground">{row.original.product?.sku ?? '—'}</p>
           </div>
         )
       },
@@ -58,25 +74,27 @@ export function WarehouseDetailPage() {
         id: 'category',
         header: 'Category',
         size: 170,
-        cell: ({ row }) =>
-          row.original.product.categoryId ? (
-            <span className="text-xs text-muted-foreground">{row.original.product.categoryId}</span>
-          ) : (
-            <span className="text-xs text-muted-foreground">Uncategorized</span>
-          )
+        cell: ({ row }) => {
+          const categoryId = row.original.product?.categoryId;
+          const category = categoryId ? categoriesById.get(categoryId) : undefined;
+          if (category) {
+            return <CategoryBadge name={category.name} color={category.color} size="sm" />;
+          }
+          return <span className="text-xs text-muted-foreground">Uncategorized</span>;
+        }
       },
       {
         id: 'unit',
         header: 'Unit',
         size: 90,
-        cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.product.unit}</span>
+        cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.product?.unit ?? '—'}</span>
       },
       {
         id: 'quantity',
         header: 'In Stock',
         size: 120,
         cell: ({ row }) => {
-          const low = row.original.quantity <= row.original.product.lowStockThreshold;
+          const low = row.original.quantity <= (row.original.product?.lowStockThreshold ?? 0);
           return low ? (
             <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
               {row.original.quantity}
@@ -108,7 +126,7 @@ export function WarehouseDetailPage() {
         )
       }
     ],
-    []
+    [categoriesById]
   );
 
   if (isLoading) {
@@ -158,7 +176,7 @@ export function WarehouseDetailPage() {
       {/* Header Info */}
       <div className="space-y-4">
         <div>
-          <h1 className="text-3xl font-bold">{warehouse.name}</h1>
+          <h1 className="break-words text-3xl font-bold text-foreground">{warehouse.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
               {warehouse.code}
@@ -177,8 +195,8 @@ export function WarehouseDetailPage() {
         </div>
 
         <section className="rounded-xl border border-border bg-card p-5 shadow-sm lg:col-span-1">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
                 <h2 className="text-base font-semibold text-foreground">Warehouse Details</h2>
                 {warehouse.description && <p className="mt-2 text-sm text-muted-foreground">{warehouse.description}</p>}
                 
@@ -197,17 +215,17 @@ export function WarehouseDetailPage() {
               </div>
 
               {/* Stats Cards */}
-              <div className="ml-4 space-y-2">
+              <div className="grid shrink-0 grid-cols-2 gap-2 sm:ml-4 sm:grid-cols-1">
                 <div className="rounded-lg bg-blue-50 p-3 text-center dark:bg-blue-900/20">
                   <p className="text-xs text-blue-600 dark:text-blue-300">Products</p>
                   <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">
-                    {warehouse.stockSummary.totalProducts}
+                    {warehouse.stockSummary?.totalProducts ?? 0}
                   </p>
                 </div>
                 <div className="rounded-lg bg-green-50 p-3 text-center dark:bg-green-900/20">
                   <p className="text-xs text-green-600 dark:text-green-300">Units</p>
                   <p className="text-2xl font-bold text-green-900 dark:text-green-200">
-                    {warehouse.stockSummary.totalUnits}
+                    {warehouse.stockSummary?.totalUnits ?? 0}
                   </p>
                 </div>
               </div>
@@ -229,6 +247,7 @@ export function WarehouseDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={setDefaultMutation.isPending}
                   onClick={() => setDefaultMutation.mutate({ id: warehouse._id, name: warehouse.name })}
                   className="gap-2"
                 >
@@ -256,12 +275,13 @@ export function WarehouseDetailPage() {
       {/* Stock Section */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-semibold">Stock in this warehouse</h2>
+          <h2 className="text-xl font-semibold text-foreground">Stock in this warehouse</h2>
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <Input
             placeholder="Search products..."
+            aria-label="Search products in this warehouse"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="sm:max-w-md"
@@ -270,13 +290,14 @@ export function WarehouseDetailPage() {
             variant={showLowStockOnly ? 'default' : 'outline'}
             onClick={() => setShowLowStockOnly(!showLowStockOnly)}
             size="sm"
+            aria-pressed={showLowStockOnly}
           >
             Low stock only
           </Button>
         </div>
 
         {/* Stock Table */}
-        {stockItems.length === 0 ? (
+        {!isStockLoading && stockItems.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-12 shadow-sm">
             <div className="flex flex-col items-center justify-center py-12">
               {showLowStockOnly ? (
@@ -293,13 +314,16 @@ export function WarehouseDetailPage() {
           <DataTable
             columns={columns}
             data={stockItems}
+            isLoading={isStockLoading}
             hiddenColumnIds={isMobile ? ['category', 'unit', 'reserved'] : []}
             isFetchingNextPage={isFetchingNextPage}
             hasNextPage={!!hasNextPage}
             onFetchNextPage={() => {
               void fetchNextPage();
             }}
-            onRowClick={(item) => navigate(`/products/${item.product._id}`)}
+            onRowClick={(item) => {
+              if (item.product?._id) navigate(`/products/${item.product._id}`);
+            }}
             emptyMessage={showLowStockOnly ? 'No low stock items' : 'No stock in this warehouse'}
           />
         )}

@@ -47,7 +47,7 @@ const TabsList = React.forwardRef<
   HTMLDivElement,
   TabsListProps
 >(({ children, className = '', ...props }, ref) => (
-  <div ref={ref} role="tablist" className={`flex border-b border-border ${className}`} {...props}>
+  <div ref={ref} role="tablist" className={`flex overflow-x-auto border-b border-border ${className}`} {...props}>
     {children}
   </div>
 ));
@@ -69,12 +69,34 @@ const TabsTrigger = React.forwardRef<
   return (
     <button
       ref={ref}
+      type="button"
       role="tab"
+      id={`tab-${tabValue}`}
       aria-selected={isActive}
+      aria-controls={`tabpanel-${tabValue}`}
+      tabIndex={isActive ? 0 : -1}
       onClick={() => onValueChange(tabValue)}
-      className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+      onKeyDown={(event) => {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && event.key !== 'Home' && event.key !== 'End') {
+          return;
+        }
+        const list = event.currentTarget.closest('[role="tablist"]');
+        if (!list) return;
+        const tabs = Array.from(list.querySelectorAll<HTMLButtonElement>('[role="tab"]:not([disabled])'));
+        const index = tabs.indexOf(event.currentTarget);
+        if (index === -1) return;
+        event.preventDefault();
+        let nextIndex = index;
+        if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+        if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = tabs.length - 1;
+        tabs[nextIndex]?.focus();
+        tabs[nextIndex]?.click();
+      }}
+      className={`shrink-0 px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
         isActive
-          ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+          ? 'border-primary text-foreground'
           : 'border-transparent text-muted-foreground hover:text-foreground'
       } ${className}`}
       {...props}
@@ -101,7 +123,15 @@ const TabsContent = React.forwardRef<
   if (!isActive) return null;
 
   return (
-    <div ref={ref} role="tabpanel" className={`mt-4 ${className}`} {...props}>
+    <div
+      ref={ref}
+      role="tabpanel"
+      id={`tabpanel-${contentValue}`}
+      aria-labelledby={`tab-${contentValue}`}
+      tabIndex={0}
+      className={`mt-4 ${className}`}
+      {...props}
+    >
       {children}
     </div>
   );

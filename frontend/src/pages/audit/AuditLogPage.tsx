@@ -15,7 +15,9 @@ const ENTITY_OPTIONS: Array<{ value: '' | AuditEntityType; label: string }> = [
   { value: 'warehouse', label: 'Warehouses' },
   { value: 'user', label: 'Users' },
   { value: 'stock', label: 'Stock' },
-  { value: 'settings', label: 'Settings' }
+  { value: 'settings', label: 'Settings' },
+  { value: 'supplier', label: 'Suppliers' },
+  { value: 'purchase_order', label: 'Purchase orders' }
 ];
 
 const ACTIONS_BY_ENTITY: Record<AuditEntityType, AuditAction[]> = {
@@ -70,6 +72,7 @@ export function AuditLogPage() {
       <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-6">
         <select
           className="h-11 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
+          aria-label="Entity type"
           value={entityType}
           onChange={(event) => {
             const next = event.target.value as '' | AuditEntityType;
@@ -84,6 +87,7 @@ export function AuditLogPage() {
 
         <select
           className="h-11 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
+          aria-label="Action"
           value={action}
           onChange={(event) => setAction(event.target.value as '' | AuditAction)}
         >
@@ -95,6 +99,7 @@ export function AuditLogPage() {
 
         <select
           className="h-11 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
+          aria-label="Performed by"
           value={performedBy}
           onChange={(event) => setPerformedBy(event.target.value)}
         >
@@ -104,10 +109,10 @@ export function AuditLogPage() {
           ))}
         </select>
 
-        <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
-        <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+        <Input type="date" aria-label="From date" value={dateFrom} max={dateTo || undefined} onChange={(event) => setDateFrom(event.target.value)} />
+        <Input type="date" aria-label="To date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} />
 
-        <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
+        <Button type="button" variant="outline" onClick={clearFilters}>Clear filters</Button>
       </div>
 
       <div className="space-y-3">
@@ -128,7 +133,7 @@ export function AuditLogPage() {
 
       {hasNextPage ? (
         <div className="mt-4 flex justify-center">
-          <Button variant="outline" onClick={() => void fetchNextPage()} disabled={isFetchingNextPage}>
+          <Button type="button" variant="outline" onClick={() => void fetchNextPage()} disabled={isFetchingNextPage}>
             {isFetchingNextPage ? 'Loading...' : 'Load more'}
           </Button>
         </div>

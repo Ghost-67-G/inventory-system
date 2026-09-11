@@ -662,6 +662,7 @@ export interface ListMovementsParams {
   warehouseId?: string;
   type?: MovementType;
   performedBy?: string;
+  referenceId?: string;
   dateFrom?: string;
   dateTo?: string;
 }

@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import axios from 'axios';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -67,6 +68,13 @@ interface StepOneProps {
   onNext: () => void;
 }
 
+function getErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    return (error.response?.data as { message?: string } | undefined)?.message ?? 'Could not save your business details.';
+  }
+  return 'Could not save your business details.';
+}
+
 export function StepOne({ status, onNext }: StepOneProps) {
   const completeStepOne = useCompleteStep1();
 
@@ -105,7 +113,12 @@ export function StepOne({ status, onNext }: StepOneProps) {
   }, [status, reset, detectedTimezone]);
 
   const onSubmit = handleSubmit(async (values) => {
-    await completeStepOne.mutateAsync(values);
+    try {
+      await completeStepOne.mutateAsync(values);
+    } catch {
+      // Error is rendered below via the mutation state.
+      return;
+    }
     onNext();
   });
 
@@ -117,14 +130,14 @@ export function StepOne({ status, onNext }: StepOneProps) {
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Business name</label>
-        <Input placeholder="e.g. Apex Electronics, Crescent Wholesale" {...register('businessName')} className="h-11 md:h-9" />
+        <label htmlFor="onb-business-name" className="mb-1 block text-sm font-medium text-foreground">Business name</label>
+        <Input id="onb-business-name" autoComplete="organization" placeholder="e.g. Apex Electronics, Crescent Wholesale" {...register('businessName')} className="h-11 md:h-9" />
         {errors.businessName ? <p className="mt-1 text-xs text-red-600">{errors.businessName.message}</p> : null}
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Currency</label>
-        <select className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9" {...register('currency')}>
+        <label htmlFor="onb-currency" className="mb-1 block text-sm font-medium text-foreground">Currency</label>
+        <select id="onb-currency" className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9" {...register('currency')}>
           {CURRENCY_OPTIONS.map((currency) => (
             <option key={currency.code} value={currency.code}>
               {toFlag(currency.flag)} {currency.label} ({currency.code}) {currency.symbol}
@@ -135,8 +148,8 @@ export function StepOne({ status, onNext }: StepOneProps) {
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Timezone</label>
-        <select className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9" {...register('timezone')}>
+        <label htmlFor="onb-timezone" className="mb-1 block text-sm font-medium text-foreground">Timezone</label>
+        <select id="onb-timezone" className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9" {...register('timezone')}>
           {Object.entries(TIMEZONE_GROUPS).map(([group, options]) => (
             <optgroup key={group} label={group}>
               {options.map((timezone) => (
@@ -151,16 +164,22 @@ export function StepOne({ status, onNext }: StepOneProps) {
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Default low stock alert</label>
-        <p className="mb-2 text-xs text-muted-foreground">Alert me when any product drops to or below this quantity</p>
+        <label htmlFor="onb-low-stock" className="mb-1 block text-sm font-medium text-foreground">Default low stock alert</label>
+        <p id="onb-low-stock-hint" className="mb-2 text-xs text-muted-foreground">Alert me when any product drops to or below this quantity</p>
         <div className="flex items-center gap-2">
-          <Input type="number" min={0} max={10000} {...register('lowStockThreshold')} className="h-11 md:h-9" />
+          <Input id="onb-low-stock" aria-describedby="onb-low-stock-hint" type="number" inputMode="numeric" min={0} max={10000} {...register('lowStockThreshold')} className="h-11 md:h-9" />
           <span className="text-sm text-muted-foreground">units</span>
         </div>
         {errors.lowStockThreshold ? (
           <p className="mt-1 text-xs text-red-600">{errors.lowStockThreshold.message}</p>
         ) : null}
       </div>
+
+      {completeStepOne.isError ? (
+        <p role="alert" className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+          {getErrorMessage(completeStepOne.error)}
+        </p>
+      ) : null}
 
       <Button type="submit" className="h-11 min-h-11 w-full md:h-9 md:min-h-0" disabled={completeStepOne.isPending}>
         {completeStepOne.isPending ? 'Saving...' : 'Save and continue →'}

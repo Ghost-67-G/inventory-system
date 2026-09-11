@@ -108,27 +108,33 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="category-form-title"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4"
+    >
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 id="category-form-title" className="text-lg font-semibold text-foreground">
           {mode === 'create' ? 'Add category' : 'Edit category'}
         </h2>
 
         <form className="mt-4 space-y-4" onSubmit={onSubmit}>
           {/* Name */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
+            <label htmlFor="category-name" className="mb-1 block text-sm font-medium text-foreground">
               Name <span className="text-red-500">*</span>
             </label>
             <input
+              id="category-name"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
               placeholder="e.g. Electronics, Raw Materials, Packaging"
               {...register('name')}
             />
             {errors.name ? (
-              <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name.message}</p>
             ) : null}
-            {nameError ? <p className="mt-1 text-xs text-red-600">{nameError}</p> : null}
+            {nameError ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{nameError}</p> : null}
           </div>
 
           {/* Color */}
@@ -139,7 +145,7 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
                 <button
                   key={color}
                   type="button"
-                  onClick={() => setValue('color', color)}
+                  onClick={() => setValue('color', color, { shouldDirty: true, shouldValidate: true })}
                   style={{
                     width: 24,
                     height: 24,
@@ -149,38 +155,43 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
                     border: 'none',
                     padding: 0,
                     boxShadow:
-                      selectedColor === color
-                        ? `0 0 0 2px #fff, 0 0 0 4px ${color}`
+                      selectedColor?.toLowerCase() === color
+                        ? `0 0 0 2px var(--card), 0 0 0 4px ${color}`
                         : 'none'
                   }}
                   aria-label={`Select color ${color}`}
+                  aria-pressed={selectedColor?.toLowerCase() === color}
                 />
               ))}
             </div>
             <div className="mt-2 flex items-center gap-2">
               <span className="text-sm text-muted-foreground">#</span>
               <input
-                className="w-28 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
-                maxLength={7}
+                aria-label="Hex color"
+                className="w-28 rounded-md border border-input bg-background px-2 py-1 font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
+                maxLength={6}
                 placeholder="6366f1"
-                value={selectedColor}
+                spellCheck={false}
+                value={(selectedColor ?? '').replace(/^#/, '')}
                 onChange={(e) => {
-                  const val = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`;
-                  setValue('color', val);
+                  // The visible "#" prefix lives outside the input; store the canonical "#rrggbb".
+                  const raw = e.target.value.replace(/^#/, '').trim();
+                  setValue('color', `#${raw}`, { shouldDirty: true, shouldValidate: Boolean(errors.color) });
                 }}
               />
             </div>
             {errors.color ? (
-              <p className="mt-1 text-xs text-red-600">{errors.color.message}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.color.message}</p>
             ) : null}
           </div>
 
           {/* Description */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
+            <label htmlFor="category-description" className="mb-1 block text-sm font-medium text-foreground">
               Description <span className="text-xs text-muted-foreground">(optional)</span>
             </label>
             <textarea
+              id="category-description"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
               rows={3}
               maxLength={500}
@@ -190,7 +201,7 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
               <span className="text-xs text-muted-foreground">{descriptionValue.length}/500</span>
             </div>
             {errors.description ? (
-              <p className="mt-1 text-xs text-red-600">{errors.description.message}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.description.message}</p>
             ) : null}
           </div>
 
@@ -199,12 +210,13 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
             <div>
               <div className="flex items-center gap-3">
                 <button
+                  id="category-active"
                   type="button"
                   role="switch"
-                  aria-checked={isActiveValue}
+                  aria-checked={Boolean(isActiveValue)}
                   onClick={() => setValue('isActive', !isActiveValue)}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring/50 ${
-                    isActiveValue ? 'bg-primary' : 'bg-muted'
+                    isActiveValue ? 'bg-primary' : 'bg-muted-foreground/40'
                   }`}
                 >
                   <span
@@ -213,7 +225,7 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
                     }`}
                   />
                 </button>
-                <label className="text-sm font-medium text-foreground">Active</label>
+                <label htmlFor="category-active" className="cursor-pointer text-sm font-medium text-foreground">Active</label>
               </div>
               {!isActiveValue ? (
                 <p className="mt-1 text-xs text-muted-foreground">

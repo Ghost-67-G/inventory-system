@@ -19,7 +19,7 @@ import { useProductSuppliers } from '@/hooks/useSuppliers';
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { formatMoney, formatDate } = useTenantFormatting();
+  const { formatMoney, formatDate, formatCustomFieldValue } = useTenantFormatting();
   const tenant = useTenantStore((s) => s.tenant);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -52,11 +52,16 @@ export function ProductDetailPage() {
     product.sellingPrice > 0
       ? (((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100).toFixed(1)
       : null;
+  const tags = product.tags ?? [];
+  const images = product.images ?? [];
+  const totalQuantity = stockByWarehouse.reduce((sum, entry) => sum + (entry.quantity ?? 0), 0);
+  const totalReserved = stockByWarehouse.reduce((sum, entry) => sum + (entry.reservedQuantity ?? 0), 0);
 
   return (
     <div>
       {/* Back button */}
       <button
+        type="button"
         onClick={() => navigate('/products')}
         className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
@@ -68,11 +73,11 @@ export function ProductDetailPage() {
         {/* Left column — main info */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 space-y-1">
+                <h1 className="break-words text-2xl font-bold text-foreground">{product.name}</h1>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="inline-flex items-center rounded bg-muted px-2.5 py-0.5 font-mono text-xs text-muted-foreground">
+                  <span className="inline-flex max-w-full items-center break-all rounded bg-muted px-2.5 py-0.5 font-mono text-xs text-muted-foreground">
                     {product.sku}
                   </span>
                   {product.category ? (
@@ -111,13 +116,13 @@ export function ProductDetailPage() {
             </div>
 
             {product.description && (
-              <p className="mt-4 text-sm text-muted-foreground">{product.description}</p>
+              <p className="mt-4 break-words whitespace-pre-line text-sm text-muted-foreground">{product.description}</p>
             )}
 
-            {product.tags.length > 0 && (
+            {tags.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
-                {product.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-blue-100 px-3 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                {tags.map((tag) => (
+                  <span key={tag} className="break-all rounded-full bg-blue-100 px-3 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                     {tag}
                   </span>
                 ))}
@@ -162,7 +167,7 @@ export function ProductDetailPage() {
                   return (
                     <div key={field._id}>
                       <dt className="text-xs text-muted-foreground">{field.name}</dt>
-                      <dd className="text-sm text-foreground">{value !== undefined && value !== null ? String(value) : '—'}</dd>
+                      <dd className="break-words text-sm text-foreground">{formatCustomFieldValue(value, field.type)}</dd>
                     </div>
                   );
                 })}
@@ -171,13 +176,13 @@ export function ProductDetailPage() {
           )}
 
           {/* Images */}
-          {product.images.length > 0 && (
+          {images.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <h3 className="mb-4 text-sm font-semibold text-foreground">Images</h3>
               <div className="flex gap-3 overflow-x-auto">
-                {product.images.map((url, idx) => (
+                {images.map((url, idx) => (
                   <img
-                    key={idx}
+                    key={`${url}-${idx}`}
                     src={url}
                     alt={`${product.name} ${idx + 1}`}
                     className="h-24 w-24 shrink-0 rounded-lg border border-border object-cover"
@@ -280,32 +285,47 @@ export function ProductDetailPage() {
             ) : (
               <div className="overflow-x-auto">
                 <div className="min-w-120 space-y-2">
-                  <div className="grid grid-cols-4 gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                  <div className="grid grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] gap-2 text-xs font-semibold uppercase text-muted-foreground">
                     <span>Warehouse</span>
-                    <span>In stock</span>
-                    <span>Reserved</span>
-                    <span>Available</span>
+                    <span className="text-right">In stock</span>
+                    <span className="text-right">Reserved</span>
+                    <span className="text-right">Available</span>
                   </div>
-                  {stockByWarehouse.map((entry) => (
-                    <div key={entry.warehouse._id} className="grid grid-cols-4 gap-2 border-t border-border py-2 text-sm text-foreground">
-                      <WarehouseBadge
-                        code={entry.warehouse.code}
-                        name={entry.warehouse.name}
-                        isDefault={entry.warehouse.isDefault}
-                        size="sm"
-                      />
-                      <span>{entry.quantity}</span>
-                      <span>{entry.reservedQuantity}</span>
-                      <span>{entry.quantity - entry.reservedQuantity}</span>
-                    </div>
-                  ))}
-                  <div className="grid grid-cols-4 gap-2 border-t border-border pt-2 text-sm font-semibold text-foreground">
+                  {stockByWarehouse.length === 0 ? (
+                    <p className="border-t border-border pt-2 text-sm text-muted-foreground">No stock recorded in any warehouse</p>
+                  ) : null}
+                  {stockByWarehouse.map((entry, idx) => {
+                    const quantity = entry.quantity ?? 0;
+                    const reserved = entry.reservedQuantity ?? 0;
+                    const warehouse = entry.warehouse ?? null;
+                    return (
+                      <div
+                        key={warehouse?._id ?? entry._id ?? idx}
+                        className="grid grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] items-center gap-2 border-t border-border py-2 text-sm text-foreground"
+                      >
+                        <div className="min-w-0">
+                          {warehouse ? (
+                            <WarehouseBadge
+                              code={warehouse.code}
+                              name={warehouse.name}
+                              isDefault={warehouse.isDefault}
+                              size="sm"
+                            />
+                          ) : (
+                            <span className="text-muted-foreground">Unknown warehouse</span>
+                          )}
+                        </div>
+                        <span className="text-right">{quantity}</span>
+                        <span className="text-right">{reserved}</span>
+                        <span className="text-right">{quantity - reserved}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="grid grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] gap-2 border-t border-border pt-2 text-sm font-semibold text-foreground">
                     <span>Total</span>
-                    <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.quantity, 0)}</span>
-                    <span>{stockByWarehouse.reduce((sum, entry) => sum + entry.reservedQuantity, 0)}</span>
-                    <span>
-                      {stockByWarehouse.reduce((sum, entry) => sum + (entry.quantity - entry.reservedQuantity), 0)}
-                    </span>
+                    <span className="text-right">{totalQuantity}</span>
+                    <span className="text-right">{totalReserved}</span>
+                    <span className="text-right">{totalQuantity - totalReserved}</span>
                   </div>
                 </div>
               </div>
@@ -347,21 +367,22 @@ export function ProductDetailPage() {
                   const supplier = typeof link.supplierId === 'string' ? null : link.supplierId;
                   return (
                     <div key={link._id} className="rounded border border-border p-2 text-sm">
-                      <p className="font-medium">{supplier?.name ?? 'Supplier'}</p>
+                      <p className="break-words font-medium text-foreground">{supplier?.name ?? 'Supplier'}</p>
                       <p className="text-xs text-muted-foreground">
-                        {supplier?.code ?? '-'} | {formatMoney(link.unitCost)}
+                        {supplier?.code ?? '-'} | {formatMoney(link.unitCost ?? 0)}
                         {link.isPreferred ? ' | Preferred' : ''}
                       </p>
                     </div>
                   );
                 })
               )}
-              <div className="flex gap-3 pt-1">
-                <button className="text-xs text-blue-600 hover:underline" onClick={() => navigate('/suppliers')}>
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button type="button" className="text-xs text-blue-600 hover:underline dark:text-blue-400" onClick={() => navigate('/suppliers')}>
                   Manage suppliers
                 </button>
                 <button
-                  className="text-xs text-blue-600 hover:underline"
+                  type="button"
+                  className="text-xs text-blue-600 hover:underline dark:text-blue-400"
                   onClick={() => navigate(`/purchase-orders?productId=${product._id}`)}
                 >
                   Create PO
@@ -373,7 +394,7 @@ export function ProductDetailPage() {
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-foreground">Purchase order history</h3>
             <p className="text-sm text-muted-foreground">View purchase orders containing this product.</p>
-            <button className="mt-2 text-xs text-blue-600 hover:underline" onClick={() => navigate('/purchase-orders')}>
+            <button type="button" className="mt-2 text-xs text-blue-600 hover:underline dark:text-blue-400" onClick={() => navigate('/purchase-orders')}>
               View all purchase orders
             </button>
           </div>

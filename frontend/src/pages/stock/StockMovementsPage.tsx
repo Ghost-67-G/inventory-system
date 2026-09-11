@@ -53,6 +53,7 @@ export function StockMovementsPage() {
       {
         id: 'type',
         header: 'Type',
+        size: 120,
         cell: ({ row }) => {
           const movement = row.original;
           const labelMap: Record<string, string> = {
@@ -74,8 +75,8 @@ export function StockMovementsPage() {
             TRANSFER_OUT: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
           };
           return (
-            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${colorMap[movement.type]}`}>
-              {labelMap[movement.type]}
+            <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold ${colorMap[movement.type] ?? 'bg-muted text-muted-foreground'}`}>
+              {labelMap[movement.type] ?? movement.type}
             </span>
           );
         }
@@ -83,16 +84,18 @@ export function StockMovementsPage() {
       {
         id: 'product',
         header: 'Product',
+        size: 220,
         cell: ({ row }) => (
-          <div>
-            <div className="font-medium text-foreground">{row.original.product?.name ?? '-'}</div>
-            <div className="text-xs text-muted-foreground">{row.original.product?.sku ?? '-'}</div>
+          <div className="min-w-0">
+            <div className="truncate font-medium text-foreground" title={row.original.product?.name}>{row.original.product?.name ?? '-'}</div>
+            <div className="truncate text-xs text-muted-foreground">{row.original.product?.sku ?? '-'}</div>
           </div>
         )
       },
       {
         id: 'warehouse',
         header: 'Warehouse',
+        size: 180,
         cell: ({ row }) =>
           row.original.warehouse ? (
             <WarehouseBadge code={row.original.warehouse.code} name={row.original.warehouse.name} size="sm" />
@@ -103,6 +106,7 @@ export function StockMovementsPage() {
       {
         id: 'quantity',
         header: 'Quantity',
+        size: 130,
         cell: ({ row }) => {
           const movement = row.original;
           const unit = movement.product?.unit ?? '';
@@ -126,23 +130,27 @@ export function StockMovementsPage() {
       {
         id: 'stockAfter',
         header: 'Stock after',
+        size: 120,
         cell: ({ row }) => `${row.original.quantityAfter} ${row.original.product?.unit ?? ''}`
       },
       {
         id: 'performedBy',
         header: 'Performed by',
+        size: 150,
         cell: ({ row }) => row.original.performedByUser?.name ?? '-'
       },
       {
         id: 'date',
         header: 'Date',
+        size: 160,
         cell: ({ row }) => format(new Date(row.original.createdAt), 'MMM dd, yyyy HH:mm')
       },
       {
         id: 'note',
         header: 'Note',
+        size: 240,
         cell: ({ row }) => (
-          <span title={row.original.note} className="line-clamp-1 max-w-65 text-muted-foreground">
+          <span title={row.original.note} className="block truncate text-muted-foreground">
             {row.original.note || '-'}
           </span>
         )
@@ -173,12 +181,14 @@ export function StockMovementsPage() {
             value={productId}
             onChange={(e) => setProductId(e.target.value)}
             placeholder="Filter by productId"
+            aria-label="Filter by product ID"
             className="h-11 md:h-9"
           />
           <select
             className="h-11 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
             value={warehouseId}
             onChange={(e) => setWarehouseId(e.target.value)}
+            aria-label="Filter by warehouse"
           >
             <option value="">All warehouses</option>
             {warehouses.map((warehouse) => (
@@ -189,6 +199,7 @@ export function StockMovementsPage() {
             className="h-11 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label="Filter by movement type"
           >
             <option value="">All types</option>
             <option value="IN">IN</option>
@@ -197,8 +208,8 @@ export function StockMovementsPage() {
             <option value="WASTE">WASTE</option>
             <option value="TRANSFER">TRANSFER</option>
           </select>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-11 md:h-9" />
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-11 md:h-9" />
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From date" className="h-11 min-w-0 md:h-9" />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To date" className="h-11 min-w-0 md:h-9" />
         </div>
 
         {(productId || warehouseId || typeFilter || dateFrom || dateTo) && (

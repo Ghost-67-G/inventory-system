@@ -11,7 +11,8 @@ export const authApi = {
   forgotPassword: (email: string) => client.post('/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) => client.post('/auth/reset-password', { token, password }),
   changePassword: (data: ChangePasswordDto) => client.post('/auth/change-password', data),
-  resendVerification: () => client.post('/auth/resend-verification'),
+  acceptInvite: (token: string, password: string) => client.post('/auth/accept-invite', { token, password }),
+  resendVerification: (email?: string) => client.post('/auth/resend-verification', email ? { email } : {}),
   getMe: () => client.get<{ success: true; data: { user: SafeUser } }>('/auth/me')
 };
 

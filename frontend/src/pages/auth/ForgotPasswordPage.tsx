@@ -30,6 +30,8 @@ export function ForgotPasswordPage() {
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError((err.response?.data as { message?: string })?.message ?? 'Something went wrong');
+      } else {
+        setError('Something went wrong');
       }
     } finally {
       setIsLoading(false);
@@ -61,8 +63,9 @@ export function ForgotPasswordPage() {
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
+          <label htmlFor="forgot-email" className="mb-1 block text-sm font-medium text-foreground">Email</label>
           <input
+            id="forgot-email"
             type="email"
             autoComplete="email"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"

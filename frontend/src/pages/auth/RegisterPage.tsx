@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
@@ -54,15 +54,17 @@ export function RegisterPage() {
   })();
 
   const onSubmit = handleSubmit(async ({ terms: _terms, ...values }) => {
-    const response = await register(values);
-    const requiresOnboarding = response.data.data.requiresOnboarding;
-
-    if (requiresOnboarding) {
-      void navigate('/onboarding');
+    try {
+      await register(values);
+    } catch {
+      // Error is surfaced via the mutation's `error` state above.
       return;
     }
 
-    void navigate('/dashboard');
+    // Registration does not issue a session (the user must verify their email
+    // first), so send them to the "check your email" screen instead of a
+    // protected route that would bounce back to /login.
+    void navigate('/verify-email-sent');
   });
 
   return (
@@ -75,8 +77,10 @@ export function RegisterPage() {
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Business name</label>
+          <label htmlFor="register-tenant-name" className="mb-1 block text-sm font-medium text-foreground">Business name</label>
           <input
+            id="register-tenant-name"
+            autoComplete="organization"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="Acme Corp"
             {...reg('tenantName')}
@@ -85,8 +89,10 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Full name</label>
+          <label htmlFor="register-name" className="mb-1 block text-sm font-medium text-foreground">Full name</label>
           <input
+            id="register-name"
+            autoComplete="name"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
             placeholder="Jane Doe"
             {...reg('name')}
@@ -95,8 +101,9 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
+          <label htmlFor="register-email" className="mb-1 block text-sm font-medium text-foreground">Email</label>
           <input
+            id="register-email"
             type="email"
             autoComplete="email"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
@@ -107,9 +114,10 @@ export function RegisterPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
+          <label htmlFor="register-password" className="mb-1 block text-sm font-medium text-foreground">Password</label>
           <div className="relative">
             <input
+              id="register-password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
@@ -118,6 +126,7 @@ export function RegisterPage() {
             />
             <button
               type="button"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword((v) => !v)}
             >
@@ -139,8 +148,8 @@ export function RegisterPage() {
         </div>
 
         <div className="flex items-start gap-2">
-          <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-input" {...reg('terms')} />
-          <label className="text-sm text-muted-foreground">
+          <input id="register-terms" type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 rounded border-input" {...reg('terms')} />
+          <label htmlFor="register-terms" className="text-sm text-muted-foreground">
             I agree to the <span className="text-foreground underline">Terms of Service</span>
           </label>
         </div>
@@ -149,6 +158,13 @@ export function RegisterPage() {
         <Button type="submit" className="w-full" disabled={isPending}>
           {isPending ? 'Creating account…' : 'Create account'}
         </Button>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Already have an account?{' '}
+          <Link to="/login" className="text-foreground hover:underline">
+            Sign in
+          </Link>
+        </p>
       </form>
     </div>
   );

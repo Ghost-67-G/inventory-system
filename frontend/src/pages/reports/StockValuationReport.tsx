@@ -14,6 +14,7 @@ import { formatCurrency } from '@/lib/formatting';
 import type { StockValuationRow, StockValuationParams } from '@/types';
 import { createColumnHelper } from '@tanstack/react-table';
 import { useWindowSize } from '@/hooks/useWindowSize';
+import { useTenantFormatting } from '@/hooks/useTenantFormatting';
 
 const columnHelper = createColumnHelper<StockValuationRow>();
 
@@ -21,6 +22,7 @@ export function StockValuationReport() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [expandedWarehouseId, setExpandedWarehouseId] = useState<string | null>(null);
   const { isMobile } = useWindowSize();
+  const { currency } = useTenantFormatting();
 
   // Get filter params from URL
   const params: StockValuationParams = {
@@ -87,19 +89,23 @@ export function StockValuationReport() {
       }),
       columnHelper.accessor('costPrice', {
         header: 'Cost Price',
-        cell: (info) => formatCurrency(info.getValue(), 'USD')
+        cell: (info) => formatCurrency(info.getValue() ?? 0, currency)
       }),
       columnHelper.accessor('sellingPrice', {
         header: 'Selling Price',
-        cell: (info) => formatCurrency(info.getValue(), 'USD')
+        cell: (info) => formatCurrency(info.getValue() ?? 0, currency)
       }),
       columnHelper.accessor('margin', {
         header: 'Margin %',
         cell: (info) => {
-          const margin = info.getValue();
+          const margin = Number.isFinite(info.getValue()) ? info.getValue() : 0;
           const color =
-            margin >= 20 ? 'text-green-600' : margin >= 0 ? 'text-amber-600' : 'text-red-600';
-          return <span className={color}>{(margin ?? 0).toFixed(1)}%</span>;
+            margin >= 20
+              ? 'text-green-600 dark:text-green-400'
+              : margin >= 0
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-red-600 dark:text-red-400';
+          return <span className={color}>{margin.toFixed(1)}%</span>;
         }
       }),
       columnHelper.accessor('effectiveStock', {
@@ -109,13 +115,13 @@ export function StockValuationReport() {
       columnHelper.accessor('stockValue', {
         header: 'Stock Value',
         cell: (info) => (
-          <span className="font-bold">{formatCurrency(info.getValue(), 'USD')}</span>
+          <span className="font-bold">{formatCurrency(info.getValue() ?? 0, currency)}</span>
         )
       }),
       columnHelper.accessor('potentialRevenue', {
         header: 'Potential Revenue',
         cell: (info) => (
-          <span className="text-muted-foreground">{formatCurrency(info.getValue(), 'USD')}</span>
+          <span className="text-muted-foreground">{formatCurrency(info.getValue() ?? 0, currency)}</span>
         )
       }),
       columnHelper.accessor('warehouseBreakdown', {
@@ -135,10 +141,11 @@ export function StockValuationReport() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setExpandedWarehouseId(isExpanded ? null : rowId)}
+                aria-expanded={isExpanded}
                 className="gap-1"
               >
                 {breakdown.length} warehouses
-                <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                <ChevronDown aria-hidden="true" className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
               </Button>
               {isExpanded && (
                 <div className="space-y-1 text-sm">
@@ -154,11 +161,11 @@ export function StockValuationReport() {
         }
       })
     ],
-    [expandedWarehouseId]
+    [expandedWarehouseId, currency]
   );
 
   const rows = useMemo(
-    () => (data?.pages.flatMap((p) => p.rows) ?? []) as StockValuationRow[],
+    () => (data?.pages.flatMap((p) => p?.rows ?? []) ?? []) as StockValuationRow[],
     [data]
   );
   // Summary is only returned on the first page
@@ -169,6 +176,7 @@ export function StockValuationReport() {
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <select 
+          aria-label="Filter by category"
           value={params.categoryId || ''} 
           onChange={(e) => updateParams({ categoryId: e.target.value || undefined })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -180,6 +188,7 @@ export function StockValuationReport() {
         </select>
 
         <select 
+          aria-label="Filter by warehouse"
           value={params.warehouseId || ''} 
           onChange={(e) => updateParams({ warehouseId: e.target.value || undefined })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -191,6 +200,7 @@ export function StockValuationReport() {
         </select>
 
         <select 
+          aria-label="Filter by product status"
           value={params.isActive} 
           onChange={(e) => updateParams({ isActive: e.target.value as 'true' | 'false' })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -200,6 +210,7 @@ export function StockValuationReport() {
         </select>
 
         <select 
+          aria-label="Sort by"
           value={params.sortBy} 
           onChange={(e) => updateParams({ sortBy: e.target.value as any })}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -230,25 +241,25 @@ export function StockValuationReport() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <ReportSummaryCard
             label="Total Products"
-            value={summary.totalProducts}
+            value={(summary.totalProducts ?? 0).toLocaleString()}
             accentColor="blue"
           />
           <ReportSummaryCard
             label="Total Stock"
-            value={summary.totalUnits}
+            value={(summary.totalUnits ?? 0).toLocaleString()}
             accentColor="green"
           />
           <ReportSummaryCard
             label="Stock Value"
-            value={formatCurrency(summary.totalStockValue, 'USD')}
+            value={formatCurrency(summary.totalStockValue ?? 0, currency)}
             accentColor="blue"
           />
           <ReportSummaryCard
             label="Potential Revenue"
-            value={formatCurrency(summary.totalPotentialRevenue, 'USD')}
+            value={formatCurrency(summary.totalPotentialRevenue ?? 0, currency)}
             accentColor="purple"
           />
           <ReportSummaryCard
@@ -260,11 +271,11 @@ export function StockValuationReport() {
       )}
 
       {/* Export Button */}
-      <div className="flex justify-between items-center">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           {summary && rows.length < (summary.totalProducts ?? 0) && (
             <p className="text-sm text-muted-foreground">
-              Showing {rows.length.toLocaleString()} of {summary.totalProducts.toLocaleString()} products. Scroll down to load more. Export includes all products.
+              Showing {rows.length.toLocaleString()} of {(summary.totalProducts ?? 0).toLocaleString()} products. Scroll down to load more. Export includes all products.
             </p>
           )}
         </div>
@@ -274,8 +285,8 @@ export function StockValuationReport() {
         />
       </div>
 
-      {/* Data Table */}
-      <div className="border rounded-lg overflow-hidden">
+      {/* Data Table (DataTable renders its own border/rounding) */}
+      <div>
         <DataTable
           columns={columns as any}
           data={rows}

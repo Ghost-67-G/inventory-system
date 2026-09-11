@@ -46,6 +46,12 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
     return rank[selectedRole] < rank[user.role as keyof typeof rank];
   }, [selectedRole, user]);
 
+  // Clear any stale API error when the modal is dismissed.
+  const handleClose = () => {
+    setError(null);
+    onClose();
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     if (!user) {
       return;
@@ -55,8 +61,8 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
     try {
       const data: UpdateUserDto = { role: values.role };
       await updateUser.mutateAsync({ userId: user._id, data });
-      onClose();
       reset({ role: values.role });
+      handleClose();
     } catch (err) {
       setError((err as { message?: string })?.message ?? 'Failed to update role');
     }
@@ -67,9 +73,14 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">Change role</h2>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="change-role-title"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4"
+    >
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 id="change-role-title" className="text-lg font-semibold text-foreground">Change role</h2>
         <p className="mt-1 text-sm text-muted-foreground">Update access level for {user.name}.</p>
 
         <div className="mt-4 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-foreground">
@@ -80,13 +91,13 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
 
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Role</label>
-            <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('role')}>
+            <label htmlFor="change-role-select" className="mb-1 block text-sm font-medium text-foreground">Role</label>
+            <select id="change-role-select" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('role')}>
               <option value="manager">Manager</option>
               <option value="staff">Staff</option>
               <option value="viewer">Viewer</option>
             </select>
-            {errors.role ? <p className="mt-1 text-xs text-red-600">{errors.role.message}</p> : null}
+            {errors.role ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.role.message}</p> : null}
           </div>
 
           {isDowngrade ? (
@@ -96,7 +107,7 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
           ) : null}
 
           <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={updateUser.isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={updateUser.isPending}>

@@ -20,18 +20,23 @@ export function ConfirmDeactivateDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="deactivate-user-title"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4"
+    >
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">Deactivate {name}?</h2>
+        <h2 id="deactivate-user-title" className="break-words text-lg font-semibold text-foreground">Deactivate {name}?</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           They will be immediately signed out and lose access. You can reactivate at any time.
         </p>
 
         <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
-          <Button type="button" className="bg-red-600 hover:bg-red-700" disabled={loading} onClick={onConfirm}>
+          <Button type="button" className="bg-red-600 text-white hover:bg-red-700" disabled={loading} onClick={onConfirm}>
             {loading ? 'Deactivating...' : 'Deactivate'}
           </Button>
         </div>

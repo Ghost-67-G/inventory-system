@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import {
   Bar,
   BarChart,
@@ -20,6 +20,14 @@ interface Props {
   isLoading?: boolean;
 }
 
+// Dates arrive as "yyyy-MM-dd". `new Date('yyyy-MM-dd')` parses as UTC midnight,
+// which renders as the previous day in negative-offset timezones; parseISO is local.
+function formatChartDate(value: unknown, pattern: string): string {
+  if (typeof value !== 'string' || value.length === 0) return '';
+  const date = parseISO(value);
+  return isValid(date) ? format(date, pattern) : value;
+}
+
 function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload || payload.length === 0 || typeof label !== 'string') {
     return null;
@@ -30,7 +38,7 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
 
   return (
     <div className="rounded-md border border-border bg-popover p-2 text-xs shadow">
-      <p className="mb-1 text-foreground">{format(new Date(label), 'MMM d, yyyy')}</p>
+      <p className="mb-1 text-foreground">{formatChartDate(label, 'MMM d, yyyy')}</p>
       <p className="text-emerald-700 dark:text-emerald-400">In: +{inValue} units</p>
       <p className="text-red-700 dark:text-red-400">Out: -{outValue} units</p>
     </div>
@@ -45,8 +53,8 @@ export function MovementBarChart({ data, isLoading }: Props) {
   const chartHeight = isMobile ? 200 : 260;
   const inColor = isDark ? '#5DCAA5' : '#1D9E75';
   const outColor = isDark ? '#F0997B' : '#D85A30';
-  const gridColor = isDark ? '#3d3d3a' : '#e5e7eb';
-  const textColor = isDark ? '#b3b2aa' : '#6b7280';
+  const gridColor = 'var(--border)';
+  const textColor = 'var(--muted-foreground)';
 
   if (isLoading) {
     return <Skeleton className="h-50 w-full md:h-65" />;
@@ -64,15 +72,21 @@ export function MovementBarChart({ data, isLoading }: Props) {
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
           <XAxis
             dataKey="date"
-            interval={4}
+            interval={isMobile ? 6 : 4}
             tickLine={false}
             axisLine={false}
             tick={{ fontSize: 11, fill: textColor }}
-            tickFormatter={(dateStr: string) => format(new Date(dateStr), 'MMM d')}
+            tickFormatter={(dateStr: string) => formatChartDate(dateStr, 'MMM d')}
           />
-          <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: textColor }} />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend formatter={(value) => (value === 'in' ? 'Stock in' : 'Stock out')} wrapperStyle={{ color: textColor }} />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            allowDecimals={false}
+            width={isMobile ? 36 : 48}
+            tick={{ fontSize: 11, fill: textColor }}
+          />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)' }} />
+          <Legend formatter={(value) => (value === 'in' ? 'Stock in' : 'Stock out')} wrapperStyle={{ color: textColor, fontSize: 12 }} />
           <Bar dataKey="in" fill={inColor} isAnimationActive={false} radius={[2, 2, 0, 0]} />
           <Bar dataKey="out" fill={outColor} isAnimationActive={false} radius={[2, 2, 0, 0]} />
         </BarChart>

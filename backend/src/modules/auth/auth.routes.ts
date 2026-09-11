@@ -1,13 +1,15 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { authenticate } from '../../middleware/auth';
+import { authenticate, optionalAuthenticate } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import * as controller from './auth.controller';
 import {
+  acceptInviteSchema,
   changePasswordSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resendVerificationSchema,
   resetPasswordSchema,
   verifyEmailSchema
 } from './auth.schema';
@@ -36,7 +38,14 @@ router.post('/refresh-token', controller.refreshTokenHandler);
 router.post('/logout', authenticate, controller.logout);
 router.post('/logout-all', authenticate, controller.logoutAll);
 router.post('/verify-email', validate(verifyEmailSchema), controller.verifyEmail);
-router.post('/resend-verification', resendLimiter, authenticate, controller.resendVerification);
+router.post(
+  '/resend-verification',
+  resendLimiter,
+  optionalAuthenticate,
+  validate(resendVerificationSchema),
+  controller.resendVerification
+);
+router.post('/accept-invite', authLimiter, validate(acceptInviteSchema), controller.acceptInvite);
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), controller.forgotPassword);
 router.post('/reset-password', authLimiter, validate(resetPasswordSchema), controller.resetPassword);
 router.post('/change-password', authenticate, validate(changePasswordSchema), controller.changePassword);

@@ -50,6 +50,22 @@ export const verifyEmailSchema = z.object({
   })
 });
 
+export const acceptInviteSchema = z.object({
+  body: z.object({
+    token: z.string().min(1),
+    password: passwordSchema
+  })
+});
+
+export const resendVerificationSchema = z.object({
+  body: z
+    .object({
+      email: z.string().email().toLowerCase().optional()
+    })
+    .optional()
+    .default({})
+});
+
 export const changePasswordSchema = z.object({
   body: z.object({
     currentPassword: z.string().min(1),

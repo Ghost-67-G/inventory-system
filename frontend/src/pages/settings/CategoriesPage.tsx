@@ -37,7 +37,7 @@ export function CategoriesPage() {
   const hasSearchNoResults = !isLoading && debouncedSearch && categories.length === 0;
 
   return (
-    <div className="p-6">
+    <div>
       <PageHeader title="Categories" subtitle="Organise your products into groups">
         <PermissionGuard permission="category.manage">
           <Button onClick={() => setIsCreateModalOpen(true)}>Add category</Button>
@@ -49,6 +49,7 @@ export function CategoriesPage() {
         <input
           className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50"
           placeholder="Search categories..."
+          aria-label="Search categories"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -70,7 +71,7 @@ export function CategoriesPage() {
           >
             <rect x="4" y="14" width="48" height="32" rx="4" stroke="currentColor" strokeWidth="2" fill="none" />
             <path d="M4 22h48" stroke="currentColor" strokeWidth="2" />
-            <circle cx="40" cy="40" r="10" fill="hsl(var(--card))" stroke="currentColor" strokeWidth="2" />
+            <circle cx="40" cy="40" r="10" fill="var(--card)" stroke="currentColor" strokeWidth="2" />
             <path d="M40 36v8M36 40h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
           <p className="text-base font-medium text-foreground">No categories yet</p>
@@ -102,7 +103,7 @@ export function CategoriesPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))',
             gap: 16
           }}
         >
@@ -207,6 +208,7 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
               onClick={onEdit}
               className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Edit category"
+              aria-label={`Edit ${category.name}`}
             >
               <Pencil size={14} />
             </button>
@@ -228,6 +230,7 @@ function CategoryCard({ category, canManage, onEdit, onDelete }: CategoryCardPro
                 onClick={onDelete}
                 className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                 title="Delete category"
+                aria-label={`Delete ${category.name}`}
               >
                 <Trash2 size={14} />
               </button>

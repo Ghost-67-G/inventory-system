@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { PermissionGuard } from '@/router/guards/PermissionGuard';
 import type { Permission } from '@/types';
@@ -30,21 +31,26 @@ export function ReportExportButton({
     try {
       await onExport();
     } catch (error) {
-      alert('Export failed. Please try again.');
+      toast.error('Export failed. Please try again.');
       console.error('Export error:', error);
     } finally {
       setIsExporting(false);
     }
   };
 
+  const isDisabled = disabled || isExporting;
+  const rowsHint = estimatedRows > 0 ? `Export ${estimatedRows.toLocaleString()} rows as CSV` : 'Export CSV';
+
   const button = (
     <Button
       onClick={handleExport}
-      disabled={disabled || isExporting}
+      disabled={isDisabled}
       variant="outline"
       size="sm"
       className="gap-2"
-      title={disabledReason || ''}
+      aria-label={rowsHint}
+      aria-busy={isExporting}
+      title={disabled && disabledReason ? disabledReason : rowsHint}
     >
       {isExporting ? (
         <>
@@ -62,7 +68,16 @@ export function ReportExportButton({
 
   return (
     <PermissionGuard permission={permission} fallback={<div />}>
-      {button}
+      {/* Disabled buttons have pointer-events:none, so the title tooltip never
+          fires on the button itself; the wrapper carries it (and visible text). */}
+      {disabled && disabledReason ? (
+        <span className="inline-flex flex-col items-end gap-1" title={disabledReason}>
+          {button}
+          <span className="text-xs text-muted-foreground">{disabledReason}</span>
+        </span>
+      ) : (
+        button
+      )}
     </PermissionGuard>
   );
 }

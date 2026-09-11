@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import axios from 'axios';
@@ -32,6 +32,15 @@ export function ChangePasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoutTimerRef.current) {
+        clearTimeout(logoutTimerRef.current);
+      }
+    };
+  }, []);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema)
@@ -44,7 +53,7 @@ export function ChangePasswordPage() {
       await authApi.changePassword({ currentPassword, newPassword });
       setSuccess(true);
       // Auto-logout after 2 seconds — all sessions invalidated
-      setTimeout(() => logoutMutate(), 2000);
+      logoutTimerRef.current = setTimeout(() => logoutMutate(), 2000);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError((err.response?.data as { message?: string })?.message ?? 'Failed to change password.');
@@ -58,7 +67,7 @@ export function ChangePasswordPage() {
 
   if (success) {
     return (
-      <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-400">
+      <div role="status" className="max-w-md rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-400">
         Password changed successfully. Signing you out in 2 seconds…
       </div>
     );
@@ -74,9 +83,10 @@ export function ChangePasswordPage() {
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Current password</label>
+          <label htmlFor="current-password" className="mb-1 block text-sm font-medium text-foreground">Current password</label>
           <div className="relative">
             <input
+              id="current-password"
               type={showCurrent ? 'text' : 'password'}
               autoComplete="current-password"
               className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus:border-ring focus:outline-none"
@@ -84,7 +94,8 @@ export function ChangePasswordPage() {
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+              aria-label={showCurrent ? 'Hide current password' : 'Show current password'}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowCurrent((v) => !v)}
             >
               {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -94,9 +105,10 @@ export function ChangePasswordPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">New password</label>
+          <label htmlFor="new-password" className="mb-1 block text-sm font-medium text-foreground">New password</label>
           <div className="relative">
             <input
+              id="new-password"
               type={showNew ? 'text' : 'password'}
               autoComplete="new-password"
               className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus:border-ring focus:outline-none"
@@ -104,7 +116,8 @@ export function ChangePasswordPage() {
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+              aria-label={showNew ? 'Hide new password' : 'Show new password'}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowNew((v) => !v)}
             >
               {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -114,8 +127,9 @@ export function ChangePasswordPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Confirm new password</label>
+          <label htmlFor="confirm-new-password" className="mb-1 block text-sm font-medium text-foreground">Confirm new password</label>
           <input
+            id="confirm-new-password"
             type={showNew ? 'text' : 'password'}
             autoComplete="new-password"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none"

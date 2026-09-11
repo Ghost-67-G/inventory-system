@@ -52,5 +52,6 @@ stockMovementSchema.index({ tenantId: 1, createdAt: -1 });
 stockMovementSchema.index({ tenantId: 1, type: 1, createdAt: -1 });
 stockMovementSchema.index({ tenantId: 1, performedBy: 1, createdAt: -1 });
 stockMovementSchema.index({ transferPairId: 1 }, { sparse: true });
+stockMovementSchema.index({ tenantId: 1, referenceId: 1, createdAt: -1 }, { sparse: true });
 
 export const StockMovementModel = model<IStockMovement>('StockMovement', stockMovementSchema);

@@ -25,7 +25,7 @@ const baseSchema = z.object({
   warehouseId: z.string().optional(),
   sourceWarehouseId: z.string().optional(),
   destinationWarehouseId: z.string().optional(),
-  quantity: z.coerce.number(),
+  quantity: z.coerce.number({ invalid_type_error: 'Quantity is required' }),
   note: z.string().max(500).optional().or(z.literal('')),
   referenceType: z.enum(['MANUAL', 'PURCHASE', 'SALE']).optional()
 });
@@ -91,6 +91,29 @@ export function RecordMovementDrawer({
     setActiveType(type);
   }, [type]);
 
+  // Reset everything each time the drawer is (re)opened so stale values, errors
+  // and previous submit errors don't leak into the next session.
+  useEffect(() => {
+    if (!open) return;
+    setActiveType(type);
+    setSearch('');
+    recordIn.reset();
+    recordOut.reset();
+    recordAdjustment.reset();
+    recordWaste.reset();
+    recordTransfer.reset();
+    form.reset({
+      productId: prefilledProductId ?? '',
+      warehouseId: prefilledWarehouseId ?? '',
+      sourceWarehouseId: prefilledWarehouseId ?? '',
+      destinationWarehouseId: '',
+      quantity: 0,
+      note: '',
+      referenceType: 'MANUAL'
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   useEffect(() => {
     form.reset({
       productId: prefilledProductId ?? form.getValues('productId') ?? '',
@@ -101,6 +124,7 @@ export function RecordMovementDrawer({
       note: '',
       referenceType: 'MANUAL'
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeType]);
 
   const { data: warehouses = [] } = useWarehousesDropdown();
@@ -124,9 +148,10 @@ export function RecordMovementDrawer({
   const selectedProduct = useMemo(() => products.find((p) => p._id === productId), [products, productId]);
   const { data: stock = [] } = useProductStock(productId || null);
 
-  const selectedStock = stock.find((entry) => entry.warehouse._id === warehouseId);
-  const sourceStock = stock.find((entry) => entry.warehouse._id === sourceWarehouseId);
-  const destinationStock = stock.find((entry) => entry.warehouse._id === destinationWarehouseId);
+  const selectedStock = stock.find((entry) => entry?.warehouse?._id === warehouseId);
+  const sourceStock = stock.find((entry) => entry?.warehouse?._id === sourceWarehouseId);
+  const destinationStock = stock.find((entry) => entry?.warehouse?._id === destinationWarehouseId);
+  const { errors } = form.formState;
 
   const mutationPending =
     recordIn.isPending ||
@@ -136,6 +161,8 @@ export function RecordMovementDrawer({
     recordTransfer.isPending;
 
   const submitError =
+    (recordIn.error as any)?.response?.data?.message ||
+    (recordAdjustment.error as any)?.response?.data?.message ||
     (recordOut.error as any)?.response?.data?.message ||
     (recordWaste.error as any)?.response?.data?.message ||
     (recordTransfer.error as any)?.response?.data?.message ||
@@ -168,60 +195,73 @@ export function RecordMovementDrawer({
       return;
     }
 
-    if (activeType === 'in') {
-      await recordIn.mutateAsync({
-        productId: values.productId,
-        warehouseId: values.warehouseId as string,
-        quantity: values.quantity,
-        referenceType: values.referenceType === 'PURCHASE' ? 'PURCHASE' : 'MANUAL',
-        note: values.note || undefined
-      });
-      onClose();
+    if ((activeType === 'out' || activeType === 'waste') && selectedStock && values.quantity > selectedStock.quantity) {
+      form.setError('quantity', { message: `Only ${selectedStock.quantity} available in this warehouse` });
+      return;
+    }
+    if (activeType === 'transfer' && sourceStock && values.quantity > sourceStock.quantity) {
+      form.setError('quantity', { message: `Only ${sourceStock.quantity} available in the source warehouse` });
       return;
     }
 
-    if (activeType === 'out') {
-      await recordOut.mutateAsync({
+    try {
+      if (activeType === 'in') {
+        await recordIn.mutateAsync({
+          productId: values.productId,
+          warehouseId: values.warehouseId as string,
+          quantity: values.quantity,
+          referenceType: values.referenceType === 'PURCHASE' ? 'PURCHASE' : 'MANUAL',
+          note: values.note || undefined
+        });
+        onClose();
+        return;
+      }
+
+      if (activeType === 'out') {
+        await recordOut.mutateAsync({
+          productId: values.productId,
+          warehouseId: values.warehouseId as string,
+          quantity: values.quantity,
+          referenceType: values.referenceType === 'SALE' ? 'SALE' : 'MANUAL',
+          note: values.note || undefined
+        });
+        onClose();
+        return;
+      }
+
+      if (activeType === 'adjustment') {
+        await recordAdjustment.mutateAsync({
+          productId: values.productId,
+          warehouseId: values.warehouseId as string,
+          quantity: values.quantity,
+          note: values.note || undefined
+        });
+        onClose();
+        return;
+      }
+
+      if (activeType === 'waste') {
+        await recordWaste.mutateAsync({
+          productId: values.productId,
+          warehouseId: values.warehouseId as string,
+          quantity: values.quantity,
+          note: values.note || undefined
+        });
+        onClose();
+        return;
+      }
+
+      await recordTransfer.mutateAsync({
         productId: values.productId,
-        warehouseId: values.warehouseId as string,
+        sourceWarehouseId: values.sourceWarehouseId as string,
+        destinationWarehouseId: values.destinationWarehouseId as string,
         quantity: values.quantity,
-        referenceType: values.referenceType === 'SALE' ? 'SALE' : 'MANUAL',
         note: values.note || undefined
       });
       onClose();
-      return;
+    } catch {
+      // Error is surfaced via submitError / mutation toasts.
     }
-
-    if (activeType === 'adjustment') {
-      await recordAdjustment.mutateAsync({
-        productId: values.productId,
-        warehouseId: values.warehouseId as string,
-        quantity: values.quantity,
-        note: values.note || undefined
-      });
-      onClose();
-      return;
-    }
-
-    if (activeType === 'waste') {
-      await recordWaste.mutateAsync({
-        productId: values.productId,
-        warehouseId: values.warehouseId as string,
-        quantity: values.quantity,
-        note: values.note || undefined
-      });
-      onClose();
-      return;
-    }
-
-    await recordTransfer.mutateAsync({
-      productId: values.productId,
-      sourceWarehouseId: values.sourceWarehouseId as string,
-      destinationWarehouseId: values.destinationWarehouseId as string,
-      quantity: values.quantity,
-      note: values.note || undefined
-    });
-    onClose();
   });
 
   return (
@@ -231,11 +271,12 @@ export function RecordMovementDrawer({
           <SheetTitle>{TYPE_LABELS[activeType]}</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           {(['in', 'out', 'adjustment', 'waste', 'transfer'] as DrawerType[]).map((movementType) => (
             <button
               key={movementType}
               type="button"
+              aria-pressed={activeType === movementType}
               onClick={() => setActiveType(movementType)}
               className={`min-h-11 rounded-md px-3 py-1.5 text-xs font-medium md:min-h-0 ${
                 activeType === movementType ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
@@ -246,19 +287,21 @@ export function RecordMovementDrawer({
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4 pb-24">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium">Search product</label>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by SKU or name" className="h-11 md:h-9" />
+            <label htmlFor="movement-search" className="text-sm font-medium">Search product</label>
+            <Input id="movement-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by SKU or name" className="h-11 md:h-9" />
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium">Product</label>
+            <label htmlFor="movement-product" className="text-sm font-medium">Product</label>
             <select
+              id="movement-product"
               className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
               value={form.watch('productId')}
               disabled={Boolean(prefilledProductId)}
-              onChange={(e) => form.setValue('productId', e.target.value)}
+              aria-invalid={Boolean(errors.productId)}
+              onChange={(e) => form.setValue('productId', e.target.value, { shouldValidate: form.formState.isSubmitted })}
             >
               <option value="">Select product</option>
               {products.map((product) => (
@@ -267,15 +310,21 @@ export function RecordMovementDrawer({
                 </option>
               ))}
             </select>
+            {errors.productId?.message ? <p className="text-xs text-destructive">{errors.productId.message}</p> : null}
           </div>
 
           {activeType !== 'transfer' ? (
             <div className="space-y-1">
-              <label className="text-sm font-medium">Warehouse</label>
+              <label htmlFor="movement-warehouse" className="text-sm font-medium">Warehouse</label>
               <select
+                id="movement-warehouse"
                 className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                 value={form.watch('warehouseId')}
-                onChange={(e) => form.setValue('warehouseId', e.target.value)}
+                aria-invalid={Boolean(errors.warehouseId)}
+                onChange={(e) => {
+                  form.setValue('warehouseId', e.target.value);
+                  form.clearErrors('warehouseId');
+                }}
               >
                 <option value="">Select warehouse</option>
                 {warehouses.map((warehouse) => (
@@ -284,15 +333,21 @@ export function RecordMovementDrawer({
                   </option>
                 ))}
               </select>
+              {errors.warehouseId?.message ? <p className="text-xs text-destructive">{errors.warehouseId.message}</p> : null}
             </div>
           ) : (
             <>
               <div className="space-y-1">
-                <label className="text-sm font-medium">Source warehouse</label>
+                <label htmlFor="movement-source" className="text-sm font-medium">Source warehouse</label>
                 <select
+                  id="movement-source"
                   className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                   value={form.watch('sourceWarehouseId')}
-                  onChange={(e) => form.setValue('sourceWarehouseId', e.target.value)}
+                  aria-invalid={Boolean(errors.sourceWarehouseId)}
+                  onChange={(e) => {
+                    form.setValue('sourceWarehouseId', e.target.value);
+                    form.clearErrors(['sourceWarehouseId', 'destinationWarehouseId']);
+                  }}
                 >
                   <option value="">Select source warehouse</option>
                   {warehouses.map((warehouse) => (
@@ -301,37 +356,49 @@ export function RecordMovementDrawer({
                     </option>
                   ))}
                 </select>
+                {errors.sourceWarehouseId?.message ? <p className="text-xs text-destructive">{errors.sourceWarehouseId.message}</p> : null}
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">Destination warehouse</label>
+                <label htmlFor="movement-destination" className="text-sm font-medium">Destination warehouse</label>
                 <select
+                  id="movement-destination"
                   className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                   value={form.watch('destinationWarehouseId')}
-                  onChange={(e) => form.setValue('destinationWarehouseId', e.target.value)}
+                  aria-invalid={Boolean(errors.destinationWarehouseId)}
+                  onChange={(e) => {
+                    form.setValue('destinationWarehouseId', e.target.value);
+                    form.clearErrors(['sourceWarehouseId', 'destinationWarehouseId']);
+                  }}
                 >
                   <option value="">Select destination warehouse</option>
                   {warehouses.map((warehouse) => (
-                    <option key={warehouse._id} value={warehouse._id}>
+                    <option key={warehouse._id} value={warehouse._id} disabled={warehouse._id === sourceWarehouseId}>
                       {warehouse.code} - {warehouse.name}
                     </option>
                   ))}
                 </select>
                 {sourceWarehouseId && destinationWarehouseId && sourceWarehouseId === destinationWarehouseId ? (
-                  <p className="text-xs text-red-600">Source and destination cannot be the same.</p>
+                  <p className="text-xs text-destructive">Source and destination cannot be the same.</p>
+                ) : errors.destinationWarehouseId?.message ? (
+                  <p className="text-xs text-destructive">{errors.destinationWarehouseId.message}</p>
                 ) : null}
               </div>
             </>
           )}
 
           <div className="space-y-1">
-            <label className="text-sm font-medium">Quantity {selectedProduct ? `(${selectedProduct.unit})` : ''}</label>
+            <label htmlFor="movement-quantity" className="text-sm font-medium">Quantity {selectedProduct ? `(${selectedProduct.unit})` : ''}</label>
             <Input
+              id="movement-quantity"
               type="number"
               step="any"
-              value={Number.isNaN(quantity) ? '' : quantity}
-              onChange={(e) => form.setValue('quantity', Number(e.target.value))}
+              inputMode="decimal"
+              min={activeType === 'adjustment' ? undefined : 0}
+              aria-invalid={Boolean(errors.quantity)}
               className="h-11 md:h-9"
+              {...form.register('quantity', { valueAsNumber: true })}
             />
+            {errors.quantity?.message ? <p className="text-xs text-destructive">{errors.quantity.message}</p> : null}
             {activeType === 'adjustment' ? (
               <p className="text-xs text-muted-foreground">Positive to add stock, negative to remove.</p>
             ) : null}
@@ -339,8 +406,9 @@ export function RecordMovementDrawer({
 
           {(activeType === 'in' || activeType === 'out') && (
             <div className="space-y-1">
-              <label className="text-sm font-medium">Reference (optional)</label>
+              <label htmlFor="movement-reference" className="text-sm font-medium">Reference (optional)</label>
               <select
+                id="movement-reference"
                 className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9"
                 value={form.watch('referenceType') ?? 'MANUAL'}
                 onChange={(e) => form.setValue('referenceType', e.target.value as 'MANUAL' | 'PURCHASE' | 'SALE')}
@@ -353,8 +421,9 @@ export function RecordMovementDrawer({
           )}
 
           <div className="space-y-1">
-            <label className="text-sm font-medium">Note</label>
+            <label htmlFor="movement-note" className="text-sm font-medium">Note</label>
             <Textarea
+              id="movement-note"
               rows={2}
               placeholder={
                 activeType === 'in'
@@ -375,7 +444,7 @@ export function RecordMovementDrawer({
           {activeType !== 'transfer' && selectedStock ? (
             <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
               <div>
-                Current stock: <strong>{selectedStock.quantity}</strong> {selectedProduct?.unit ?? ''} in {selectedStock.warehouse.name}
+                Current stock: <strong>{selectedStock.quantity}</strong> {selectedProduct?.unit ?? ''} in {selectedStock.warehouse?.name ?? 'warehouse'}
               </div>
               <div className="mt-1">
                 After:{' '}
@@ -402,9 +471,13 @@ export function RecordMovementDrawer({
             </div>
           ) : null}
 
-          {submitError ? <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</div> : null}
+          {submitError ? (
+            <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+              {submitError}
+            </div>
+          ) : null}
 
-          <div className="fixed bottom-0 left-0 right-0 w-full border-t bg-background p-4 md:left-auto md:w-lg">
+          <div className="sticky bottom-0 -mx-6 -mb-6 border-t border-border bg-background p-4">
             <Button type="submit" className="h-11 min-h-11 w-full md:h-9 md:min-h-0" disabled={mutationPending}>
               {BUTTON_LABELS[activeType]}
             </Button>

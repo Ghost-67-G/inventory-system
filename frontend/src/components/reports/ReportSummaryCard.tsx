@@ -45,9 +45,9 @@ export function ReportSummaryCard({
     >
       {Icon && <Icon className={cn('h-5 w-5 shrink-0', iconStyles[accentColor])} />}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium opacity-75">{label}</p>
-        <p className="text-lg font-bold truncate">{value}</p>
-        {subLabel && <p className="text-xs opacity-60 truncate">{subLabel}</p>}
+        <p className="text-sm font-medium opacity-75 truncate" title={label}>{label}</p>
+        <p className="text-lg font-bold truncate" title={String(value)}>{value}</p>
+        {subLabel && <p className="text-xs opacity-60 truncate" title={subLabel}>{subLabel}</p>}
       </div>
     </div>
   );
