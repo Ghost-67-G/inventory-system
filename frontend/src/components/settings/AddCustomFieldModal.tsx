@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAddCustomField } from '@/hooks/useSettings';
 import type { AddCustomFieldDto, CustomFieldType } from '@/types';
 
@@ -78,28 +78,22 @@ export function AddCustomFieldModal({ open, onOpenChange }: AddCustomFieldModalP
     onOpenChange(false);
   }
 
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="add-custom-field-title"
-      className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4"
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Runs for Cancel, the X button, Escape and overlay clicks alike so the
+        // form is always reset. Closing is blocked while a request is in flight.
+        if (!next) {
+          if (isPending) return;
+          handleClose();
+        }
+      }}
     >
-      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 id="add-custom-field-title" className="text-lg font-semibold text-foreground">Add custom field</h2>
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isPending}
-            aria-label="Close"
-            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-          >
-            <X size={18} />
-          </button>
-        </div>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add custom field</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             {/* Field name */}
@@ -171,16 +165,16 @@ export function AddCustomFieldModal({ open, onOpenChange }: AddCustomFieldModalP
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
+            <DialogFooter className="gap-2 pt-2 sm:space-x-0">
               <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending ? 'Adding...' : 'Add field'}
               </Button>
-            </div>
+            </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

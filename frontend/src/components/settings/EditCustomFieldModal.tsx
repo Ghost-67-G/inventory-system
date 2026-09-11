@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUpdateCustomField } from '@/hooks/useSettings';
 import type { ICustomField, UpdateCustomFieldDto } from '@/types';
 
@@ -55,29 +55,28 @@ export function EditCustomFieldModal({ open, onOpenChange, field }: EditCustomFi
     }
   }
 
+  function handleClose() {
+    onOpenChange(false);
+  }
+
   if (!field) return null;
-  if (!open) return null;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-custom-field-title"
-      className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4"
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Covers Cancel, the X button, Escape and overlay clicks. Closing is
+        // blocked while a request is in flight.
+        if (!next) {
+          if (isPending) return;
+          handleClose();
+        }
+      }}
     >
-      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 id="edit-custom-field-title" className="text-lg font-semibold text-foreground">Edit field</h2>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-            aria-label="Close"
-            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-          >
-            <X size={18} />
-          </button>
-        </div>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit field</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
@@ -136,16 +135,16 @@ export function EditCustomFieldModal({ open, onOpenChange, field }: EditCustomFi
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+            <DialogFooter className="gap-2 pt-2 sm:space-x-0">
+              <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending ? 'Saving...' : 'Save changes'}
               </Button>
-            </div>
+            </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

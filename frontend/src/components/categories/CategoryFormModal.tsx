@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCreateCategory, useUpdateCategory } from '@/hooks/useCategories';
 import type { ICategory } from '@/types';
 
@@ -105,21 +106,24 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
     }
   });
 
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="category-form-title"
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4"
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Covers Cancel, the X button, Escape and overlay clicks. Closing is
+        // blocked while a request is in flight.
+        if (!next) {
+          if (isPending) return;
+          onClose();
+        }
+      }}
     >
-      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl">
-        <h2 id="category-form-title" className="text-lg font-semibold text-foreground">
-          {mode === 'create' ? 'Add category' : 'Edit category'}
-        </h2>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{mode === 'create' ? 'Add category' : 'Edit category'}</DialogTitle>
+        </DialogHeader>
 
-        <form className="mt-4 space-y-4" onSubmit={onSubmit}>
+        <form className="space-y-4" onSubmit={onSubmit}>
           {/* Name */}
           <div>
             <label htmlFor="category-name" className="mb-1 block text-sm font-medium text-foreground">
@@ -236,7 +240,7 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
           ) : null}
 
           {/* Footer */}
-          <div className="flex justify-end gap-2 pt-2">
+          <DialogFooter className="gap-2 pt-2 sm:space-x-0">
             <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
               Cancel
             </Button>
@@ -249,9 +253,9 @@ export function CategoryFormModal({ mode, category, open, onClose }: CategoryFor
                   ? 'Saving...'
                   : 'Save changes'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

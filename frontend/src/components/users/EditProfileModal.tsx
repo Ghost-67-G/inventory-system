@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUpdateMyProfile } from '@/hooks/useUsers';
 import type { SafeUser } from '@/types';
 
@@ -45,21 +46,23 @@ export function EditProfileModal({ open, user, onClose }: EditProfileModalProps)
     }
   });
 
-  if (!open || !user) {
+  if (!user) {
     return null;
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-profile-title"
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4"
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl">
-        <h2 id="edit-profile-title" className="text-lg font-semibold text-foreground">Edit profile</h2>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit profile</DialogTitle>
+        </DialogHeader>
 
-        <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+        <form className="space-y-3" onSubmit={onSubmit}>
           <div>
             <label htmlFor="edit-profile-name" className="mb-1 block text-sm font-medium text-foreground">Name</label>
             <input id="edit-profile-name" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('name')} />
@@ -78,16 +81,16 @@ export function EditProfileModal({ open, user, onClose }: EditProfileModalProps)
             <p className="mt-1 text-xs text-muted-foreground">Contact support to change email</p>
           </div>
 
-          <div className="mt-4 flex justify-end gap-2">
+          <DialogFooter className="mt-4 gap-2 sm:space-x-0">
             <Button type="button" variant="outline" onClick={onClose} disabled={updateProfile.isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={updateProfile.isPending}>
               {updateProfile.isPending ? 'Saving...' : 'Save changes'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
