@@ -1,4 +1,13 @@
-import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface DeleteCustomFieldDialogProps {
   open: boolean;
@@ -15,32 +24,45 @@ export function DeleteCustomFieldDialog({
   onConfirm,
   isPending = false,
 }: DeleteCustomFieldDialogProps) {
-  if (!open) return null;
-
   return (
-    <div
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="delete-custom-field-title"
-      className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4"
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        // Escape / Cancel close the dialog; closing is blocked while deleting.
+        if (!next) {
+          if (isPending) return;
+          onOpenChange(false);
+        }
+      }}
     >
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
-        <h2 id="delete-custom-field-title" className="break-words text-lg font-semibold text-foreground">Delete '{fieldName}'?</h2>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="break-words">Delete '{fieldName}'?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p>This field will be removed from the product form.</p>
+              <p>Existing product data stored in this field will be preserved but no longer visible.</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
-        <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-          <p>This field will be removed from the product form.</p>
-          <p>Existing product data stored in this field will be preserved but no longer visible.</p>
-        </div>
-
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="outline" disabled={isPending} onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="button" variant="destructive" disabled={isPending} onClick={onConfirm}>
+        <AlertDialogFooter className="gap-2 sm:space-x-0">
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(event) => {
+              // Radix closes the dialog on Action click by default; keep it open
+              // until the parent finishes the request so the pending state is
+              // visible and a failed delete does not silently dismiss the dialog.
+              event.preventDefault();
+              onConfirm();
+            }}
+            disabled={isPending}
+            className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+          >
             {isPending ? 'Deleting...' : 'Delete field'}
-          </Button>
-        </div>
-      </div>
-    </div>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

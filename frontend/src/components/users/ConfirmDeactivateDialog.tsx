@@ -1,4 +1,13 @@
-import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 
 interface ConfirmDeactivateDialogProps {
   open: boolean;
@@ -15,32 +24,40 @@ export function ConfirmDeactivateDialog({
   onConfirm,
   onCancel
 }: ConfirmDeactivateDialogProps) {
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="deactivate-user-title"
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4"
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        // Ignore Escape / outside dismissals while the request is in flight so
+        // the dialog does not vanish mid-mutation.
+        if (!next && !loading) onCancel();
+      }}
     >
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
-        <h2 id="deactivate-user-title" className="break-words text-lg font-semibold text-foreground">Deactivate {name}?</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          They will be immediately signed out and lose access. You can reactivate at any time.
-        </p>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="break-words">Deactivate {name}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            They will be immediately signed out and lose access. You can reactivate at any time.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
-            Cancel
-          </Button>
-          <Button type="button" className="bg-red-600 text-white hover:bg-red-700" disabled={loading} onClick={onConfirm}>
+        <AlertDialogFooter className="gap-2 sm:space-x-0">
+          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(event) => {
+              // Radix closes the dialog on Action click by default; keep it open
+              // until the parent resolves the mutation so the pending state is
+              // visible and a failed request does not silently dismiss the dialog.
+              event.preventDefault();
+              onConfirm();
+            }}
+            disabled={loading}
+            className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
+          >
             {loading ? 'Deactivating...' : 'Deactivate'}
-          </Button>
-        </div>
-      </div>
-    </div>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

@@ -150,7 +150,10 @@ export function PurchaseOrderDetailPage() {
               <h3 className="mb-3 font-semibold">Stock movements</h3>
               <div className="space-y-2">
                 {movementsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading movements...</p> : null}
-                {!movementsQuery.isLoading && movements.length === 0 ? <p className="text-sm text-muted-foreground">No movements found</p> : null}
+                {movementsQuery.isError ? <p className="text-sm text-destructive">Could not load movements.</p> : null}
+                {!movementsQuery.isLoading && !movementsQuery.isError && movements.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No movements found</p>
+                ) : null}
                 {movements.map((movement) => (
                   <div key={movement._id} className="rounded border border-border p-2 text-sm">
                     <p>{movement.product?.name ?? movement.productId}</p>
@@ -159,6 +162,17 @@ export function PurchaseOrderDetailPage() {
                     </p>
                   </div>
                 ))}
+                {movementsQuery.hasNextPage ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void movementsQuery.fetchNextPage()}
+                    disabled={movementsQuery.isFetchingNextPage}
+                  >
+                    {movementsQuery.isFetchingNextPage ? 'Loading...' : 'Load more'}
+                  </Button>
+                ) : null}
               </div>
             </div>
           ) : null}

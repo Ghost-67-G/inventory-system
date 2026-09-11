@@ -3,6 +3,14 @@ import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { useUpdateUser } from '@/hooks/useUsers';
 import type { SafeUser, UpdateUserDto } from '@/types';
 
@@ -46,7 +54,7 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
     return rank[selectedRole] < rank[user.role as keyof typeof rank];
   }, [selectedRole, user]);
 
-  // Clear any stale API error when the modal is dismissed.
+  // Clear any stale API error when the modal is dismissed (Cancel / X / Escape / overlay).
   const handleClose = () => {
     setError(null);
     onClose();
@@ -68,28 +76,30 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
     }
   });
 
-  if (!open || !user) {
+  if (!user) {
     return null;
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="change-role-title"
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4"
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) handleClose();
+      }}
     >
-      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl">
-        <h2 id="change-role-title" className="text-lg font-semibold text-foreground">Change role</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Update access level for {user.name}.</p>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Change role</DialogTitle>
+          <DialogDescription>Update access level for {user.name}.</DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-4 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-foreground">
+        <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-foreground">
           Current role: <span className="font-semibold capitalize">{user.role}</span>
         </div>
 
-        {error ? <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{error}</div> : null}
+        {error ? <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">{error}</div> : null}
 
-        <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+        <form className="space-y-3" onSubmit={onSubmit}>
           <div>
             <label htmlFor="change-role-select" className="mb-1 block text-sm font-medium text-foreground">Role</label>
             <select id="change-role-select" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register('role')}>
@@ -106,16 +116,16 @@ export function ChangeRoleModal({ user, open, onClose }: ChangeRoleModalProps) {
             </div>
           ) : null}
 
-          <div className="mt-4 flex justify-end gap-2">
+          <DialogFooter className="mt-4 gap-2 sm:space-x-0">
             <Button type="button" variant="outline" onClick={handleClose} disabled={updateUser.isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={updateUser.isPending}>
               {updateUser.isPending ? 'Saving...' : 'Save changes'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
