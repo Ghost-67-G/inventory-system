@@ -9,11 +9,11 @@ COPY package*.json ./
 RUN npm ci --include=dev
 
 # Copy source and build
-COPY tsconfig.json ./
+COPY tsconfig.json tsconfig.scripts.json ./
 COPY scripts/ ./scripts/
 COPY src/ ./src/
-RUN npm run build
-# Output: /app/dist/
+RUN npm run build && npm run build:scripts
+# Output: /app/dist/ (server) and /app/dist-scripts/ (seed scripts, run with `npm run seed:prod`)
 
 # Prune dev dependencies
 RUN npm prune --omit=dev
@@ -28,6 +28,7 @@ RUN adduser -S nodejs -u 1001
 
 # Copy built files and production node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/dist-scripts ./dist-scripts
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
 
