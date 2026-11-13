@@ -1,38 +1,31 @@
-#!/bin/bash
-# scripts/backup.sh
-# Usage: ./scripts/backup.sh [label]
+#!/usr/bin/env bash
+# Dump the inventory database from the shared MongoDB container.
+# Usage: ./scripts/backup.sh [label]   ->   backups/inventory_<timestamp>_<label>.archive.gz
+#
+# Env overrides: MONGO_CONTAINER (default: mongodb), RETENTION_DAYS (default: 30)
 
 set -euo pipefail
 
-LABEL=${1:-manual}
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="./backups"
-BACKUP_FILE="${BACKUP_DIR}/inventory_${TIMESTAMP}_${LABEL}.gz"
-RETENTION_DAYS=30
-COMPOSE="docker compose -f docker-compose.vps.yml --env-file .env.production"
+cd "$(dirname "$0")/.."
 
-if [ -f .env.production ]; then
-  # shellcheck disable=SC1091
-  source .env.production
-fi
+label="${1:-manual}"
+mongo_container="${MONGO_CONTAINER:-mongodb}"
+retention_days="${RETENTION_DAYS:-30}"
+backup_dir="backups"
+file="${backup_dir}/inventory_$(date +%Y%m%d_%H%M%S)_${label}.archive.gz"
 
-if [ -z "${MONGO_ROOT_PASSWORD:-}" ]; then
-  echo "MONGO_ROOT_PASSWORD must be set (export it or define it in .env.production)"
+# Read MONGODB_URL from .env without sourcing it (the URL contains '&').
+mongodb_url="$(grep -E '^MONGODB_URL=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -E "s/^['\"]|['\"]$//g" || true)"
+if [ -z "$mongodb_url" ]; then
+  echo "MONGODB_URL is not set in .env" >&2
   exit 1
 fi
 
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$backup_dir"
+trap 'rm -f "$file"' ERR
 
-echo "Starting backup: $BACKUP_FILE"
+echo "Backing up to $file"
+docker exec "$mongo_container" mongodump --uri="$mongodb_url" --archive --gzip --quiet > "$file"
+echo "Done ($(du -h "$file" | cut -f1))"
 
-$COMPOSE exec -T mongodb mongodump \
-  --uri="mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD}@localhost:27017/inventory?authSource=admin" \
-  --archive \
-  --gzip \
-  > "$BACKUP_FILE"
-
-SIZE=$(du -sh "$BACKUP_FILE" | cut -f1)
-echo "Backup complete: $BACKUP_FILE ($SIZE)"
-
-find "$BACKUP_DIR" -name "*.gz" -mtime +"$RETENTION_DAYS" -delete
-echo "Cleaned up backups older than ${RETENTION_DAYS} days"
+find "$backup_dir" -name 'inventory_*.archive.gz' -mtime +"$retention_days" -delete

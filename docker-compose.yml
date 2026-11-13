@@ -1,139 +1,110 @@
+# Inventory System — production stack for the VPS.
+#
+# Runs: backend, frontend, redis, meilisearch.
+# Expects on the host (set up once, outside this repo — see README "Deployment"):
+#   - `shared_db` network with a MongoDB 7 replica set reachable as `mongodb:27017`
+#   - `coolify`   network with Coolify's Traefik proxy routing
+#        stock.<domain>    -> inventory-frontend:80
+#        apistock.<domain> -> inventory-backend:3000
+#
+# Usage:  cp .env.example .env   # fill in
+#         docker compose up -d --build --wait
+
+name: inventory-system
+
 services:
   backend:
-    image: ghcr.io/${GHCR_NAMESPACE:-your-org}/inventory-backend:${APP_VERSION:-latest}
+    container_name: inventory-backend
     build:
       context: ./backend
-      dockerfile: Dockerfile
       target: production
-    expose:
-      - "3000"
-    env_file:
-      - .env.production
+    env_file: .env
     environment:
-      - NODE_ENV=production
-      - DEPLOYMENT_MODE=saas
+      NODE_ENV: production
+      DEPLOYMENT_MODE: saas
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@inventory-redis:6379
+      MEILISEARCH_URL: http://inventory-meilisearch:7700
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      # /health returns 503 unless MongoDB and Redis are both reachable
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
-    restart: unless-stopped
-    networks:
-      inventory_net:
-      shared_proxy:
-        aliases:
-          - inventory-backend
     volumes:
       - backend_tmp:/tmp
+    networks:
+      - inventory_net
+      - shared_db
+      - coolify
+    restart: unless-stopped
 
   frontend:
-    image: ghcr.io/${GHCR_NAMESPACE:-your-org}/inventory-frontend:${APP_VERSION:-latest}
+    container_name: inventory-frontend
     build:
       context: ./frontend
-      dockerfile: Dockerfile
       target: production
       args:
-        - VITE_API_URL=https://apistock.codingstack.site/api
-        - VITE_SOCKET_URL=https://apistock.codingstack.site
-        - VITE_DEPLOYMENT_MODE=saas
-    expose:
-      - "80"
+        # Baked into the JS bundle at build time — rebuild after changing.
+        VITE_API_URL: ${VITE_API_URL:?set VITE_API_URL in .env}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:?set VITE_SOCKET_URL in .env}
+        VITE_DEPLOYMENT_MODE: saas
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
-    restart: unless-stopped
-    networks:
-      inventory_net:
-      shared_proxy:
-        aliases:
-          - inventory-frontend
-
-  mongodb:
-    image: mongo:7
-    ports:
-      - "27018:27017"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
-      - MONGO_INITDB_DATABASE=inventory
-      - MONGO_APP_USERNAME=${MONGO_APP_USERNAME}
-      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
-    volumes:
-      - mongo_data:/data/db
-      - mongo_config:/data/configdb
-      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    command: >
-      sh -c "if [ ! -f /data/configdb/keyfile ]; then
-      head -c 756 /dev/urandom | base64 > /data/configdb/keyfile
-      && chmod 400 /data/configdb/keyfile
-      && chown 999:999 /data/configdb/keyfile;
-      fi
-      && exec mongod --auth --replSet rs0 --keyFile /data/configdb/keyfile --bind_ip_all"
-    healthcheck:
-      test: ["CMD-SHELL", "mongosh --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval \"db.adminCommand('ping')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
     networks:
       - inventory_net
+      - coolify
+    restart: unless-stopped
 
   redis:
+    # Unique container names: the backend also sits on the `coolify` network,
+    # where Coolify runs its own `redis`.
+    container_name: inventory-redis
     image: redis:7-alpine
-    expose:
-      - "6379"
-    command: >
-      sh -c "sed 's/REDIS_PASSWORD_PLACEHOLDER/'\"$$REDIS_PASSWORD\"'/g' /usr/local/etc/redis/redis.conf > /tmp/redis.conf
-      && redis-server /tmp/redis.conf"
+    command: ["sh", "-c", "exec redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\""]
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-    volumes:
-      - redis_data:/data
-      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
-    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
     networks:
       - inventory_net
+    restart: unless-stopped
 
   meilisearch:
+    container_name: inventory-meilisearch
     image: getmeili/meilisearch:v1.7
-    expose:
-      - "7700"
     environment:
-      - MEILI_ENV=production
-      - MEILI_MASTER_KEY=${MEILISEARCH_KEY}
-      - MEILI_NO_ANALYTICS=true
-    volumes:
-      - meili_data:/meili_data
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILISEARCH_KEY:?set MEILISEARCH_KEY in .env}
+      MEILI_NO_ANALYTICS: "true"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7700/health"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
-    restart: unless-stopped
+    volumes:
+      - meili_data:/meili_data
     networks:
       - inventory_net
+    restart: unless-stopped
 
 volumes:
-  mongo_data:
-  mongo_config:
   redis_data:
   meili_data:
   backend_tmp:
@@ -141,5 +112,7 @@ volumes:
 networks:
   inventory_net:
     driver: bridge
-  shared_proxy:
+  shared_db:
+    external: true
+  coolify:
     external: true

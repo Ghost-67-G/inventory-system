@@ -1,19 +1,16 @@
-# Environment files
+# Secrets — never commit. Only *.example templates are tracked.
 .env
-# .env.production
-.env.local
-
-# TLS certificates and secrets
-# nginx/ssl/*
-# !nginx/ssl/.gitkeep
+.env.*
+!.env.example
+*.pem
+*.key
 
 # Runtime artifacts
 backups/
 *.pid
 *.log
 
-# Dependency and build directories
-backend/node_modules/
-backend/dist/
-frontend/node_modules/
-frontend/dist/
+# Dependencies and builds
+node_modules/
+dist/
+*.tsbuildinfo
